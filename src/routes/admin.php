@@ -4,5 +4,5 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function (): RedirectResponse {
-    return redirect()->away(config('domains.public_url', 'https://anugerah3d.com'));
-})->name('fallback.home');
+    return redirect('/admin');
+})->name('home');
