@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\PasswordResetController;
+use App\Http\Controllers\Admin\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest:admin')->group(function (): void {
@@ -24,4 +25,7 @@ Route::middleware('guest:admin')->group(function (): void {
 Route::middleware('auth:admin')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    // Product routes
+    Route::resource('products', ProductController::class);
 });
