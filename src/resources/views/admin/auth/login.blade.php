@@ -65,10 +65,16 @@
                             @enderror
                         </label>
 
-                        <label class="flex items-center gap-2 text-sm text-slate-600">
-                            <input name="remember" value="1" type="checkbox" @checked(old('remember')) class="h-4 w-4 rounded border-slate-300 text-[#1a73e8] focus:ring-[#1a73e8]">
-                            Remember me
-                        </label>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <label class="flex items-center gap-2 text-sm text-slate-600">
+                                <input name="remember" value="1" type="checkbox" @checked(old('remember')) class="h-4 w-4 rounded border-slate-300 text-[#1a73e8] focus:ring-[#1a73e8]">
+                                Remember me
+                            </label>
+
+                            <a href="{{ route('admin.password.forgot') }}" class="text-sm font-semibold text-[#1a73e8] transition hover:text-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
+                                Forgot password?
+                            </a>
+                        </div>
 
                         <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
                             Sign in

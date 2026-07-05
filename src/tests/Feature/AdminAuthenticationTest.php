@@ -25,7 +25,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertViewIs('admin.auth.login')
             ->assertSeeText('Admin Login')
             ->assertSeeText('Sign in')
-            ->assertDontSeeText('Forgot password?')
+            ->assertSeeText('Forgot password?')
             ->assertDontSeeText('Security Check');
     }
 
