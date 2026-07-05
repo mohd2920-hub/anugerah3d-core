@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Http\RedirectResponse;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LoginController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (): RedirectResponse {
-    return redirect('/admin');
-})->name('home');
+Route::redirect('/', '/login')->name('home');
+Route::get('/login', LoginController::class)->name('login');
+Route::get('/dashboard', DashboardController::class)->name('dashboard');

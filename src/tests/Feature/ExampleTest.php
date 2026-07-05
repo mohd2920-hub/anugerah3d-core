@@ -32,10 +32,36 @@ class ExampleTest extends TestCase
             ->assertViewIs('public.home');
     }
 
-    public function test_admin_domain_redirects_to_filament_panel(): void
+    public function test_admin_domain_redirects_to_login_page(): void
     {
         $this->getFromDomain((string) config('domains.admin'))
-            ->assertRedirect('/admin');
+            ->assertRedirect('/login');
+    }
+
+    public function test_admin_login_page_links_to_dashboard(): void
+    {
+        $domain = (string) config('domains.admin');
+
+        $this->get("http://{$domain}/login")
+            ->assertOk()
+            ->assertViewIs('admin.auth.login')
+            ->assertSeeText('Admin Login')
+            ->assertSeeText('Sign in');
+    }
+
+    public function test_admin_dashboard_page_displays_admin_navigation(): void
+    {
+        $domain = (string) config('domains.admin');
+
+        $this->get("http://{$domain}/dashboard")
+            ->assertOk()
+            ->assertViewIs('admin.dashboard')
+            ->assertSeeText('Admin Dashboard')
+            ->assertSeeText('Revenue Trend')
+            ->assertSeeText('Production Progress')
+            ->assertSeeText('Top Customers')
+            ->assertSeeText('Order Pipeline')
+            ->assertSeeText('Order management');
     }
 
     public function test_agent_domain_returns_placeholder_portal_response(): void
