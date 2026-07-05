@@ -27,6 +27,7 @@ class PasswordResetMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            to: $this->email,
             subject: 'Reset Your Admin Password',
         );
     }
@@ -55,3 +56,4 @@ class PasswordResetMail extends Mailable
         return [];
     }
 }
+
