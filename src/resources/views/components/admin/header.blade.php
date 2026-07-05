@@ -15,9 +15,12 @@
                 New Order
             </a>
 
-            <a href="{{ route('admin.login') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#111827]">
-                Sign Out
-            </a>
+            <form method="post" action="{{ route('admin.logout') }}">
+                @csrf
+                <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#111827]">
+                    Sign Out
+                </button>
+            </form>
 
             <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-[#1a73e8]">AD</span>
         </div>

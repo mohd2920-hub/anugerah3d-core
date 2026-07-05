@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminUser;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    use LazilyRefreshDatabase;
+
     public function test_fallback_root_redirects_to_the_public_site(): void
     {
         $this->get('/')
@@ -52,8 +56,10 @@ class ExampleTest extends TestCase
     public function test_admin_dashboard_page_displays_admin_navigation(): void
     {
         $domain = (string) config('domains.admin');
+        $admin = AdminUser::factory()->create();
 
-        $this->get("http://{$domain}/dashboard")
+        $this->actingAs($admin, 'admin')
+            ->get("http://{$domain}/dashboard")
             ->assertOk()
             ->assertViewIs('admin.dashboard')
             ->assertSeeText('Admin Dashboard')

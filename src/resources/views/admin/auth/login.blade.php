@@ -46,23 +46,31 @@
                         <p class="mt-3 text-sm leading-6 text-slate-600">Use your admin account to continue.</p>
                     </div>
 
-                    <form method="get" action="{{ route('admin.dashboard') }}" class="mt-8 grid gap-5">
+                    <form method="post" action="{{ route('admin.login.store') }}" class="mt-8 grid gap-5">
+                        @csrf
+
                         <label class="grid gap-2 text-sm font-medium text-slate-700">
                             Email
-                            <input type="email" placeholder="admin@anugerah3d.com" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            <input name="email" type="email" value="{{ old('email') }}" autocomplete="username" placeholder="admin@anugerah3d.com" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            @error('email')
+                                <span class="text-xs font-semibold text-red-600">{{ $message }}</span>
+                            @enderror
                         </label>
 
                         <label class="grid gap-2 text-sm font-medium text-slate-700">
                             Password
-                            <input type="password" placeholder="Password" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            <input name="password" type="password" autocomplete="current-password" placeholder="Password" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            @error('password')
+                                <span class="text-xs font-semibold text-red-600">{{ $message }}</span>
+                            @enderror
                         </label>
 
-                        <div class="flex items-center justify-between gap-4 text-sm">
+                        <div class="flex items-center justify-between text-sm">
                             <label class="flex items-center gap-2 text-slate-600">
-                                <input type="checkbox" class="h-4 w-4 rounded border-slate-300 text-[#1a73e8] focus:ring-[#1a73e8]">
+                                <input name="remember" value="1" type="checkbox" @checked(old('remember')) class="h-4 w-4 rounded border-slate-300 text-[#1a73e8] focus:ring-[#1a73e8]">
                                 Remember me
                             </label>
-                            <a href="#" class="font-semibold text-[#1a73e8] transition hover:text-[#1558b0]">Forgot password?</a>
+                            <a href="{{ route('admin.password.forgot') }}" class="font-semibold text-[#1a73e8] hover:text-[#1558b0]">Forgot password?</a>
                         </div>
 
                         <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
