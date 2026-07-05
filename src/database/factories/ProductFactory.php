@@ -31,7 +31,7 @@ class ProductFactory extends Factory
         ];
 
         $type = $this->faker->randomElement($productTypes);
-        $sequence = $this->faker->numberBetween(1001, 9999);
+        $sequence = $this->faker->unique()->numberBetween(1001, 9999);
         $name = $this->faker->randomElement($type['names']);
 
         return [

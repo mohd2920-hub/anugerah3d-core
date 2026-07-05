@@ -2,6 +2,8 @@
 
 @section('title', 'Add Product | Anugerah3D Admin')
 
+@section('page_title', 'Add Product')
+
 @section('content')
     <div class="max-w-2xl">
         <div class="mb-6">

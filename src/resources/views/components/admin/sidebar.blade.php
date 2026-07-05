@@ -22,9 +22,17 @@
             <div class="h-1 rounded-full bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
 
             <nav class="mt-5 grid gap-1 text-sm font-medium" aria-label="Admin navigation">
-                <a href="{{ route('admin.dashboard') }}" class="rounded-lg bg-white px-3 py-2.5 text-[#1a73e8] shadow-sm">Dashboard</a>
+                <a href="{{ route('admin.dashboard') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.dashboard'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.dashboard'),
+                ])>Dashboard</a>
                 <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Orders</a>
-                <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Products</a>
+                <a href="{{ route('admin.products.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.products.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
+                ])>Products</a>
                 <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Customers</a>
                 <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Agents</a>
                 <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Reports</a>
@@ -64,9 +72,17 @@
         <div class="mt-6 h-1 rounded-full bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
 
         <nav class="mt-7 grid gap-1 text-sm font-medium" aria-label="Admin navigation">
-            <a href="{{ route('admin.dashboard') }}" class="rounded-lg bg-white px-3 py-2.5 text-[#1a73e8] shadow-sm">Dashboard</a>
+            <a href="{{ route('admin.dashboard') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.dashboard'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.dashboard'),
+            ])>Dashboard</a>
             <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Orders</a>
-            <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Products</a>
+            <a href="{{ route('admin.products.index') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.products.*'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
+            ])>Products</a>
             <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Customers</a>
             <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Agents</a>
             <a href="#" class="rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-white/10 hover:text-white">Reports</a>

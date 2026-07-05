@@ -2,6 +2,8 @@
 
 @section('title', 'Admin Dashboard | Anugerah3D')
 
+@section('page_title', 'Dashboard')
+
 @section('content')
     <div class="mx-auto max-w-7xl">
         <section class="overflow-hidden rounded-lg bg-[linear-gradient(135deg,#111827_0%,#172554_52%,#312e81_100%)] text-white shadow-xl shadow-blue-950/20">
@@ -311,7 +313,7 @@
 
             <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800">Order management</a>
-                <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-800">Product catalog</a>
+                <a href="{{ route('admin.products.index') }}" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-800">Product catalog</a>
                 <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800">Customer records</a>
                 <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800">Agent monitoring</a>
                 <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-white hover:text-slate-950">System settings</a>

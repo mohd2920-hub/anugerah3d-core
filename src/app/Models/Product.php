@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,4 +24,30 @@ class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
     use HasFactory;
+
+    public function scopeSearch(Builder $query, string $search): Builder
+    {
+        return $query->where(function (Builder $query) use ($search): void {
+            $query->where('prd_code', 'like', "%{$search}%")
+                ->orWhere('prd_name', 'like', "%{$search}%");
+        });
+    }
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'weight_g' => 'decimal:2',
+            'width_mm' => 'decimal:2',
+            'height_mm' => 'decimal:2',
+            'prd_balance' => 'integer',
+            'cost_rm' => 'decimal:2',
+            'price_selling' => 'decimal:2',
+            'agent_discount_default' => 'decimal:2',
+        ];
+    }
 }
