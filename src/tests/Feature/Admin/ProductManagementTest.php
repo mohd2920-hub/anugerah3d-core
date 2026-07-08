@@ -3,13 +3,24 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\AdminUser;
+use App\Models\Material;
 use App\Models\Product;
+use Database\Seeders\MaterialSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
 class ProductManagementTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Ensure materials are seeded before each test
+        $this->seed(MaterialSeeder::class);
+        // Verify materials were created
+        $this->assertGreaterThan(0, \App\Models\Material::count());
+    }
 
     public function test_products_index_requires_authentication(): void
     {
@@ -110,7 +121,9 @@ class ProductManagementTest extends TestCase
         $product = Product::factory()->create();
 
         $this->actingAs($admin, 'admin')
-            ->delete($this->adminUrl("/products/{$product->id}"))
+            ->delete($this->adminUrl("/products/{$product->id}"), [
+                'delete_password' => 'password',
+            ])
             ->assertRedirect(route('admin.products.index'));
 
         $this->assertDatabaseMissing('products', [
@@ -130,6 +143,9 @@ class ProductManagementTest extends TestCase
             'weight_g' => 18.5,
             'width_mm' => 60,
             'height_mm' => 28,
+            'length_mm' => 100,
+            'color' => 'Blue',
+            'material_id' => 1,
             'prd_balance' => 25,
             'cost_rm' => 2.50,
             'price_selling' => 9.90,

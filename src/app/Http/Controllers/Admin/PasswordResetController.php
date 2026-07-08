@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\ForgotPasswordRequest;
 use App\Http\Requests\Admin\ResetPasswordRequest;
 use App\Mail\Admin\PasswordResetMail;
 use App\Models\AdminUser;
+use App\Support\AdminActivity;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -31,16 +32,20 @@ class PasswordResetController extends Controller
     {
         $email = $request->validated()['email'];
 
-        // Check if admin user exists
         $adminUser = AdminUser::where('email', $email)->first();
         if (! $adminUser) {
+            AdminActivity::record(
+                request: $request,
+                event: 'admin.password_reset.requested',
+                description: 'Password reset requested for an email that does not match an admin account.',
+                properties: ['email' => $email, 'page' => 'Forgot Password'],
+            );
+
             return back()->with('status', 'If an account exists with that email, a password reset link will be sent.');
         }
 
-        // Delete existing tokens for this email
         DB::table('password_reset_tokens')->where('email', $email)->delete();
 
-        // Create new reset token
         $token = Str::random(64);
         DB::table('password_reset_tokens')->insert([
             'email' => $email,
@@ -48,9 +53,16 @@ class PasswordResetController extends Controller
             'created_at' => now(),
         ]);
 
-        // Send email with reset link
         $resetUrl = route('admin.password.reset', ['token' => $token, 'email' => $email]);
         Mail::to($email)->send(new PasswordResetMail($email, $resetUrl));
+
+        AdminActivity::record(
+            request: $request,
+            event: 'admin.password_reset.link_sent',
+            description: 'Password reset link sent to admin email.',
+            adminUser: $adminUser,
+            properties: ['email' => $email, 'page' => 'Forgot Password'],
+        );
 
         return back()->with('status', 'Password reset link sent to your email.');
     }
@@ -60,7 +72,6 @@ class PasswordResetController extends Controller
      */
     public function showResetForm(string $token, string $email): View
     {
-        // Verify token exists and is not expired (1 hour expiry)
         $passwordReset = DB::table('password_reset_tokens')
             ->where('email', $email)
             ->where('token', $token)
@@ -68,6 +79,14 @@ class PasswordResetController extends Controller
             ->first();
 
         if (! $passwordReset) {
+            AdminActivity::record(
+                request: request(),
+                event: 'admin.password_reset.invalid_link',
+                description: 'Invalid or expired password reset link opened.',
+                adminUser: AdminUser::query()->where('email', $email)->first(),
+                properties: ['email' => $email, 'page' => 'Password Reset'],
+            );
+
             return view('admin.auth.reset-password-invalid');
         }
 
@@ -84,7 +103,6 @@ class PasswordResetController extends Controller
         $token = $validated['token'];
         $password = $validated['password'];
 
-        // Verify token exists and is not expired
         $passwordReset = DB::table('password_reset_tokens')
             ->where('email', $email)
             ->where('token', $token)
@@ -92,19 +110,40 @@ class PasswordResetController extends Controller
             ->first();
 
         if (! $passwordReset) {
+            AdminActivity::record(
+                request: $request,
+                event: 'admin.password_reset.failed',
+                description: 'Password reset failed because the token was invalid or expired.',
+                adminUser: AdminUser::query()->where('email', $email)->first(),
+                properties: ['email' => $email, 'page' => 'Password Reset'],
+            );
+
             return redirect()->route('admin.password.forgot')->with('error', 'Invalid or expired reset token.');
         }
 
-        // Find and update admin user
         $adminUser = AdminUser::where('email', $email)->first();
         if (! $adminUser) {
+            AdminActivity::record(
+                request: $request,
+                event: 'admin.password_reset.failed',
+                description: 'Password reset failed because the admin user was not found.',
+                properties: ['email' => $email, 'page' => 'Password Reset'],
+            );
+
             return redirect()->route('admin.password.forgot')->with('error', 'User not found.');
         }
 
         $adminUser->update(['password' => Hash::make($password)]);
 
-        // Delete the used token
         DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        AdminActivity::record(
+            request: $request,
+            event: 'admin.password_reset.completed',
+            description: 'Admin password reset completed.',
+            adminUser: $adminUser,
+            properties: ['email' => $email, 'page' => 'Password Reset'],
+        );
 
         return redirect()->route('admin.login')->with('status', 'Password reset successfully. Please log in with your new password.');
     }

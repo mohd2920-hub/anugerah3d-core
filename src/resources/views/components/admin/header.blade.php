@@ -6,9 +6,21 @@
             request()->routeIs('admin.products.create') => 'Add Product',
             request()->routeIs('admin.products.edit') => 'Edit Product',
             request()->routeIs('admin.products.*') => 'Products',
+            request()->routeIs('admin.profile.*') => 'Profile',
+            request()->routeIs('admin.system.manage-data') => 'Manage Data',
+            request()->routeIs('admin.system.activity-log') => 'Activity Log',
+            request()->routeIs('admin.system.*') => 'Sys. Management',
             default => 'Dashboard',
         };
     }
+
+    $adminUser = request()->user('admin');
+    $nameParts = preg_split('/\s+/', trim((string) ($adminUser?->name ?? 'Admin'))) ?: [];
+    $initials = collect($nameParts)
+        ->filter()
+        ->take(2)
+        ->map(fn (string $part): string => strtoupper(substr($part, 0, 1)))
+        ->implode('') ?: 'AD';
 @endphp
 
 <header {{ $attributes->merge(['class' => 'sticky top-0 z-20 border-b border-[#273154] bg-[#111827]/95 px-5 py-4 shadow-sm shadow-black/20 backdrop-blur sm:px-8 lg:px-10']) }}>
@@ -32,20 +44,19 @@
                 <a href="{{ route('admin.products.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Products
                 </a>
-            @else
-                <a href="#" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
+            @elseif (request()->routeIs('admin.dashboard'))
+                <span class="inline-flex min-h-10 cursor-not-allowed select-none items-center justify-center rounded-lg border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white/50">
                     New Order
-                </a>
+                </span>
             @endif
 
-            <form method="post" action="{{ route('admin.logout') }}">
-                @csrf
-                <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#111827]">
-                    Sign Out
-                </button>
-            </form>
-
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-[#1a73e8]">AD</span>
+            <a href="{{ route('admin.profile.show') }}" @class([
+                'grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#111827]',
+                'bg-blue-50 text-[#1a73e8] ring-2 ring-blue-300' => request()->routeIs('admin.profile.*'),
+                'bg-white text-[#1a73e8] hover:bg-blue-50' => ! request()->routeIs('admin.profile.*'),
+            ]) aria-label="View profile">
+                {{ $initials }}
+            </a>
         </div>
     </div>
 </header>

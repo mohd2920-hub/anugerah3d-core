@@ -6,11 +6,6 @@
 
 @section('content')
     <div class="max-w-2xl">
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold text-slate-900">Edit Product</h1>
-            <p class="mt-1 text-sm text-slate-600">Update product information</p>
-        </div>
-
         <div class="rounded-lg bg-white p-6 shadow-sm">
             <form method="POST" action="{{ route('admin.products.update', $product) }}" class="space-y-6">
                 @csrf
@@ -66,6 +61,44 @@
                         </label>
                         <input type="number" id="height_mm" name="height_mm" value="{{ old('height_mm', $product->height_mm) }}" placeholder="50" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                         @error('height_mm')
+                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <label for="length_mm" class="block text-sm font-medium text-slate-700 mb-2">
+                        Length (mm)
+                    </label>
+                    <input type="number" id="length_mm" name="length_mm" value="{{ old('length_mm', $product->length_mm) }}" placeholder="100" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                    @error('length_mm')
+                        <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="color" class="block text-sm font-medium text-slate-700 mb-2">
+                            Color
+                        </label>
+                        <input type="text" id="color" name="color" value="{{ old('color', $product->color) }}" placeholder="e.g., Blue" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                        @error('color')
+                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="material_id" class="block text-sm font-medium text-slate-700 mb-2">
+                            Material
+                        </label>
+                        <select id="material_id" name="material_id" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                            <option value="">Select a material</option>
+                            @forelse($materials as $material)
+                                <option value="{{ $material->id }}" {{ old('material_id', $product->material_id) == $material->id ? 'selected' : '' }}>{{ $material->name }}</option>
+                            @empty
+                                <option disabled>No materials available</option>
+                            @endforelse
+                        </select>
+                        @error('material_id')
                             <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                         @enderror
                     </div>

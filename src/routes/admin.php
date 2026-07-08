@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\PasswordResetController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SystemManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest:admin')->group(function (): void {
@@ -25,6 +27,15 @@ Route::middleware('guest:admin')->group(function (): void {
 Route::middleware('auth:admin')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
+    Route::prefix('system')->name('system.')->group(function (): void {
+        Route::get('/manage-data', [SystemManagementController::class, 'manageData'])->name('manage-data');
+        Route::get('/activity-log', [SystemManagementController::class, 'activityLog'])->name('activity-log');
+    });
 
     Route::resource('products', ProductController::class)->except('show');
 });

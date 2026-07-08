@@ -10,14 +10,10 @@
             <div class="h-1 bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
             <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[1fr_360px] lg:p-8">
                 <div class="max-w-3xl">
-                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-blue-200">Today at a glance</p>
-                    <h2 class="mt-3 text-3xl font-semibold text-white sm:text-4xl">Admin Dashboard</h2>
-                    <p class="mt-4 max-w-2xl text-sm leading-7 text-blue-50/85">Monitor orders, quotes, customers and production status across Anugerah3D operations.</p>
-
-                    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                        <a href="#" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#172554]">
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <span class="inline-flex min-h-10 cursor-not-allowed select-none items-center justify-center rounded-lg border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white/55">
                             Create Quote
-                        </a>
+                        </span>
                         <a href="{{ route('admin.login') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#172554]">
                             Back to Login
                         </a>
@@ -312,11 +308,11 @@
             </div>
 
             <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800">Order management</a>
+                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Order management</span>
                 <a href="{{ route('admin.products.index') }}" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-800">Product catalog</a>
-                <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-800">Customer records</a>
-                <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800">Agent monitoring</a>
-                <a href="#" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-white hover:text-slate-950">System settings</a>
+                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Customer records</span>
+                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Agent monitoring</span>
+                <a href="{{ route('admin.system.manage-data') }}" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800">Manage data</a>
             </div>
         </section>
     </div>

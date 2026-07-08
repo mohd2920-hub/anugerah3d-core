@@ -7,3 +7,72 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+body.admin-shell {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+body.admin-shell .text-xs {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+}
+
+body.admin-shell .text-sm {
+    font-size: 0.8125rem;
+    line-height: 1.15rem;
+}
+
+body.admin-shell .text-base {
+    font-size: 0.875rem;
+    line-height: 1.35rem;
+}
+
+body.admin-shell .text-lg {
+    font-size: 1rem;
+    line-height: 1.45rem;
+}
+
+body.admin-shell .text-xl {
+    font-size: 1.125rem;
+    line-height: 1.55rem;
+}
+
+body.admin-shell .text-2xl {
+    font-size: 1.35rem;
+    line-height: 1.8rem;
+}
+
+body.admin-shell .text-3xl {
+    font-size: 1.625rem;
+    line-height: 2rem;
+}
+
+body.admin-shell .admin-data-table {
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+body.admin-shell .admin-data-table th,
+body.admin-shell .admin-data-table td {
+    padding: 0.65rem 0.75rem;
+    overflow-wrap: normal;
+    vertical-align: middle;
+    word-break: normal;
+}
+
+body.admin-shell .admin-data-table th {
+    border-bottom: 1px solid rgb(226 232 240);
+    font-size: 0.72rem;
+    line-height: 1rem;
+}
+
+body.admin-shell .admin-data-table td {
+    font-size: 0.75rem;
+    line-height: 1.15rem;
+}
+
+body.admin-shell .admin-data-table img {
+    display: block;
+}

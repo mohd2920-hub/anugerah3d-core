@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LoginRequest;
-use App\Models\ActivityLog;
 use App\Models\AdminUser;
+use App\Support\AdminActivity;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
@@ -31,12 +30,12 @@ class LoginController extends Controller
         $credentials = $request->credentials();
 
         if (! Auth::guard('admin')->attempt($credentials, $request->remember())) {
-            $this->recordLoginActivity(
+            AdminActivity::record(
                 request: $request,
                 event: 'admin.login.failed',
                 description: 'Admin login failed.',
                 adminUser: AdminUser::query()->where('email', $credentials['email'])->first(),
-                properties: ['email' => $credentials['email']],
+                properties: ['email' => $credentials['email'], 'page' => 'Login'],
             );
 
             throw ValidationException::withMessages([
@@ -54,11 +53,12 @@ class LoginController extends Controller
             'last_login_ip' => $request->ip(),
         ])->save();
 
-        $this->recordLoginActivity(
+        AdminActivity::record(
             request: $request,
             event: 'admin.login.succeeded',
             description: 'Admin login succeeded.',
             adminUser: $adminUser,
+            properties: ['page' => 'Login'],
         );
 
         return redirect()->intended(route('admin.dashboard'));
@@ -69,31 +69,22 @@ class LoginController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        /** @var AdminUser|null $adminUser */
+        $adminUser = $request->user('admin');
+
+        AdminActivity::record(
+            request: $request,
+            event: 'admin.logout',
+            description: 'Admin signed out.',
+            adminUser: $adminUser,
+            properties: ['page' => 'Profile'],
+        );
+
         Auth::guard('admin')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');
-    }
-
-    /**
-     * @param  array<string, mixed>  $properties
-     */
-    private function recordLoginActivity(
-        Request $request,
-        string $event,
-        string $description,
-        ?AdminUser $adminUser,
-        array $properties = [],
-    ): void {
-        ActivityLog::query()->create([
-            'admin_user_id' => $adminUser?->getKey(),
-            'event' => $event,
-            'description' => $description,
-            'ip_address' => $request->ip(),
-            'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
-            'properties' => $properties === [] ? null : $properties,
-        ]);
     }
 }

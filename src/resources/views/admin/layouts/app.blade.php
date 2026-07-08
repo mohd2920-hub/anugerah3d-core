@@ -12,14 +12,14 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="min-h-screen bg-[#f8fafd] text-slate-950 antialiased selection:bg-blue-200 selection:text-blue-950">
-        <div class="min-h-screen lg:grid lg:grid-cols-[288px_minmax(0,1fr)]">
+    <body class="admin-shell min-h-screen bg-[#f8fafd] text-slate-950 antialiased selection:bg-blue-200 selection:text-blue-950">
+        <div class="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
             <x-admin.sidebar />
 
             <div class="flex min-h-screen min-w-0 flex-col">
                 <x-admin.header />
 
-                <main class="flex-1 px-5 py-6 sm:px-8 lg:px-10">
+                <main class="flex-1 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8">
                     @yield('content')
                 </main>
 

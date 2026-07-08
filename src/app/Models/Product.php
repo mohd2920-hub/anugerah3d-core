@@ -14,10 +14,14 @@ use Illuminate\Database\Eloquent\Model;
     'weight_g',
     'width_mm',
     'height_mm',
+    'length_mm',
     'prd_balance',
     'cost_rm',
     'price_selling',
     'agent_discount_default',
+    'color',
+    'material',
+    'material_id',
     'prd_picture',
 ])]
 class Product extends Model
@@ -33,6 +37,11 @@ class Product extends Model
         });
     }
 
+    public function materialType()
+    {
+        return $this->belongsTo(Material::class, 'material_id');
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -44,6 +53,7 @@ class Product extends Model
             'weight_g' => 'decimal:2',
             'width_mm' => 'decimal:2',
             'height_mm' => 'decimal:2',
+            'length_mm' => 'decimal:2',
             'prd_balance' => 'integer',
             'cost_rm' => 'decimal:2',
             'price_selling' => 'decimal:2',
