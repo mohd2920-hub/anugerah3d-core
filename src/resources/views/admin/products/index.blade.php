@@ -21,12 +21,12 @@
         {{-- Search Section --}}
         <div class="rounded-lg bg-white p-6 shadow-sm">
             <form method="GET" action="{{ route('admin.products.index') }}" class="flex flex-col gap-3 sm:flex-row">
-                <input type="text" name="search" value="{{ $search }}" placeholder="Search by product code or name..." class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
+                <input type="text" name="search" value="{{ $search }}" placeholder="Search by product code or name..." class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
                     Search
                 </button>
                 @if (request('search'))
-                    <a href="{{ route('admin.products.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    <a href="{{ route('admin.products.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                         Clear
                     </a>
                 @endif

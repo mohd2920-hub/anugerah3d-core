@@ -31,16 +31,35 @@
         </div>
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label class="relative hidden min-w-72 md:block">
-                <span class="sr-only">Search admin records</span>
-                <input type="search" placeholder="Search orders, customers, products" class="h-10 w-full rounded-lg border border-white/10 bg-white px-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#4285f4] focus:ring-2 focus:ring-blue-200">
-            </label>
+            @php
+                $searchQuery = request('search', '');
+            @endphp
 
-            @if (request()->routeIs('admin.products.index'))
-                <a href="{{ route('admin.products.create') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
-                    New Product
-                </a>
-            @elseif (request()->routeIs('admin.products.create', 'admin.products.edit'))
+            <div class="relative">
+                <button type="button" id="admin-search-toggle" aria-expanded="false" aria-controls="admin-search-form" class="grid h-10 w-10 place-items-center rounded-lg bg-white text-[#1a73e8] shadow-sm shadow-blue-950/10 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                    <span class="sr-only">Open search</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m21 21-4.35-4.35" />
+                    </svg>
+                </button>
+
+                <form id="admin-search-form" method="GET" action="{{ url()->current() }}" class="absolute right-0 top-0 z-10 flex items-center gap-2 rounded-lg border border-white/10 bg-white px-3 py-1.5 shadow-lg transition duration-200" style="transform: translateX(0); visibility: hidden; opacity: 0; pointer-events: none;">
+                    <label class="sr-only" for="admin-search-input">Search admin records</label>
+                    <input id="admin-search-input" name="search" type="search" value="{{ $searchQuery }}" placeholder="Search orders, customers, products" class="h-9 min-w-[280px] rounded-lg border border-white/10 bg-white px-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#4285f4] focus:ring-2 focus:ring-blue-200">
+                    @foreach (request()->except('search') as $key => $value)
+                        @if (is_array($value))
+                            @foreach ($value as $item)
+                                <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                            @endforeach
+                        @else
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endif
+                    @endforeach
+                </form>
+            </div>
+
+            @if (request()->routeIs('admin.products.create', 'admin.products.edit'))
                 <a href="{{ route('admin.products.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Products
                 </a>
@@ -60,3 +79,44 @@
         </div>
     </div>
 </header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var toggle = document.getElementById('admin-search-toggle');
+        var form = document.getElementById('admin-search-form');
+        var input = document.getElementById('admin-search-input');
+
+        if (! toggle || ! form || ! input) {
+            return;
+        }
+
+        toggle.addEventListener('click', function () {
+            var expanded = toggle.getAttribute('aria-expanded') === 'true';
+            toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+            
+            if (expanded) {
+                // Hide form
+                form.style.visibility = 'hidden';
+                form.style.opacity = '0';
+                form.style.pointerEvents = 'none';
+            } else {
+                // Show form
+                form.style.visibility = 'visible';
+                form.style.opacity = '1';
+                form.style.pointerEvents = 'auto';
+                input.focus();
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            if (! form.contains(event.target) && ! toggle.contains(event.target)) {
+                if (form.style.visibility === 'visible' || form.style.visibility === '') {
+                    toggle.setAttribute('aria-expanded', 'false');
+                    form.style.visibility = 'hidden';
+                    form.style.opacity = '0';
+                    form.style.pointerEvents = 'none';
+                }
+            }
+        });
+    });
+</script>
