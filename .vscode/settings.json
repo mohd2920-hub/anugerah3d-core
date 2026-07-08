@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /var/www/anugerah3d-core/src && php -r \"require 'vendor/autoload\\.php'; \\\\\\$app = require 'bootstrap/app\\.php'; \\\\\\$app->make\\('Illuminate\\\\Contracts\\\\Console\\\\Kernel'\\)->handle\\(new \\\\Symfony\\\\Component\\\\Console\\\\Input\\\\ArrayInput\\(\\['command' => 'tinker', '--execute' => 'App\\\\Models\\\\Material::count\\(\\)'\\]\\)\\); \" 2>&1 \\| tail -5$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
