@@ -23,14 +23,14 @@
         ->implode('') ?: 'AD';
 @endphp
 
-<header {{ $attributes->merge(['class' => 'sticky top-0 z-20 border-b border-[#273154] bg-[#111827]/95 px-5 py-4 shadow-sm shadow-black/20 backdrop-blur sm:px-8 lg:px-10']) }}>
+<header {{ $attributes->merge(['class' => 'hidden sticky top-0 z-20 border-b border-[#273154] bg-[#111827]/95 px-5 py-4 shadow-sm shadow-black/20 backdrop-blur sm:px-8 lg:block lg:px-10']) }}>
     <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div class="min-w-0">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">Admin Console</p>
             <h1 class="mt-1 truncate text-xl font-semibold text-white">{{ $pageTitle }}</h1>
         </div>
 
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="hidden flex-col gap-3 sm:flex sm:flex-row sm:items-center">
             @php
                 $searchQuery = request('search', '');
             @endphp
@@ -63,10 +63,6 @@
                 <a href="{{ route('admin.products.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Products
                 </a>
-            @elseif (request()->routeIs('admin.dashboard'))
-                <span class="inline-flex min-h-10 cursor-not-allowed select-none items-center justify-center rounded-lg border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white/50">
-                    New Order
-                </span>
             @endif
 
             <a href="{{ route('admin.profile.show') }}" @class([
