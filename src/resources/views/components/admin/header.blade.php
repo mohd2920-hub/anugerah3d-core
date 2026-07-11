@@ -5,6 +5,9 @@
         $pageTitle = match (true) {
             request()->routeIs('admin.products.create') => 'Add Product',
             request()->routeIs('admin.products.edit') => 'Edit Product',
+            request()->routeIs('admin.agents.create') => 'Add Agent',
+            request()->routeIs('admin.agents.edit') => 'Edit Agent',
+            request()->routeIs('admin.agents.*') => 'Agents',
             request()->routeIs('admin.products.*') => 'Products',
             request()->routeIs('admin.profile.*') => 'Profile',
             request()->routeIs('admin.system.manage-data') => 'Manage Data',
@@ -62,6 +65,12 @@
             @if (request()->routeIs('admin.products.create', 'admin.products.edit'))
                 <a href="{{ route('admin.products.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Products
+                </a>
+            @endif
+
+            @if (request()->routeIs('admin.agents.create', 'admin.agents.edit', 'admin.agents.show'))
+                <a href="{{ route('admin.agents.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
+                    Agents
                 </a>
             @endif
 

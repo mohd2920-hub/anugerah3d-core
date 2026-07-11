@@ -7,6 +7,9 @@
         $pageTitle = match (true) {
             request()->routeIs('admin.products.create') => 'Add Product',
             request()->routeIs('admin.products.edit') => 'Edit Product',
+            request()->routeIs('admin.agents.create') => 'Add Agent',
+            request()->routeIs('admin.agents.edit') => 'Edit Agent',
+            request()->routeIs('admin.agents.*') => 'Agents',
             request()->routeIs('admin.products.*') => 'Products',
             request()->routeIs('admin.profile.*') => 'Profile',
             request()->routeIs('admin.system.manage-data') => 'Manage Data',
@@ -89,7 +92,11 @@
                     'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
                 ])>Products</a>
                 <span class="{{ $disabledNavClass }}" aria-disabled="true">Customers</span>
-                <span class="{{ $disabledNavClass }}" aria-disabled="true">Agents</span>
+                <a href="{{ route('admin.agents.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.agents.*'),
+                ])>Agents</a>
                 <span class="{{ $disabledNavClass }}" aria-disabled="true">Reports</span>
 
                 <details class="group/sys" {{ $systemActive ? 'open' : '' }}>
@@ -193,7 +200,11 @@
                 'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
             ])>Products</a>
             <span class="{{ $disabledNavClass }}" aria-disabled="true">Customers</span>
-            <span class="{{ $disabledNavClass }}" aria-disabled="true">Agents</span>
+            <a href="{{ route('admin.agents.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.agents.*'),
+                ])>Agents</a>
             <span class="{{ $disabledNavClass }}" aria-disabled="true">Reports</span>
 
             <details class="group/sys mt-1" {{ $systemActive ? 'open' : '' }}>

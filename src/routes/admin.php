@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AgentController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\PasswordResetController;
@@ -38,4 +39,7 @@ Route::middleware('auth:admin')->group(function (): void {
     });
 
     Route::resource('products', ProductController::class)->except('show');
+    Route::put('/agents/{agent}/profile-picture', [AgentController::class, 'updateProfilePicture'])->name('agents.profile-picture.update');
+    Route::put('/agents/{agent}/password', [AgentController::class, 'resetPassword'])->name('agents.password.update');
+    Route::resource('agents', AgentController::class);
 });
