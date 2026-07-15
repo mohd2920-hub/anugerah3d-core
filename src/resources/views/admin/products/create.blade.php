@@ -7,7 +7,7 @@
 @section('content')
     <div class="max-w-2xl">
         <div class="rounded-lg bg-white p-6 shadow-sm">
-            <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
 
                 {{-- Product Code --}}
@@ -147,16 +147,7 @@
                     @enderror
                 </div>
 
-                {{-- Product Picture URL --}}
-                <div>
-                    <label for="prd_picture" class="block text-sm font-medium text-slate-700 mb-2">
-                        Product Image URL
-                    </label>
-                    <input type="url" id="prd_picture" name="prd_picture" value="{{ old('prd_picture') }}" placeholder="https://example.com/image.jpg" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                    @error('prd_picture')
-                        <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
-                    @enderror
-                </div>
+                <x-admin.product-image-manager :product="null" />
 
                 {{-- Form Actions --}}
                 <div class="flex gap-3 pt-4">

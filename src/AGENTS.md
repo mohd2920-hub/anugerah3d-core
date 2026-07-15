@@ -3,6 +3,14 @@
 
 # Laravel Boost Guidelines
 
+## Data Safety (Highest Priority)
+
+- Never run tests against the application database (`anugerah3d_db`). PHPUnit and all automated tests must use a dedicated database whose name ends in `_test`.
+- Never run `migrate:fresh`, `db:wipe`, destructive resets, truncation, or equivalent commands against application data.
+- Before running any command that may alter database contents, verify the resolved database name. If it is not clearly an isolated test database, stop and ask the user.
+- Do not reset, replace, reseed, or otherwise alter existing application data unless the user explicitly requests that exact data operation.
+- Running a test suite is not authorization to modify application data.
+
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
 
 ## Foundational Context

@@ -18,6 +18,10 @@ class DashboardController extends Controller
         return view('agent.dashboard', [
             'agent' => $agent,
             'products' => Product::query()
+                ->with([
+                    'materialType',
+                    'images:id,product_id,image_path,alt_text,position',
+                ])
                 ->orderByDesc('prd_balance')
                 ->orderBy('prd_name')
                 ->get(),

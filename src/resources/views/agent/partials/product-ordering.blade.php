@@ -26,13 +26,24 @@
         <div class="grid grid-cols-2 gap-3">
             @foreach ($products as $product)
                 @php
-                    $picture = $product->prd_picture ? (filter_var($product->prd_picture, FILTER_VALIDATE_URL) ? $product->prd_picture : asset($product->prd_picture)) : null;
+                    $legacyPicture = $product->prd_picture ? (filter_var($product->prd_picture, FILTER_VALIDATE_URL) ? $product->prd_picture : asset($product->prd_picture)) : null;
+                    $galleryImages = $product->images
+                        ->take(5)
+                        ->map(fn ($image) => [
+                            'src' => filter_var($image->image_path, FILTER_VALIDATE_URL) ? $image->image_path : asset(ltrim($image->image_path, '/')),
+                            'alt' => $image->alt_text ?: $product->prd_name,
+                        ])
+                        ->values();
+                    if ($galleryImages->isEmpty() && $legacyPicture) {
+                        $galleryImages->push(['src' => $legacyPicture, 'alt' => $product->prd_name]);
+                    }
+                    $picture = data_get($galleryImages->first(), 'src');
                     $discount = (float) $agent->discount_percentage > 0 ? (float) $agent->discount_percentage : (float) $product->agent_discount_default;
                     $agentPrice = (float) $product->price_selling * (1 - ($discount / 100));
                     $searchValue = Str::lower($product->prd_code.' '.$product->prd_name);
                     $isPreOrder = (int) $product->prd_balance <= 0;
                 @endphp
-                <article data-product-card data-product-id="{{ $product->getKey() }}" data-search-value="{{ $searchValue }}" class="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition">
+                <article data-product-card data-product-id="{{ $product->getKey() }}" data-search-value="{{ $searchValue }}" role="button" tabindex="0" aria-label="View details for {{ $product->prd_name }}" class="flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-orange-100">
                     <div class="relative aspect-square overflow-hidden bg-slate-100">
                         @if ($picture)<img src="{{ $picture }}" alt="{{ $product->prd_name }}" loading="lazy" class="h-full w-full object-cover">@else<div class="grid h-full place-items-center bg-[linear-gradient(145deg,#f1f5f9,#e8eef5)] text-slate-300"><svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>@endif
                         @if ($isPreOrder)
@@ -46,7 +57,7 @@
                         <p class="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $product->prd_code }}</p>
                         <h3 class="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#17324d]">{{ $product->prd_name }}</h3>
                         <div class="mt-3 space-y-1"><div class="flex items-center justify-between gap-1 text-[9px]"><span class="text-slate-400">Selling</span><span class="font-bold text-slate-500 line-through">RM {{ number_format((float) $product->price_selling, 2) }}</span></div><div class="flex items-end justify-between gap-1"><span class="text-[9px] font-semibold text-slate-500">Agent price</span><span class="text-base font-black text-[#e7682b]">RM {{ number_format($agentPrice, 2) }}</span></div></div>
-                        <button type="button" data-add-product data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-selling-price="{{ number_format((float) $product->price_selling, 2, '.', '') }}" data-agent-price="{{ number_format($agentPrice, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
+                        <button type="button" data-add-product data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-images="{{ $galleryImages->toJson() }}" data-selling-price="{{ number_format((float) $product->price_selling, 2, '.', '') }}" data-agent-price="{{ number_format($agentPrice, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" data-material="{{ $product->materialType?->name ?? $product->material ?? '' }}" data-color="{{ $product->color }}" data-weight="{{ $product->weight_g }}" data-width="{{ $product->width_mm }}" data-height="{{ $product->height_mm }}" data-length="{{ $product->length_mm }}" @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
                     </div>
                 </article>
             @endforeach
@@ -57,13 +68,27 @@
     <button type="button" data-open-cart data-cart-visible class="hidden h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.5 11h10.8l2-7H7"/></svg>Checkout · <span data-cart-units>0</span> units · <span data-cart-total>RM 0.00</span></button>
 </section>
 
-<div data-quantity-modal class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true">
-    <div class="w-full max-w-md rounded-t-[2rem] bg-white p-5 shadow-2xl sm:rounded-[2rem]" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
-        <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p data-modal-code class="text-[10px] font-bold uppercase tracking-wider text-[#e7682b]"></p><h2 data-modal-name class="mt-1 text-lg font-extrabold text-[#17324d]"></h2></div><button type="button" data-close-quantity class="grid h-10 w-10 flex-none place-items-center rounded-full bg-slate-100 text-slate-500" aria-label="Close"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-        <div class="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4"><div><p class="text-[10px] font-bold uppercase text-slate-400">Selling price</p><p data-modal-selling class="mt-1 text-sm font-bold text-slate-500 line-through"></p></div><div class="text-right"><p class="text-[10px] font-bold uppercase text-slate-400">Agent price</p><p data-modal-price class="mt-1 text-lg font-black text-[#e7682b]"></p></div></div>
-        <div class="mt-5 flex items-center justify-between gap-4"><div><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-1 text-xs text-slate-400"></p></div><div class="flex items-center rounded-2xl border border-slate-200 p-1 shadow-sm"><button type="button" data-quantity-minus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-10 w-14 border-0 text-center text-base font-black outline-none"><button type="button" data-quantity-plus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">+</button></div></div>
-        <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><p class="text-sm font-bold text-slate-500">Item total</p><p data-modal-total class="text-xl font-black text-[#17324d]">RM 0.00</p></div>
-        <button type="button" data-confirm-add class="mt-5 h-13 w-full rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20">Add to cart</button>
+<div data-quantity-modal class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
+    <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
+        <div class="sticky top-0 z-20 flex justify-center bg-white/95 pb-2 pt-3 backdrop-blur"><span class="h-1.5 w-12 rounded-full bg-slate-200"></span></div>
+        <div class="relative mx-5 aspect-[16/10] overflow-hidden rounded-3xl bg-slate-100">
+            <div data-product-gallery class="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none]" aria-label="Product pictures"></div>
+            <div data-product-gallery-placeholder class="hidden h-full place-items-center bg-[linear-gradient(145deg,#f1f5f9,#e8eef5)] text-slate-300"><svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+            <span data-modal-status class="absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase shadow-sm"></span>
+            <button type="button" data-close-quantity class="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-slate-600 shadow-md backdrop-blur" aria-label="Close product details"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+            <button type="button" data-gallery-previous class="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md" aria-label="Previous picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+            <button type="button" data-gallery-next class="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md" aria-label="Next picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
+            <span data-gallery-counter class="absolute bottom-3 right-3 hidden rounded-full bg-slate-950/65 px-2.5 py-1 text-[10px] font-extrabold text-white backdrop-blur"></span>
+        </div>
+        <div data-product-gallery-dots class="mt-3 flex justify-center gap-1.5" aria-label="Choose product picture"></div>
+        <div class="p-5 pb-0">
+            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p data-modal-code class="text-[10px] font-bold uppercase tracking-wider text-[#e7682b]"></p><h2 id="product-detail-title" data-modal-name class="mt-1 text-xl font-extrabold text-[#17324d]"></h2></div></div>
+            <div class="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4"><div><p class="text-[10px] font-bold uppercase text-slate-400">Selling price</p><p data-modal-selling class="mt-1 text-sm font-bold text-slate-500 line-through"></p></div><div class="text-right"><p class="text-[10px] font-bold uppercase text-slate-400">Agent price</p><p data-modal-price class="mt-1 text-lg font-black text-[#e7682b]"></p></div></div>
+            <div data-modal-specs class="mt-4 hidden grid-cols-2 gap-2"></div>
+            <div class="mt-5 flex items-center justify-between gap-4"><div><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-1 text-xs text-slate-400"></p></div><div class="flex items-center rounded-2xl border border-slate-200 p-1 shadow-sm"><button type="button" data-quantity-minus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-10 w-14 border-0 text-center text-base font-black outline-none"><button type="button" data-quantity-plus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">+</button></div></div>
+            <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><p class="text-sm font-bold text-slate-500">Item total</p><p data-modal-total class="text-xl font-black text-[#17324d]">RM 0.00</p></div>
+            <button type="button" data-confirm-add class="mt-5 h-13 w-full rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20">Add to cart</button>
+        </div>
     </div>
 </div>
 
@@ -94,7 +119,14 @@
     const values = () => Object.values(cart);
     const units = () => values().reduce((sum, item) => sum + Number(item.quantity), 0);
     const amount = () => values().reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-    const close = (modal) => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+    const close = (modal) => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        if (modal === quantityModal) {
+            document.body.classList.remove('overflow-hidden');
+            window.dispatchEvent(new CustomEvent('product-gallery:close'));
+        }
+    };
 
     const filterProducts = () => {
         const query = searchInput.value.trim().toLowerCase();
@@ -115,6 +147,59 @@
         const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
         quantityInput.value = quantity;
         document.querySelector('[data-modal-total]').textContent = currency.format(quantity * selectedProduct.price);
+    };
+
+    const openProductDetails = (button) => {
+        selectedProduct = {
+            id: button.dataset.id, code: button.dataset.code, name: button.dataset.name,
+            images: JSON.parse(button.dataset.images || '[]'), sellingPrice: Number(button.dataset.sellingPrice),
+            price: Number(button.dataset.agentPrice), max: Number(button.dataset.max),
+            preorder: button.dataset.preorder === '1', material: button.dataset.material,
+            color: button.dataset.color, weight: button.dataset.weight, width: button.dataset.width,
+            height: button.dataset.height, length: button.dataset.length,
+        };
+
+        window.dispatchEvent(new CustomEvent('product-gallery:open', {
+            detail: {
+                images: selectedProduct.images,
+                productName: selectedProduct.name,
+            },
+        }));
+
+        const status = document.querySelector('[data-modal-status]');
+        status.textContent = selectedProduct.preorder ? 'Pre-order' : 'In stock';
+        status.className = `absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase shadow-sm ${selectedProduct.preorder ? 'bg-orange-50 text-[#e7682b]' : 'bg-emerald-50 text-emerald-700'}`;
+        document.querySelector('[data-modal-code]').textContent = selectedProduct.code;
+        document.querySelector('[data-modal-name]').textContent = selectedProduct.name;
+        document.querySelector('[data-modal-selling]').textContent = currency.format(selectedProduct.sellingPrice);
+        document.querySelector('[data-modal-price]').textContent = currency.format(selectedProduct.price);
+        document.querySelector('[data-modal-stock]').textContent = selectedProduct.preorder ? 'Pre-order item · choose required quantity' : `${selectedProduct.max} units available`;
+
+        const dimensions = [selectedProduct.length, selectedProduct.width, selectedProduct.height].filter(Boolean);
+        const specs = [
+            ['Material', selectedProduct.material],
+            ['Colour', selectedProduct.color],
+            ['Weight', selectedProduct.weight ? `${selectedProduct.weight} g` : ''],
+            ['Size (L × W × H)', dimensions.length === 3 ? `${dimensions.join(' × ')} mm` : ''],
+        ].filter(([, value]) => value);
+        const specsContainer = document.querySelector('[data-modal-specs]');
+        specsContainer.innerHTML = '';
+        specs.forEach(([label, value]) => {
+            const item = document.createElement('div'); item.className = 'rounded-2xl border border-slate-100 p-3';
+            const caption = document.createElement('p'); caption.className = 'text-[9px] font-bold uppercase tracking-wider text-slate-400'; caption.textContent = label;
+            const detail = document.createElement('p'); detail.className = 'mt-1 truncate text-xs font-extrabold text-[#17324d]'; detail.textContent = value;
+            item.append(caption, detail); specsContainer.append(item);
+        });
+        specsContainer.classList.toggle('hidden', specs.length === 0);
+        specsContainer.classList.toggle('grid', specs.length > 0);
+
+        quantityInput.max = selectedProduct.max;
+        quantityInput.value = cart[selectedProduct.id]?.quantity || 1;
+        document.querySelector('[data-confirm-add]').textContent = cart[selectedProduct.id] ? 'Update cart' : (selectedProduct.preorder ? 'Add pre-order to cart' : 'Add to cart');
+        updateModalTotal();
+        quantityModal.classList.remove('hidden');
+        quantityModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
     };
 
     const renderReview = () => {
@@ -169,11 +254,15 @@
 
     searchInput.addEventListener('input', filterProducts);
     document.querySelector('[data-clear-search]').addEventListener('click', () => { searchInput.value = ''; filterProducts(); searchInput.focus(); });
-    document.querySelectorAll('[data-add-product]').forEach((button) => button.addEventListener('click', () => {
-        selectedProduct = {id: button.dataset.id, code: button.dataset.code, name: button.dataset.name, sellingPrice: Number(button.dataset.sellingPrice), price: Number(button.dataset.agentPrice), max: Number(button.dataset.max), preorder: button.dataset.preorder === '1'};
-        document.querySelector('[data-modal-code]').textContent = selectedProduct.code; document.querySelector('[data-modal-name]').textContent = selectedProduct.name; document.querySelector('[data-modal-selling]').textContent = currency.format(selectedProduct.sellingPrice); document.querySelector('[data-modal-price]').textContent = currency.format(selectedProduct.price); document.querySelector('[data-modal-stock]').textContent = selectedProduct.preorder ? 'Pre-order item · choose required quantity' : `${selectedProduct.max} units available`;
-        quantityInput.max = selectedProduct.max; quantityInput.value = cart[selectedProduct.id]?.quantity || 1; document.querySelector('[data-confirm-add]').textContent = cart[selectedProduct.id] ? 'Update cart' : (selectedProduct.preorder ? 'Add pre-order to cart' : 'Add to cart'); updateModalTotal(); quantityModal.classList.remove('hidden'); quantityModal.classList.add('flex');
-    }));
+    document.querySelectorAll('[data-product-card]').forEach((card) => {
+        const button = card.querySelector('[data-add-product]');
+        card.addEventListener('click', () => openProductDetails(button));
+        card.addEventListener('keydown', (event) => {
+            if (event.target !== card) return;
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProductDetails(button); }
+        });
+        button.addEventListener('click', (event) => { event.stopPropagation(); openProductDetails(button); });
+    });
     document.querySelector('[data-close-quantity]').addEventListener('click', () => close(quantityModal)); document.querySelector('[data-close-cart]').addEventListener('click', () => close(cartModal));
     document.querySelector('[data-quantity-minus]').addEventListener('click', () => { quantityInput.value = Math.max(1, Number(quantityInput.value) - 1); updateModalTotal(); });
     document.querySelector('[data-quantity-plus]').addEventListener('click', () => { quantityInput.value = Math.min(Number(quantityInput.max), Number(quantityInput.value) + 1); updateModalTotal(); }); quantityInput.addEventListener('input', updateModalTotal);

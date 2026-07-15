@@ -6,6 +6,7 @@ use App\Models\Product;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProductRequest extends FormRequest
 {
@@ -35,6 +36,32 @@ class StoreProductRequest extends FormRequest
             'price_selling' => ['required', 'numeric', 'min:0'],
             'agent_discount_default' => ['required', 'numeric', 'min:0', 'max:100'],
             'prd_picture' => ['nullable', 'url', 'max:2048'],
+            'product_images' => ['nullable', 'array', 'max:5'],
+            'product_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'main_image' => ['nullable', 'string', 'regex:/^new-[0-4]$/'],
+        ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $mainImage = $this->string('main_image')->toString();
+
+                if ($mainImage === '') {
+                    return;
+                }
+
+                $index = (int) str($mainImage)->after('new-')->toString();
+                $uploads = array_values($this->file('product_images', []));
+
+                if (! isset($uploads[$index])) {
+                    $validator->errors()->add('main_image', 'Choose a valid main picture.');
+                }
+            },
         ];
     }
 }

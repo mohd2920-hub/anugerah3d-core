@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\SyncProductImages;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductRequest;
 use App\Http\Requests\Admin\UpdateProductRequest;
@@ -12,10 +13,14 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class ProductController extends Controller
 {
+    public function __construct(private SyncProductImages $syncProductImages) {}
+
     public function index(Request $request): View
     {
         $search = $request->string('search')->trim()->toString();
@@ -44,7 +49,20 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request): RedirectResponse
     {
-        $product = Product::query()->create($request->validated());
+        $validated = $request->validated();
+
+        $product = DB::transaction(function () use ($request, $validated): Product {
+            $product = Product::query()->create($this->productAttributes($validated));
+
+            $this->syncProductImages->handle(
+                $product,
+                $request->file('product_images', []),
+                [],
+                $validated['main_image'] ?? null,
+            );
+
+            return $product;
+        });
 
         AdminActivity::record(
             request: $request,
@@ -61,6 +79,7 @@ class ProductController extends Controller
 
     public function edit(Product $product): View
     {
+        $product->load('images');
         $materials = collect(Material::query()->get());
 
         return view('admin.products.edit', [
@@ -71,7 +90,18 @@ class ProductController extends Controller
 
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
     {
-        $product->update($request->validated());
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($request, $product, $validated): void {
+            $product->update($this->productAttributes($validated));
+
+            $this->syncProductImages->handle(
+                $product,
+                $request->file('product_images', []),
+                $validated['remove_image_ids'] ?? [],
+                $validated['main_image'] ?? null,
+            );
+        });
 
         AdminActivity::record(
             request: $request,
@@ -84,6 +114,19 @@ class ProductController extends Controller
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Product updated successfully.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function productAttributes(array $validated): array
+    {
+        return Arr::except($validated, [
+            'product_images',
+            'remove_image_ids',
+            'main_image',
+        ]);
     }
 
     public function destroy(Request $request, Product $product): RedirectResponse
