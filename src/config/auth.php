@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AdminUser;
+use App\Models\Agent;
 use App\Models\User;
 
 return [
@@ -48,6 +49,11 @@ return [
             'driver' => 'session',
             'provider' => 'admin_users',
         ],
+
+        'agent' => [
+            'driver' => 'session',
+            'provider' => 'agents',
+        ],
     ],
 
     /*
@@ -76,6 +82,11 @@ return [
         'admin_users' => [
             'driver' => 'eloquent',
             'model' => AdminUser::class,
+        ],
+
+        'agents' => [
+            'driver' => 'eloquent',
+            'model' => Agent::class,
         ],
 
         // 'users' => [

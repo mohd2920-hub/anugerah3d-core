@@ -40,11 +40,19 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(
-            fn (Request $request): string => $request->routeIs('admin.*') ? '/login' : '/',
+            fn (Request $request): string => match (true) {
+                $request->routeIs('admin.*') => route('admin.login'),
+                $request->routeIs('agent.*') => route('agent.login'),
+                default => '/',
+            },
         );
 
         $middleware->redirectUsersTo(
-            fn (Request $request): string => $request->routeIs('admin.*') ? route('admin.dashboard') : '/',
+            fn (Request $request): string => match (true) {
+                $request->routeIs('admin.*') => route('admin.dashboard'),
+                $request->routeIs('agent.*') => route('agent.dashboard'),
+                default => '/',
+            },
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {

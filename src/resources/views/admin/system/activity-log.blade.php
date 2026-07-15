@@ -92,7 +92,7 @@
                         <tr class="transition hover:bg-slate-50">
                             <td class="px-3 py-3 text-slate-600">{{ $log->created_at->format('d M Y, h:i A') }}</td>
                             <td class="px-3 py-3">
-                                <div class="font-semibold text-slate-900">{{ $log->adminUser?->name ?: 'System' }}</div>
+                                <div class="font-semibold text-slate-900">{{ $log->adminUser?->name ?: data_get($log->properties, 'actor_name', 'System') }}</div>
                                 <div class="mt-0.5 truncate text-[0.72rem] text-slate-500">{{ $log->adminUser?->email ?: data_get($log->properties, 'email', '-') }}</div>
                             </td>
                             <td class="px-3 py-3">
@@ -116,7 +116,7 @@
                 <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="font-semibold text-slate-950">{{ $log->adminUser?->name ?: 'System' }}</p>
+                            <p class="font-semibold text-slate-950">{{ $log->adminUser?->name ?: data_get($log->properties, 'actor_name', 'System') }}</p>
                             <p class="mt-0.5 break-all text-xs text-slate-500">{{ $log->adminUser?->email ?: data_get($log->properties, 'email', '-') }}</p>
                         </div>
                         <span class="inline-flex flex-none rounded-lg px-2.5 py-1 text-[0.7rem] font-semibold ring-1 {{ $eventBadge($log->event) }}">{{ $formatAction($log->event) }}</span>
