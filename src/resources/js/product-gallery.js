@@ -82,7 +82,7 @@ const initializeProductGallery = () => {
             const picture = document.createElement('img');
             picture.src = image.src;
             picture.alt = image.alt || `${productName} picture ${index + 1}`;
-            picture.className = 'h-full w-full object-cover';
+            picture.className = 'h-full w-full object-contain';
             picture.loading = index === 0 ? 'eager' : 'lazy';
             slide.append(picture);
             track.append(slide);

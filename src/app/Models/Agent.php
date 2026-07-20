@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -63,6 +65,31 @@ class Agent extends Authenticatable
             self::StatusBlocked => 'Blocked',
             self::StatusSuspended => 'Suspended',
         ];
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function businessSites(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessSite::class)->withTimestamps();
+    }
+
+    public function posSessions(): HasMany
+    {
+        return $this->hasMany(PosSession::class);
+    }
+
+    public function recordedPosSales(): HasMany
+    {
+        return $this->hasMany(PosSale::class, 'recorded_by_agent_id');
+    }
+
+    public function attributedPosSales(): HasMany
+    {
+        return $this->hasMany(PosSale::class, 'sales_agent_id');
     }
 
     public function scopeSearch(Builder $query, string $search): Builder

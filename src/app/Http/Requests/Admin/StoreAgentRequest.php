@@ -35,6 +35,8 @@ class StoreAgentRequest extends FormRequest
             'discount_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
             'profile_picture' => ['sometimes', 'nullable', 'string', 'max:250'],
             'total_sale' => ['sometimes', 'numeric', 'min:0', 'max:999999.99'],
+            'business_site_ids' => ['nullable', 'array'],
+            'business_site_ids.*' => ['integer', 'distinct', 'exists:business_sites,id'],
         ];
     }
 }

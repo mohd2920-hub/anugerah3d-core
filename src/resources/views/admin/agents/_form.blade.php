@@ -154,6 +154,34 @@
         @endif
     </div>
 
+    <div>
+        <div class="mb-2 flex items-center justify-between gap-3">
+            <label for="business_site_ids" class="block text-sm font-medium text-slate-700">Assigned business sites</label>
+            @if ($businessSites->isNotEmpty())
+                <button type="button" onclick="document.getElementById(&quot;business_site_ids&quot;).selectedIndex = -1;" class="text-sm font-semibold text-red-600 transition hover:text-red-700">Clear all</button>
+            @endif
+        </div>
+        @php
+            $assignedBusinessSiteIds = old('business_site_ids', $agent?->businessSites?->pluck('id')->all() ?? []);
+        @endphp
+        <select id="business_site_ids" name="business_site_ids[]" multiple class="min-h-36 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+            @forelse ($businessSites as $businessSite)
+                <option value="{{ $businessSite->id }}" @selected(in_array($businessSite->id, $assignedBusinessSiteIds))>
+                    {{ $businessSite->site_name }} · {{ $businessSite->city }}
+                </option>
+            @empty
+                <option disabled>Create a business site first</option>
+            @endforelse
+        </select>
+        <p class="mt-1 text-xs text-slate-500">Hold Ctrl/Command to select multiple sites. To reset the assignment, click Clear all and save changes.</p>
+        @error('business_site_ids')
+            <span class="mt-1 block text-sm text-red-600">{{ $message }}</span>
+        @enderror
+        @error('business_site_ids.*')
+            <span class="mt-1 block text-sm text-red-600">{{ $message }}</span>
+        @enderror
+    </div>
+
     <div class="flex flex-col gap-3 pt-4 sm:flex-row">
         <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-6 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
             {{ $submitLabel }}

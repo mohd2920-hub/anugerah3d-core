@@ -7,6 +7,7 @@
             request()->routeIs('admin.products.edit') => 'Edit Product',
             request()->routeIs('admin.agents.create') => 'Add Agent',
             request()->routeIs('admin.agents.edit') => 'Edit Agent',
+            request()->routeIs('admin.orders.*') => 'Orders',
             request()->routeIs('admin.agents.*') => 'Agents',
             request()->routeIs('admin.products.*') => 'Products',
             request()->routeIs('admin.profile.*') => 'Profile',

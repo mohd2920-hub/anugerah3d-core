@@ -68,26 +68,32 @@
     <button type="button" data-open-cart data-cart-visible class="hidden h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.5 11h10.8l2-7H7"/></svg>Checkout · <span data-cart-units>0</span> units · <span data-cart-total>RM 0.00</span></button>
 </section>
 
-<div data-quantity-modal class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
-    <div class="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
-        <div class="sticky top-0 z-20 flex justify-center bg-white/95 pb-2 pt-3 backdrop-blur"><span class="h-1.5 w-12 rounded-full bg-slate-200"></span></div>
-        <div class="relative mx-5 aspect-[16/10] overflow-hidden rounded-3xl bg-slate-100">
-            <div data-product-gallery class="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none]" aria-label="Product pictures"></div>
-            <div data-product-gallery-placeholder class="hidden h-full place-items-center bg-[linear-gradient(145deg,#f1f5f9,#e8eef5)] text-slate-300"><svg class="h-16 w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
-            <span data-modal-status class="absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase shadow-sm"></span>
-            <button type="button" data-close-quantity class="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-slate-600 shadow-md backdrop-blur" aria-label="Close product details"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-            <button type="button" data-gallery-previous class="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md" aria-label="Previous picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
-            <button type="button" data-gallery-next class="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md" aria-label="Next picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
-            <span data-gallery-counter class="absolute bottom-3 right-3 hidden rounded-full bg-slate-950/65 px-2.5 py-1 text-[10px] font-extrabold text-white backdrop-blur"></span>
+<div data-quantity-modal class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/45 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
+    <div class="flex max-h-[calc(100dvh-0.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:max-h-[88vh] sm:rounded-[2rem]">
+        <div class="relative flex h-12 flex-none items-center justify-center px-4">
+            <span class="h-1.5 w-12 rounded-full bg-slate-200"></span>
+            <button type="button" data-close-quantity class="absolute right-3 grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600 transition active:bg-slate-200" aria-label="Close product details"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
         </div>
-        <div data-product-gallery-dots class="mt-3 flex justify-center gap-1.5" aria-label="Choose product picture"></div>
-        <div class="p-5 pb-0">
-            <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p data-modal-code class="text-[10px] font-bold uppercase tracking-wider text-[#e7682b]"></p><h2 id="product-detail-title" data-modal-name class="mt-1 text-xl font-extrabold text-[#17324d]"></h2></div></div>
-            <div class="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4"><div><p class="text-[10px] font-bold uppercase text-slate-400">Selling price</p><p data-modal-selling class="mt-1 text-sm font-bold text-slate-500 line-through"></p></div><div class="text-right"><p class="text-[10px] font-bold uppercase text-slate-400">Agent price</p><p data-modal-price class="mt-1 text-lg font-black text-[#e7682b]"></p></div></div>
-            <div data-modal-specs class="mt-4 hidden grid-cols-2 gap-2"></div>
-            <div class="mt-5 flex items-center justify-between gap-4"><div><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-1 text-xs text-slate-400"></p></div><div class="flex items-center rounded-2xl border border-slate-200 p-1 shadow-sm"><button type="button" data-quantity-minus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-10 w-14 border-0 text-center text-base font-black outline-none"><button type="button" data-quantity-plus class="grid h-10 w-10 place-items-center rounded-xl text-lg font-bold">+</button></div></div>
-            <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4"><p class="text-sm font-bold text-slate-500">Item total</p><p data-modal-total class="text-xl font-black text-[#17324d]">RM 0.00</p></div>
-            <button type="button" data-confirm-add class="mt-5 h-13 w-full rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20">Add to cart</button>
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div class="relative mx-4 h-[clamp(9rem,28dvh,14rem)] overflow-hidden rounded-2xl bg-slate-100 sm:mx-5 sm:h-auto sm:aspect-[16/10] sm:rounded-3xl">
+                <div data-product-gallery class="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none]" aria-label="Product pictures"></div>
+                <div data-product-gallery-placeholder class="hidden h-full place-items-center bg-[linear-gradient(145deg,#f1f5f9,#e8eef5)] text-slate-300"><svg class="h-14 w-14 sm:h-16 sm:w-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <span data-modal-status class="absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase shadow-sm sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-[10px]"></span>
+                <button type="button" data-gallery-previous class="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md sm:left-3 sm:h-10 sm:w-10" aria-label="Previous picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                <button type="button" data-gallery-next class="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#17324d] shadow-md sm:right-3 sm:h-10 sm:w-10" aria-label="Next picture"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
+                <span data-gallery-counter class="absolute bottom-2 right-2 hidden rounded-full bg-slate-950/65 px-2.5 py-1 text-[9px] font-extrabold text-white backdrop-blur sm:bottom-3 sm:right-3 sm:text-[10px]"></span>
+            </div>
+            <div data-product-gallery-dots class="mt-2 flex justify-center gap-1.5 sm:mt-3" aria-label="Choose product picture"></div>
+            <div class="px-4 pb-4 pt-3 sm:px-5 sm:pt-4">
+                <div class="min-w-0"><p data-modal-code class="text-[9px] font-bold uppercase tracking-wider text-[#e7682b] sm:text-[10px]"></p><h2 id="product-detail-title" data-modal-name class="mt-0.5 text-lg font-extrabold leading-6 text-[#17324d] sm:mt-1 sm:text-xl"></h2></div>
+                <div class="mt-3 flex items-end justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3"><div><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Selling price</p><p data-modal-selling class="mt-0.5 text-xs font-bold text-slate-500 line-through sm:text-sm"></p></div><div class="text-right"><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Agent price</p><p data-modal-price class="mt-0.5 text-lg font-black text-[#e7682b]"></p></div></div>
+                <div data-modal-specs class="mt-3 hidden grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-100 py-3"></div>
+                <div class="mt-3 flex items-center justify-between gap-3 sm:mt-4"><div class="min-w-0"><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-0.5 truncate text-[11px] text-slate-400 sm:text-xs"></p></div><div class="flex flex-none items-center rounded-xl border border-slate-200 p-0.5 shadow-sm"><button type="button" data-quantity-minus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-9 w-12 border-0 text-center text-base font-black outline-none sm:w-14"><button type="button" data-quantity-plus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">+</button></div></div>
+            </div>
+        </div>
+        <div class="flex-none border-t border-slate-100 bg-white px-4 pt-3 sm:px-5" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between"><p class="text-xs font-bold text-slate-500 sm:text-sm">Item total</p><p data-modal-total class="text-xl font-black text-[#17324d]">RM 0.00</p></div>
+            <button type="button" data-confirm-add class="mt-2.5 h-12 w-full rounded-xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20 sm:h-13 sm:rounded-2xl">Add to cart</button>
         </div>
     </div>
 </div>
@@ -168,7 +174,7 @@
 
         const status = document.querySelector('[data-modal-status]');
         status.textContent = selectedProduct.preorder ? 'Pre-order' : 'In stock';
-        status.className = `absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase shadow-sm ${selectedProduct.preorder ? 'bg-orange-50 text-[#e7682b]' : 'bg-emerald-50 text-emerald-700'}`;
+        status.className = `absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase shadow-sm sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-[10px] ${selectedProduct.preorder ? 'bg-orange-50 text-[#e7682b]' : 'bg-emerald-50 text-emerald-700'}`;
         document.querySelector('[data-modal-code]').textContent = selectedProduct.code;
         document.querySelector('[data-modal-name]').textContent = selectedProduct.name;
         document.querySelector('[data-modal-selling]').textContent = currency.format(selectedProduct.sellingPrice);
@@ -185,9 +191,9 @@
         const specsContainer = document.querySelector('[data-modal-specs]');
         specsContainer.innerHTML = '';
         specs.forEach(([label, value]) => {
-            const item = document.createElement('div'); item.className = 'rounded-2xl border border-slate-100 p-3';
+            const item = document.createElement('div'); item.className = 'min-w-0';
             const caption = document.createElement('p'); caption.className = 'text-[9px] font-bold uppercase tracking-wider text-slate-400'; caption.textContent = label;
-            const detail = document.createElement('p'); detail.className = 'mt-1 truncate text-xs font-extrabold text-[#17324d]'; detail.textContent = value;
+            const detail = document.createElement('p'); detail.className = 'mt-0.5 break-words text-[11px] font-extrabold leading-4 text-[#17324d] sm:text-xs'; detail.textContent = value;
             item.append(caption, detail); specsContainer.append(item);
         });
         specsContainer.classList.toggle('hidden', specs.length === 0);

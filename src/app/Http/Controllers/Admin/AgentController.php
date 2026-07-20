@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\ResetAgentPasswordRequest;
 use App\Http\Requests\Admin\StoreAgentRequest;
 use App\Http\Requests\Admin\UpdateAgentRequest;
 use App\Models\Agent;
+use App\Models\BusinessSite;
 use App\Models\DataState;
 use App\Support\AdminActivity;
 use Illuminate\Contracts\View\View;
@@ -38,6 +39,7 @@ class AgentController extends Controller
             'search' => $search,
             'selectedStatus' => $status,
             'statusOptions' => Agent::statuses(),
+            'businessSites' => BusinessSite::query()->orderBy('site_name')->get(['id', 'site_name', 'city']),
             'loginInfo' => session('agent_login_info'),
         ]);
     }
@@ -53,8 +55,11 @@ class AgentController extends Controller
         $plainPassword = $validated['password'];
 
         unset($validated['password_confirmation']);
+        $businessSiteIds = $validated['business_site_ids'] ?? [];
+        unset($validated['business_site_ids']);
 
         $agent = Agent::query()->create($validated);
+        $agent->businessSites()->sync($businessSiteIds);
 
         AdminActivity::record(
             request: $request,
@@ -72,6 +77,8 @@ class AgentController extends Controller
 
     public function edit(Agent $agent): View
     {
+        $agent->load('businessSites:id');
+
         return view('admin.agents.edit', array_merge($this->formData(), [
             'agent' => $agent,
             'loginInfo' => session('agent_login_info'),
@@ -112,8 +119,11 @@ class AgentController extends Controller
         }
 
         unset($validated['profile_picture_file']);
+        $businessSiteIds = $validated['business_site_ids'] ?? [];
+        unset($validated['business_site_ids']);
 
         $agent->update($validated);
+        $agent->businessSites()->sync($businessSiteIds);
 
         AdminActivity::record(
             request: $request,
@@ -284,6 +294,7 @@ class AgentController extends Controller
         return [
             'states' => DataState::query()->orderBy('name')->get(),
             'statusOptions' => Agent::statuses(),
+            'businessSites' => BusinessSite::query()->orderBy('site_name')->get(['id', 'site_name', 'city']),
         ];
     }
 

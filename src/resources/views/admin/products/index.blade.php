@@ -20,7 +20,17 @@
 
         {{-- Search Section --}}
         <div class="rounded-lg bg-white p-6 shadow-sm">
-            <form method="GET" action="{{ route('admin.products.index') }}" class="flex flex-col gap-3 sm:flex-row">
+            <div class="flex items-center justify-end">
+                <a href="{{ route('admin.products.create') }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#1a73e8] px-3 text-xs font-semibold uppercase tracking-wide text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                    </svg>
+                    <span>Add Product</span>
+                </a>
+            </div>
+
+            <form method="GET" action="{{ route('admin.products.index') }}" class="mt-3 flex flex-col gap-3 sm:flex-row">
                 <input type="text" name="search" value="{{ $search }}" placeholder="Search by product code or name..." class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
                 <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
                     Search

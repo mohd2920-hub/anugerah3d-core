@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\AdminUser;
 use App\Models\Agent;
+use App\Models\BusinessSite;
 use Database\Seeders\DataStateSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -44,6 +45,20 @@ class AgentManagementTest extends TestCase
             ->assertSeeText($agent->login_id)
             ->assertSeeText($agent->agt_name)
             ->assertSee('https://wa.me/60123456789', false);
+    }
+
+    public function test_admin_can_view_agent_edit_form(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $agent = Agent::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->get($this->adminUrl("/agents/{$agent->id}/edit"))
+            ->assertOk()
+            ->assertViewIs('admin.agents.edit')
+            ->assertViewHas('businessSites')
+            ->assertSeeText('Assigned business sites')
+            ->assertSeeText('Clear all');
     }
 
     public function test_admin_can_search_agents(): void
@@ -124,6 +139,29 @@ class AgentManagementTest extends TestCase
             'agt_name' => 'Updated Agent',
             'email' => 'updated-agent@example.com',
             'agt_status' => Agent::StatusSuspended,
+        ]);
+    }
+
+    public function test_admin_can_clear_all_agent_business_sites(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $agent = Agent::factory()->create();
+        $businessSite = BusinessSite::query()->create([
+            'site_name' => 'Test Site',
+            'city' => 'Bangi',
+        ]);
+        $agent->businessSites()->attach($businessSite);
+
+        $this->actingAs($admin, 'admin')
+            ->put($this->adminUrl("/agents/{$agent->id}"), $this->validPayload([
+                'login_id' => 'AGT-CLEAR-001',
+                'email' => 'clear-sites@example.com',
+            ]))
+            ->assertRedirect(route('admin.agents.index'));
+
+        $this->assertDatabaseMissing('agent_business_site', [
+            'agent_id' => $agent->id,
+            'business_site_id' => $businessSite->id,
         ]);
     }
 

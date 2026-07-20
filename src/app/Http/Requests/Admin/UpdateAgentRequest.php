@@ -52,6 +52,8 @@ class UpdateAgentRequest extends FormRequest
             'discount_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
             'profile_picture_file' => ['nullable', 'image', 'max:5120'],
             'total_sale' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'business_site_ids' => ['nullable', 'array'],
+            'business_site_ids.*' => ['integer', 'distinct', 'exists:business_sites,id'],
         ];
     }
 }

@@ -9,6 +9,9 @@
             request()->routeIs('admin.products.edit') => 'Edit Product',
             request()->routeIs('admin.agents.create') => 'Add Agent',
             request()->routeIs('admin.agents.edit') => 'Edit Agent',
+            request()->routeIs('admin.orders.*') => 'Orders',
+            request()->routeIs('admin.sales.*') => 'Sales',
+            request()->routeIs('admin.business-sites.*') => 'Business Sites',
             request()->routeIs('admin.agents.*') => 'Agents',
             request()->routeIs('admin.products.*') => 'Products',
             request()->routeIs('admin.profile.*') => 'Profile',
@@ -85,13 +88,26 @@
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.dashboard'),
                     'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.dashboard'),
                 ])>Dashboard</a>
-                <span class="{{ $disabledNavClass }}" aria-disabled="true">Orders</span>
+                <a href="{{ route('admin.orders.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.orders.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.orders.*'),
+                ])>Orders</a>
+                <a href="{{ route('admin.sales.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.sales.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.sales.*'),
+                ])>Sales</a>
                 <a href="{{ route('admin.products.index') }}" @class([
                     'rounded-lg px-3 py-2.5 transition',
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.products.*'),
                     'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
                 ])>Products</a>
-                <span class="{{ $disabledNavClass }}" aria-disabled="true">Customers</span>
+                <a href="{{ route('admin.business-sites.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.business-sites.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.business-sites.*'),
+                ])>Business Sites</a>
                 <a href="{{ route('admin.agents.index') }}" @class([
                     'rounded-lg px-3 py-2.5 transition',
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),
@@ -193,13 +209,26 @@
                 'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.dashboard'),
                 'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.dashboard'),
             ])>Dashboard</a>
-            <span class="{{ $disabledNavClass }}" aria-disabled="true">Orders</span>
+            <a href="{{ route('admin.orders.index') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.orders.*'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.orders.*'),
+            ])>Orders</a>
+            <a href="{{ route('admin.sales.index') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.sales.*'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.sales.*'),
+            ])>Sales</a>
             <a href="{{ route('admin.products.index') }}" @class([
                 'rounded-lg px-3 py-2.5 transition',
                 'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.products.*'),
                 'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.products.*'),
             ])>Products</a>
-            <span class="{{ $disabledNavClass }}" aria-disabled="true">Customers</span>
+            <a href="{{ route('admin.business-sites.index') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.business-sites.*'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.business-sites.*'),
+            ])>Business Sites</a>
             <a href="{{ route('admin.agents.index') }}" @class([
                     'rounded-lg px-3 py-2.5 transition',
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),

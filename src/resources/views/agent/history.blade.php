@@ -5,7 +5,7 @@
 @section('content')
 <div class="space-y-5">
     <section class="rounded-[1.75rem] bg-[linear-gradient(145deg,#17324d,#285875)] p-5 text-white shadow-xl shadow-slate-900/10">
-        <div class="flex items-center justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[0.16em] text-orange-300">Order records</p><p class="mt-2 text-3xl font-black">{{ count($orders) }}</p><p class="mt-1 text-sm text-slate-300">Preview orders</p></div><span class="grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-orange-300"><svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6M12 7v5l3 2"/></svg></span></div>
+        <div class="flex items-center justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[0.16em] text-orange-300">Order records</p><p class="mt-2 text-3xl font-black">{{ count($orders) }}</p><p class="mt-1 text-sm text-slate-300">Orders placed</p></div><span class="grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-orange-300"><svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6M12 7v5l3 2"/></svg></span></div>
     </section>
 
     <div class="flex gap-2 overflow-x-auto pb-1" data-history-filters>
@@ -30,10 +30,9 @@
                 <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span class="text-[10px] font-semibold text-slate-400">{{ count($order['products']) }} product {{ Str::plural('type', count($order['products'])) }}</span><span class="inline-flex items-center gap-1 text-xs font-extrabold text-[#e7682b]">View details <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span></div>
             </article>
         @endforeach
-        <div data-history-empty class="hidden rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">No orders in this status.</div>
+        <div data-history-empty class="{{ count($orders) > 0 ? 'hidden ' : '' }}rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">No orders in this status.</div>
     </section>
 
-    <p class="rounded-2xl bg-orange-50 px-4 py-3 text-center text-[10px] font-semibold leading-5 text-[#b94716]">UI preview only. These sample orders will be replaced with live order data.</p>
 </div>
 
 @foreach ($orders as $order)
@@ -67,7 +66,6 @@
                 <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><h3 class="text-sm font-extrabold text-[#17324d]">Fulfilment & payment</h3><dl class="mt-3 divide-y divide-slate-100"><div class="flex justify-between gap-4 py-3 first:pt-0"><dt class="text-xs text-slate-400">Method</dt><dd class="text-right text-xs font-extrabold text-slate-700">{{ $order['fulfilment'] }}</dd></div><div class="flex justify-between gap-4 py-3"><dt class="text-xs text-slate-400">Payment</dt><dd class="text-right text-xs font-extrabold text-slate-700">{{ $order['payment'] }}</dd></div><div class="py-3"><dt class="text-xs text-slate-400">Recipient</dt><dd class="mt-1 text-xs font-extrabold text-slate-700">{{ $order['recipient'] }} · {{ $order['phone'] }}</dd></div><div class="py-3 last:pb-0"><dt class="text-xs text-slate-400">{{ $order['fulfilment'] === 'Delivery' ? 'Delivery address' : 'Pickup location' }}</dt><dd class="mt-1 text-xs font-semibold leading-5 text-slate-700">{{ $order['address'] }}</dd></div></dl></section>
 
                 @if ($order['notes'])<section class="rounded-3xl border border-amber-200 bg-amber-50 p-4"><p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Order notes</p><p class="mt-2 text-xs font-semibold leading-5 text-amber-900">{{ $order['notes'] }}</p></section>@endif
-                <p class="text-center text-[10px] text-slate-400">UI preview transaction. Live data will replace this sample.</p>
             </div>
             <footer class="border-t border-slate-200 bg-white p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));"><button type="button" data-close-order class="h-12 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">Back to history</button></footer>
         </div>

@@ -43,6 +43,8 @@ class ProductManagementTest extends TestCase
             ->assertOk()
             ->assertViewIs('admin.products.index')
             ->assertSeeText('Products')
+            ->assertSeeText('Add Product')
+            ->assertSee('href="'.route('admin.products.create').'"', false)
             ->assertSeeText($product->prd_code)
             ->assertSeeText($product->prd_name);
     }

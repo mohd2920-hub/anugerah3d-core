@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\AgentController;
+use App\Http\Controllers\Admin\BusinessSiteController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PasswordResetController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\SystemManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,7 +41,16 @@ Route::middleware('auth:admin')->group(function (): void {
         Route::get('/activity-log', [SystemManagementController::class, 'activityLog'])->name('activity-log');
     });
 
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::resource('sales', SaleController::class)->only(['index', 'show']);
+    Route::patch('/orders/{order}/payment', [OrderController::class, 'updatePayment'])->name('orders.payment.update');
+    Route::patch('/orders/{order}/process', [OrderController::class, 'process'])->name('orders.process');
+    Route::patch('/orders/{order}/complete', [OrderController::class, 'complete'])->name('orders.complete');
+    Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
     Route::resource('products', ProductController::class)->except('show');
+    Route::resource('business-sites', BusinessSiteController::class)->except('show');
     Route::put('/agents/{agent}/profile-picture', [AgentController::class, 'updateProfilePicture'])->name('agents.profile-picture.update');
     Route::put('/agents/{agent}/password', [AgentController::class, 'resetPassword'])->name('agents.password.update');
     Route::resource('agents', AgentController::class);

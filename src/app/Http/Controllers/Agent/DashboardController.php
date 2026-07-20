@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -25,7 +26,10 @@ class DashboardController extends Controller
                 ->orderByDesc('prd_balance')
                 ->orderBy('prd_name')
                 ->get(),
-            'pendingOrderItemCount' => 35,
+            'pendingOrderItemCount' => Order::query()
+                ->whereBelongsTo($agent)
+                ->whereIn('status', [Order::StatusPending, Order::StatusProcessing])
+                ->sum('total_units'),
         ]);
     }
 }
