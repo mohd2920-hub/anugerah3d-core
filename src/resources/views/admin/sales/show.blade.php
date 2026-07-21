@@ -37,10 +37,38 @@
                 </div>
             </section>
 
-            @if ($sale->sale_picture_path || $sale->payment_proof_path)
+            @php
+                $salePictures = $sale->salePicturePaths();
+                $paymentProofs = $sale->paymentProofPaths();
+                $salePictureUrls = $sale->salePictureUrls();
+                $paymentProofUrls = $sale->paymentProofUrls();
+            @endphp
+            @if (count($salePictures) > 0 || count($paymentProofs) > 0)
                 <section class="grid gap-5 sm:grid-cols-2">
-                    @if ($sale->sale_picture_path)<a href="{{ asset($sale->sale_picture_path) }}" target="_blank" rel="noopener" class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70"><div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Sale picture</div><img src="{{ asset($sale->sale_picture_path) }}" alt="Sale evidence for {{ $sale->sale_number }}" class="h-64 w-full object-cover"></a>@endif
-                    @if ($sale->payment_proof_path)<a href="{{ asset($sale->payment_proof_path) }}" target="_blank" rel="noopener" class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70"><div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Payment proof</div><img src="{{ asset($sale->payment_proof_path) }}" alt="Payment proof for {{ $sale->sale_number }}" class="h-64 w-full object-cover"></a>@endif
+                    @if (count($salePictures) > 0)
+                        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70">
+                            <div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Sale picture</div>
+                            <div class="grid grid-cols-2 gap-2 p-3">
+                                @foreach ($salePictureUrls as $url)
+                                    <a href="{{ $url }}" target="_blank" rel="noopener" class="block overflow-hidden rounded-lg border border-slate-200">
+                                        <img src="{{ $url }}" alt="Sale evidence for {{ $sale->sale_number }}" class="h-32 w-full object-cover">
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    @if (count($paymentProofs) > 0)
+                        <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70">
+                            <div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Payment proof</div>
+                            <div class="grid grid-cols-2 gap-2 p-3">
+                                @foreach ($paymentProofUrls as $url)
+                                    <a href="{{ $url }}" target="_blank" rel="noopener" class="block overflow-hidden rounded-lg border border-slate-200">
+                                        <img src="{{ $url }}" alt="Payment proof for {{ $sale->sale_number }}" class="h-32 w-full object-cover">
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </section>
             @endif
         </div>

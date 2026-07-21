@@ -20,7 +20,8 @@ class UpdatePosSaleRequest extends StorePosSaleRequest
     public function rules(): array
     {
         $rules = parent::rules();
-        $rules['payment_proof'] = ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'];
+        $rules['payment_proofs'] = ['nullable', 'array', 'max:5'];
+        $rules['payment_proofs.*'] = ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'];
 
         return $rules;
     }
@@ -32,11 +33,11 @@ class UpdatePosSaleRequest extends StorePosSaleRequest
             function (Validator $validator): void {
                 $posSale = $this->route('posSale');
                 $requiresProof = $this->string('payment_method')->toString() === PosSale::PaymentQr;
-                $hasProof = $this->hasFile('payment_proof')
-                    || ($posSale instanceof PosSale && $posSale->payment_proof_path !== null);
+                $hasProof = $this->hasFile('payment_proofs')
+                    || ($posSale instanceof PosSale && count($posSale->paymentProofPaths()) > 0);
 
                 if ($requiresProof && ! $hasProof) {
-                    $validator->errors()->add('payment_proof', 'Payment proof is required for QR payments.');
+                    $validator->errors()->add('payment_proofs', 'Payment proof is required for QR payments.');
                 }
             },
         ];

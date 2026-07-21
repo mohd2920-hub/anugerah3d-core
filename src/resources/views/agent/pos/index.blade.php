@@ -42,6 +42,9 @@
                 @php
                     $grossTotal = $sale->items->sum(fn ($item) => (float) $item->unit_price * (int) $item->quantity);
                     $discountTotal = $sale->items->sum(fn ($item) => (float) ($item->customer_discount_amount ?? $item->discount_amount ?? 0));
+                    $historySalePictureUrls = $sale->salePictureUrls();
+                    $historyPaymentProofUrls = $sale->paymentProofUrls();
+                    $historyThumbUrls = array_slice(array_values(array_unique(array_merge($historySalePictureUrls, $historyPaymentProofUrls))), 0, 5);
                 @endphp
                 <article class="rounded-3xl bg-white p-4 shadow-sm">
                     <div class="flex items-start justify-between gap-3">
@@ -61,6 +64,15 @@
                         <p class="shrink-0 text-slate-500">Payment <span class="font-bold uppercase text-slate-700">{{ $sale->payment_method }}</span></p>
                     </div>
                     <div class="mt-2 space-y-1 text-xs text-slate-600">@foreach ($sale->items as $item)<div class="flex justify-between gap-3"><span class="truncate">{{ $item->product_name }} × {{ $item->quantity }}</span><span class="shrink-0 font-semibold">RM {{ number_format((float) $item->line_total, 2) }}</span></div>@endforeach</div>
+                    @if (count($historyThumbUrls) > 0)
+                        <div class="mt-2 flex items-center gap-2 overflow-x-auto pb-1">
+                            @foreach ($historyThumbUrls as $url)
+                                <a href="{{ $url }}" target="_blank" rel="noopener" class="block h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                                    <img src="{{ $url }}" alt="Sale thumbnail" class="h-full w-full object-cover">
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                     @if ($activeSession && $activeSession->business_site_id === $sale->business_site_id)<a href="{{ route('agent.pos.sales.edit', $sale) }}" class="mt-3 block rounded-xl border border-orange-200 py-2 text-center text-xs font-extrabold text-[#d95419]">Edit sale</a>@endif
                 </article>
             @empty

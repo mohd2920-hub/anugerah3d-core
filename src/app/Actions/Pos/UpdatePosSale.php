@@ -5,7 +5,6 @@ namespace App\Actions\Pos;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Throwable;
 
 class UpdatePosSale
@@ -14,15 +13,18 @@ class UpdatePosSale
 
     public function handle(PosSale $sale, PosSession $session, array $data): PosSale
     {
-        $newSalePicture = $this->createPosSale->storePicture($data['sale_picture'] ?? null, 'sale');
-        $newPaymentProof = $this->createPosSale->storePicture($data['payment_proof'] ?? null, 'payment');
-        $newPictures = array_filter([$newSalePicture, $newPaymentProof]);
+        $newSalePictures = $this->createPosSale->storePictureSet($data['sale_pictures'] ?? [], 'sale');
+        $newPaymentProofs = $this->createPosSale->storePictureSet($data['payment_proofs'] ?? [], 'payment');
+        $newPictures = [...$newSalePictures, ...$newPaymentProofs];
 
         try {
-            $oldPictures = array_filter([$sale->sale_picture_path, $sale->payment_proof_path]);
+            $currentSalePictures = $sale->salePicturePaths();
+            $currentPaymentProofs = $sale->paymentProofPaths();
 
-            $updatedSale = DB::transaction(function () use ($sale, $session, $data, $newSalePicture, $newPaymentProof): PosSale {
+            $updatedSale = DB::transaction(function () use ($sale, $session, $data, $newSalePictures, $newPaymentProofs, $currentSalePictures, $currentPaymentProofs): PosSale {
                 $items = $this->createPosSale->items($data['items'], $data['sales_agent_id']);
+                $salePicturePaths = array_values(array_slice(array_merge($currentSalePictures, $newSalePictures), 0, 5));
+                $paymentProofPaths = array_values(array_slice(array_merge($currentPaymentProofs, $newPaymentProofs), 0, 5));
 
                 $sale->update([
                     'pos_session_id' => $session->getKey(),
@@ -33,8 +35,10 @@ class UpdatePosSale
                     'remark' => $data['remark'] ?? null,
                     'payment_method' => $data['payment_method'],
                     'payment_remark' => $data['payment_remark'] ?? null,
-                    'sale_picture_path' => $newSalePicture ?: $sale->sale_picture_path,
-                    'payment_proof_path' => $newPaymentProof ?: $sale->payment_proof_path,
+                    'sale_picture_path' => $salePicturePaths[0] ?? null,
+                    'sale_picture_paths' => $salePicturePaths,
+                    'payment_proof_path' => $paymentProofPaths[0] ?? null,
+                    'payment_proof_paths' => $paymentProofPaths,
                     'total_amount' => collect($items)->sum('line_total'),
                 ]);
 
@@ -44,17 +48,9 @@ class UpdatePosSale
                 return $sale->load(['items', 'businessSite', 'salesAgent', 'recordedBy']);
             });
 
-            foreach ($oldPictures as $oldPicture) {
-                if (! in_array($oldPicture, [$updatedSale->sale_picture_path, $updatedSale->payment_proof_path], true)) {
-                    File::delete(public_path($oldPicture));
-                }
-            }
-
             return $updatedSale;
         } catch (Throwable $exception) {
-            foreach ($newPictures as $newPicture) {
-                File::delete(public_path($newPicture));
-            }
+            $this->createPosSale->deleteStoredPictures($newPictures);
 
             throw $exception;
         }

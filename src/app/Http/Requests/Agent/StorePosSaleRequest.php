@@ -32,8 +32,10 @@ class StorePosSaleRequest extends FormRequest
             'remark' => ['nullable', 'string', 'max:2000'],
             'payment_method' => ['required', Rule::in(array_keys(PosSale::paymentMethods()))],
             'payment_remark' => ['nullable', 'string', 'max:500'],
-            'sale_picture' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
-            'payment_proof' => ['nullable', 'required_if:payment_method,qr', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'sale_pictures' => ['nullable', 'array', 'max:5'],
+            'sale_pictures.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'payment_proofs' => ['nullable', 'required_if:payment_method,qr', 'array', 'max:5'],
+            'payment_proofs.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ];
     }
 

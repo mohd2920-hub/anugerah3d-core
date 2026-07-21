@@ -31,6 +31,8 @@
     const submitButton = form.querySelector('[data-pos-submit]');
     const modal = document.querySelector('[data-pos-discount-modal]');
     const discountInput = modal.querySelector('[data-discount-value-input]');
+    const imageModal = document.querySelector('[data-pos-image-modal]');
+    const imageModalSrc = imageModal?.querySelector('[data-pos-image-modal-src]');
     const money = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' });
     let activeDiscountRow = null;
     let grandTotal = 0;
@@ -193,7 +195,10 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.classList.add('overflow-hidden');
-        window.setTimeout(() => discountInput.focus(), 50);
+        window.setTimeout(() => {
+            discountInput.focus();
+            discountInput.select();
+        }, 50);
     };
 
     const closeDiscountModal = () => {
@@ -201,6 +206,22 @@
         modal.classList.remove('flex');
         document.body.classList.remove('overflow-hidden');
         activeDiscountRow = null;
+    };
+
+    const closeImageModal = () => {
+        if (!imageModal || !imageModalSrc) return;
+        imageModal.classList.add('hidden');
+        imageModal.classList.remove('flex');
+        imageModalSrc.src = '';
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    const openImageModal = (url) => {
+        if (!imageModal || !imageModalSrc || !url) return;
+        imageModalSrc.src = url;
+        imageModal.classList.remove('hidden');
+        imageModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
     };
 
     form.querySelector('[data-add-pos-item]')?.addEventListener('click', () => {
@@ -332,6 +353,7 @@
     });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeDiscountModal();
+        if (event.key === 'Escape' && imageModal && !imageModal.classList.contains('hidden')) closeImageModal();
     });
     document.addEventListener('click', (event) => {
         if (event.target.closest('[data-pos-product-search]') || event.target.closest('[data-pos-product-list]')) {
@@ -364,51 +386,42 @@
 
     calculate();
 
-    document.querySelectorAll('[data-picture-input]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const input = document.getElementById(button.dataset.pictureInput);
-            if (button.dataset.pictureMode === 'camera') input.setAttribute('capture', 'environment');
-            else input.removeAttribute('capture');
-            input.click();
-        });
-    });
     form.querySelectorAll('[data-pos-picture]').forEach((input) => {
         input.addEventListener('change', () => {
             const label = form.querySelector('[data-picture-name="' + input.id + '"]');
-            if (label && input.files[0]) label.textContent = input.files[0].name + ' · ' + (input.files[0].size / 1048576).toFixed(2) + ' MB';
+            if (!label) return;
+            const maxFiles = Number(input.dataset.maxFiles || 5);
+
+            if (input.files && input.files.length > maxFiles) {
+                input.value = '';
+                label.textContent = 'Maximum ' + maxFiles + ' files allowed';
+                return;
+            }
+
+            if (!input.files || input.files.length === 0) {
+                label.textContent = input.id === 'payment_proofs' ? 'No proof selected' : 'No picture selected';
+                return;
+            }
+
+            const totalSizeMb = [...input.files].reduce((total, file) => total + file.size, 0) / 1048576;
+            label.textContent = input.files.length === 1
+                ? input.files[0].name + ' · ' + totalSizeMb.toFixed(2) + ' MB'
+                : input.files.length + ' files selected · ' + totalSizeMb.toFixed(2) + ' MB';
         });
     });
 
-    const compressPicture = (input) => new Promise((resolve) => {
-        const file = input.files[0];
-        if (!file || !file.type.startsWith('image/') || file.size < 700000) {
-            resolve();
-            return;
-        }
+    form.querySelectorAll('[data-pos-image-thumb]').forEach((button) => {
+        button.addEventListener('click', () => {
+            openImageModal(button.dataset.previewSrc || '');
+        });
+    });
 
-        const image = new Image();
-        const url = URL.createObjectURL(file);
-        image.onload = () => {
-            URL.revokeObjectURL(url);
-            const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.round(image.naturalWidth * scale);
-            canvas.height = Math.round(image.naturalHeight * scale);
-            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => {
-                if (blob && window.DataTransfer) {
-                    const transfer = new DataTransfer();
-                    transfer.items.add(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
-                    input.files = transfer.files;
-                }
-                resolve();
-            }, 'image/jpeg', 0.82);
-        };
-        image.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve();
-        };
-        image.src = url;
+    imageModal?.querySelectorAll('[data-pos-image-close]').forEach((button) => {
+        button.addEventListener('click', closeImageModal);
+    });
+
+    imageModal?.addEventListener('click', (event) => {
+        if (event.target === imageModal) closeImageModal();
     });
 
     form.addEventListener('submit', async (event) => {
@@ -417,14 +430,26 @@
             event.preventDefault();
             return;
         }
-        event.preventDefault();
+
+        const missingProductRow = [...items.querySelectorAll('[data-pos-item]')]
+            .find((row) => !row.querySelector('[data-pos-product]')?.value);
+
+        if (missingProductRow) {
+            event.preventDefault();
+            const searchInput = missingProductRow.querySelector('[data-pos-product-search]');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.classList.add('border-red-300', 'ring-2', 'ring-red-100');
+                window.setTimeout(() => {
+                    searchInput.classList.remove('border-red-300', 'ring-2', 'ring-red-100');
+                }, 1600);
+            }
+            return;
+        }
+
         const submit = submitButton;
         submit.disabled = true;
-        submit.textContent = 'Preparing pictures...';
-        await Promise.all([...form.querySelectorAll('[data-pos-picture]')].map(compressPicture));
-        form.dataset.prepared = 'true';
         submit.textContent = 'Saving sale...';
-        form.submit();
     });
 })();
 </script>

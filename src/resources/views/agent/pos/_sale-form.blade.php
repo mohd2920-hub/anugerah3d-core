@@ -1,6 +1,10 @@
 @php
     $isEdit = isset($posSale);
     $selectedSalesAgentId = (string) old('sales_agent_id', $posSale->sales_agent_id ?? auth('agent')->id());
+    $currentSalePictures = $isEdit ? $posSale->salePicturePaths() : [];
+    $currentPaymentProofs = $isEdit ? $posSale->paymentProofPaths() : [];
+    $currentSalePictureUrls = $isEdit ? $posSale->salePictureUrls() : [];
+    $currentPaymentProofUrls = $isEdit ? $posSale->paymentProofUrls() : [];
     $currentItems = old('items', $isEdit
         ? $posSale->items->map(fn ($item) => ['product_id' => $item->product_id, 'quantity' => $item->quantity, 'discount_amount' => $item->customer_discount_amount ?? $item->discount_amount ?? 0])->all()
         : [['product_id' => '', 'quantity' => 1]]);
@@ -69,7 +73,7 @@
                     <div class="flex gap-2">
                         <div class="relative min-w-0 flex-1">
                             <input type="search" value="{{ $selectedProductLabel }}" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search>
-                            <select name="items[{{ $index }}][product_id]" required class="sr-only" data-pos-product>
+                            <select name="items[{{ $index }}][product_id]" class="sr-only" data-pos-product>
                                 <option value="">Choose product</option>
                             @foreach ($products as $product)
                                     <option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}" @selected((string) $currentItem['product_id'] === (string) $product->id)>{{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>
@@ -120,9 +124,17 @@
 
         <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-4">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Sale picture <span class="normal-case text-slate-400">(optional)</span></p>
-            <input id="sale_picture" type="file" name="sale_picture" accept="image/*" class="sr-only" data-pos-picture>
-            <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" data-picture-input="sale_picture" data-picture-mode="gallery" class="rounded-xl border border-slate-200 py-2.5 text-xs font-bold">Gallery</button><button type="button" data-picture-input="sale_picture" data-picture-mode="camera" class="rounded-xl bg-orange-50 py-2.5 text-xs font-bold text-[#d95419]">Take picture</button></div>
-            <p class="mt-2 truncate text-xs text-slate-500" data-picture-name="sale_picture">{{ $isEdit && $posSale->sale_picture_path ? 'Current picture retained unless replaced' : 'No picture selected' }}</p>
+            <input id="sale_pictures" type="file" name="sale_pictures[]" accept="image/*" multiple class="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-picture data-max-files="5">
+            <p class="mt-2 truncate text-xs text-slate-500" data-picture-name="sale_pictures">{{ count($currentSalePictures) > 0 ? count($currentSalePictures).' current picture(s) retained unless replaced' : 'No picture selected' }}</p>
+            @if (count($currentSalePictures) > 0)
+                <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
+                    @foreach ($currentSalePictureUrls as $url)
+                        <button type="button" data-pos-image-thumb data-preview-src="{{ $url }}" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                            <img src="{{ $url }}" alt="Current sale picture" class="h-full w-full object-cover">
+                        </button>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 
@@ -139,17 +151,28 @@
         <input name="payment_remark" value="{{ old('payment_remark', $posSale->payment_remark ?? '') }}" maxlength="500" class="{{ $inputClass }}">
         <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-4">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Payment proof <span class="normal-case text-slate-400">(required for QR)</span></p>
-            <input id="payment_proof" type="file" name="payment_proof" accept="image/*" class="sr-only" data-pos-picture>
-            <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" data-picture-input="payment_proof" data-picture-mode="gallery" class="rounded-xl border border-slate-200 py-2.5 text-xs font-bold">Gallery</button><button type="button" data-picture-input="payment_proof" data-picture-mode="camera" class="rounded-xl bg-orange-50 py-2.5 text-xs font-bold text-[#d95419]">Take picture</button></div>
-            <p class="mt-2 truncate text-xs text-slate-500" data-picture-name="payment_proof">{{ $isEdit && $posSale->payment_proof_path ? 'Current proof retained unless replaced' : 'No proof selected' }}</p>
+            <input id="payment_proofs" type="file" name="payment_proofs[]" accept="image/*" multiple class="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-picture data-max-files="5">
+            <p class="mt-2 truncate text-xs text-slate-500" data-picture-name="payment_proofs">{{ count($currentPaymentProofs) > 0 ? count($currentPaymentProofs).' current proof(s) retained unless replaced' : 'No proof selected' }}</p>
+            @if (count($currentPaymentProofs) > 0)
+                <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
+                    @foreach ($currentPaymentProofUrls as $url)
+                        <button type="button" data-pos-image-thumb data-preview-src="{{ $url }}" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                            <img src="{{ $url }}" alt="Current payment proof" class="h-full w-full object-cover">
+                        </button>
+                    @endforeach
+                </div>
+            @endif
         </div>
-        @error('payment_proof')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+        @error('sale_pictures')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+        @error('sale_pictures.*')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+        @error('payment_proofs')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+        @error('payment_proofs.*')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
     </section>
 
     <div class="h-28"></div>
-    <div class="pointer-events-none fixed inset-x-0 z-50 hidden" style="bottom: calc(84px + env(safe-area-inset-bottom));" data-pos-submit-wrap>
+    <div class="fixed inset-x-0 z-50 hidden" style="bottom: calc(84px + env(safe-area-inset-bottom));" data-pos-submit-wrap>
         <div class="mx-auto w-full max-w-xl px-4 sm:px-5">
-            <button class="pointer-events-auto h-14 w-full rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none" data-pos-submit>{{ $submitLabel }}</button>
+            <button class="h-14 w-full rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 disabled:shadow-none" data-pos-submit>{{ $submitLabel }}</button>
         </div>
     </div>
 
@@ -157,7 +180,7 @@
 
 <template data-pos-item-template>
     <div class="rounded-2xl border border-slate-200 p-3" data-pos-item>
-        <div class="flex gap-2"><div class="relative min-w-0 flex-1"><input type="search" value="" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search><select required class="sr-only" data-pos-product><option value="">Choose product</option>@foreach ($products as $product)<option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}">{{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>@endforeach</select><div class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg" data-pos-product-list></div></div><button type="button" data-remove-pos-item class="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">×</button></div>
+        <div class="flex gap-2"><div class="relative min-w-0 flex-1"><input type="search" value="" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search><select class="sr-only" data-pos-product><option value="">Choose product</option>@foreach ($products as $product)<option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}">{{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>@endforeach</select><div class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg" data-pos-product-list></div></div><button type="button" data-remove-pos-item class="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">×</button></div>
         <div class="mt-2 grid grid-cols-2 gap-2"><div><label class="text-[10px] font-bold uppercase text-slate-400">Quantity</label><div class="mt-1 flex items-center gap-2"><button type="button" data-pos-qty-minus class="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-lg font-black text-[#17324d]">-</button><input type="number" value="1" min="1" max="9999" required class="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-center text-base font-bold" data-pos-quantity><button type="button" data-pos-qty-plus class="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-lg font-black text-[#17324d]">+</button></div></div><button type="button" class="rounded-xl bg-slate-50 px-3 py-2 text-left transition active:bg-orange-50" data-open-pos-discount><span class="block text-[10px] font-bold uppercase text-slate-400">Line total</span><span class="mt-1 block text-sm font-extrabold text-[#17324d]" data-pos-line-total>RM 0.00</span><span class="mt-1 block text-[10px] font-bold text-[#d95419]" data-pos-discount-label>Discount RM 0.00</span></button><input type="hidden" value="" data-pos-discount data-custom-discount="false"></div>
     </div>
 </template>
@@ -172,5 +195,15 @@
         <div class="mt-2 flex items-stretch overflow-hidden rounded-2xl border border-slate-200 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100"><span class="grid w-14 place-items-center bg-slate-50 text-sm font-bold text-slate-500">RM</span><input id="pos_discount_amount" type="number" min="0" step="0.01" inputmode="decimal" class="w-full border-0 px-4 py-3 text-lg font-extrabold text-[#17324d] outline-none focus:ring-0" data-discount-value-input></div>
         <dl class="mt-5 space-y-3 rounded-2xl bg-slate-50 p-4 text-sm"><div class="flex justify-between"><dt class="text-slate-500">Gross total</dt><dd class="font-semibold text-slate-900" data-discount-gross>RM 0.00</dd></div><div class="flex justify-between"><dt class="text-slate-500">Discount amount</dt><dd class="font-semibold text-[#d95419]" data-discount-preview-amount>- RM 0.00</dd></div><div class="flex justify-between border-t border-slate-200 pt-3"><dt class="font-bold text-slate-700">Net line total</dt><dd class="text-lg font-extrabold text-[#17324d]" data-discount-net>RM 0.00</dd></div></dl>
         <div class="mt-5 grid grid-cols-2 gap-3"><button type="button" class="h-12 rounded-2xl border border-slate-200 text-sm font-extrabold text-slate-700" data-reset-pos-discount>Reset to RM 0.00</button><button type="button" class="h-12 rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white" data-apply-pos-discount>Apply discount</button></div>
+    </div>
+</div>
+
+<div class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/80 p-4" data-pos-image-modal>
+    <button type="button" class="absolute inset-0" data-pos-image-close aria-label="Close image preview"></button>
+    <div class="relative w-full max-w-3xl">
+        <button type="button" class="absolute -top-12 right-0 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-2xl leading-none text-white" data-pos-image-close aria-label="Close image preview">×</button>
+        <div class="overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <img src="" alt="Preview image" class="max-h-[78vh] w-full bg-slate-100 object-contain" data-pos-image-modal-src>
+        </div>
     </div>
 </div>

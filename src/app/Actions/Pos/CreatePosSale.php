@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -33,8 +34,10 @@ class CreatePosSale
                     'remark' => $data['remark'] ?? null,
                     'payment_method' => $data['payment_method'],
                     'payment_remark' => $data['payment_remark'] ?? null,
-                    'sale_picture_path' => $paths['sale_picture_path'],
-                    'payment_proof_path' => $paths['payment_proof_path'],
+                    'sale_picture_path' => $paths['sale_picture_paths'][0] ?? null,
+                    'sale_picture_paths' => $paths['sale_picture_paths'],
+                    'payment_proof_path' => $paths['payment_proof_paths'][0] ?? null,
+                    'payment_proof_paths' => $paths['payment_proof_paths'],
                     'total_amount' => collect($items)->sum('line_total'),
                     'sold_at' => now(),
                 ]);
@@ -44,10 +47,10 @@ class CreatePosSale
                 return $sale->load(['items', 'businessSite', 'salesAgent']);
             });
         } catch (Throwable $exception) {
-            File::delete(array_filter([
-                $paths['sale_picture_path'] ? public_path($paths['sale_picture_path']) : null,
-                $paths['payment_proof_path'] ? public_path($paths['payment_proof_path']) : null,
-            ]));
+            $this->deleteStoredPictures([
+                ...$paths['sale_picture_paths'],
+                ...$paths['payment_proof_paths'],
+            ]);
 
             throw $exception;
         }
@@ -104,26 +107,148 @@ class CreatePosSale
         })->all();
     }
 
-    /** @return array{sale_picture_path: ?string, payment_proof_path: ?string} */
+    /** @return array{sale_picture_paths: array<int, string>, payment_proof_paths: array<int, string>} */
     private function storePictures(array $data): array
     {
         return [
-            'sale_picture_path' => $this->storePicture($data['sale_picture'] ?? null, 'sale'),
-            'payment_proof_path' => $this->storePicture($data['payment_proof'] ?? null, 'payment'),
+            'sale_picture_paths' => $this->storePictureSet($data['sale_pictures'] ?? [], 'sale'),
+            'payment_proof_paths' => $this->storePictureSet($data['payment_proofs'] ?? [], 'payment'),
         ];
     }
 
-    public function storePicture(?UploadedFile $file, string $type): ?string
+    /** @param array<int, UploadedFile>|UploadedFile|null $files */
+    public function storePictureSet(array|UploadedFile|null $files, string $type): array
     {
-        if ($file === null) {
-            return null;
+        $uploads = $files instanceof UploadedFile
+            ? [$files]
+            : array_values(array_filter(is_array($files) ? $files : [], fn ($file) => $file instanceof UploadedFile));
+
+        return collect($uploads)
+            ->take(5)
+            ->map(fn (UploadedFile $file): string => $this->storePicture($file, $type))
+            ->values()
+            ->all();
+    }
+
+    public function storePicture(UploadedFile $file, string $type): string
+    {
+        [$targetWidth, $targetHeight, $mime] = $this->targetDimensions($file);
+        $extension = $this->extensionForMime($mime) ?? $file->guessExtension() ?? 'jpg';
+        $filename = $type.'-'.Str::uuid().'.'.$extension;
+        $relativePath = 'pos-sales/'.$filename;
+        $diskName = $this->pictureDisk();
+        $disk = Storage::disk($diskName);
+
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'pos-sale-');
+        $sourcePath = $file->getRealPath();
+        $outputPath = $temporaryFile ?: $sourcePath;
+
+        if ($temporaryFile && ! $this->resizeToWidth($sourcePath, $temporaryFile, $mime, $targetWidth, $targetHeight)) {
+            $outputPath = $sourcePath;
         }
 
-        $directory = public_path('pos-sales');
-        File::ensureDirectoryExists($directory);
-        $filename = $type.'-'.Str::uuid().'.'.$file->guessExtension();
-        $file->move($directory, $filename);
+        $disk->put($relativePath, File::get($outputPath), 'public');
 
-        return 'pos-sales/'.$filename;
+        if ($temporaryFile && File::exists($temporaryFile)) {
+            File::delete($temporaryFile);
+        }
+
+        return $relativePath;
+    }
+
+    /** @param array<int, string> $paths */
+    public function deleteStoredPictures(array $paths): void
+    {
+        $disk = Storage::disk($this->pictureDisk());
+
+        foreach (array_filter($paths, fn ($path) => is_string($path) && $path !== '') as $path) {
+            $disk->delete($path);
+
+            if (File::exists(public_path($path))) {
+                File::delete(public_path($path));
+            }
+        }
+    }
+
+    private function pictureDisk(): string
+    {
+        $default = (string) config('filesystems.default', 'public');
+
+        if ($default === 's3' && class_exists('League\\Flysystem\\AwsS3V3\\PortableVisibilityConverter')) {
+            return 's3';
+        }
+
+        return 'public';
+    }
+
+    /** @return array{0:int,1:int,2:string} */
+    private function targetDimensions(UploadedFile $file): array
+    {
+        $image = @getimagesize($file->getRealPath());
+
+        if (! is_array($image)) {
+            return [800, 800, 'image/jpeg'];
+        }
+
+        $sourceWidth = max(1, (int) ($image[0] ?? 1));
+        $sourceHeight = max(1, (int) ($image[1] ?? 1));
+        $mime = (string) ($image['mime'] ?? 'image/jpeg');
+
+        if ($sourceWidth <= 800) {
+            return [$sourceWidth, $sourceHeight, $mime];
+        }
+
+        $ratio = 800 / $sourceWidth;
+
+        return [800, max(1, (int) round($sourceHeight * $ratio)), $mime];
+    }
+
+    private function extensionForMime(string $mime): ?string
+    {
+        return match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => null,
+        };
+    }
+
+    private function resizeToWidth(string $sourcePath, string $targetPath, string $mime, int $width, int $height): bool
+    {
+        $source = match ($mime) {
+            'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourcePath) : false,
+            'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourcePath) : false,
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourcePath) : false,
+            default => false,
+        };
+
+        if (! $source) {
+            return false;
+        }
+
+        $canvas = imagecreatetruecolor($width, $height);
+
+        if ($mime === 'image/png' || $mime === 'image/webp') {
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+            imagefilledrectangle($canvas, 0, 0, $width, $height, $transparent);
+        }
+
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+        imagecopyresampled($canvas, $source, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
+
+        $saved = match ($mime) {
+            'image/jpeg' => imagejpeg($canvas, $targetPath, 85),
+            'image/png' => imagepng($canvas, $targetPath, 6),
+            'image/webp' => imagewebp($canvas, $targetPath, 82),
+            default => false,
+        };
+
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        return (bool) $saved;
     }
 }
