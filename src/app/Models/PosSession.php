@@ -28,7 +28,11 @@ class PosSession extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->whereNull('signed_out_at')->where('expires_at', '>', now());
+        return $query
+            ->whereNull('signed_out_at')
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNull('expires_at')
+                ->orWhere('expires_at', '>', now()));
     }
 
     protected function casts(): array

@@ -65,7 +65,7 @@ class SaleController extends Controller
             'businessSite:id,site_name,city',
             'salesAgent:id,agt_name,login_id,email,phone_number',
             'recordedBy:id,agt_name,login_id,email,phone_number',
-            'posSession:id,agent_id,business_site_id,signed_in_at,expires_at,signed_out_at',
+            'posSession:id,agent_id,business_site_id,signed_in_at,signed_out_at',
             'items.product:id,prd_picture',
         ]);
 
@@ -77,7 +77,12 @@ class SaleController extends Controller
                     fn (PosSaleItem $item): float => (float) $item->unit_price * $item->quantity,
                 ),
                 'discount_total' => $sale->items->sum(
-                    fn (PosSaleItem $item): float => (float) $item->discount_amount,
+                    fn (PosSaleItem $item): float => (float) $item->customer_discount_amount,
+                ),
+                'salesperson_commission_total' => $sale->items->sum(
+                    fn (PosSaleItem $item): float => ((float) $item->unit_price * $item->quantity)
+                        - (float) $item->agent_discount_amount
+                        - (float) $item->customer_discount_amount,
                 ),
             ],
         ]);

@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'product_name',
     'quantity',
     'unit_price',
-    'discount_percentage',
-    'discount_amount',
+    'agent_discount_percentage',
+    'agent_discount_amount',
+    'customer_discount_amount',
     'line_total',
 ])]
 class PosSaleItem extends Model
@@ -34,8 +35,9 @@ class PosSaleItem extends Model
         return [
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
-            'discount_percentage' => 'decimal:2',
-            'discount_amount' => 'decimal:2',
+            'agent_discount_percentage' => 'decimal:2',
+            'agent_discount_amount' => 'decimal:2',
+            'customer_discount_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }

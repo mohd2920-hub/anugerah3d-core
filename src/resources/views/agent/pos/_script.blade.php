@@ -6,15 +6,14 @@
 
     const timer = root.querySelector('[data-pos-timer]');
     if (timer) {
-        const expiresAt = new Date(timer.dataset.expiresAt).getTime();
+        const signedInAt = new Date(timer.dataset.signedInAt).getTime();
         const tick = () => {
-            const remaining = Math.max(0, expiresAt - Date.now());
-            const seconds = Math.floor(remaining / 1000);
+            const elapsed = Math.max(0, Date.now() - signedInAt);
+            const seconds = Math.floor(elapsed / 1000);
             const hours = String(Math.floor(seconds / 3600)).padStart(2, '0');
             const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
             const remainder = String(seconds % 60).padStart(2, '0');
             timer.textContent = hours + ':' + minutes + ':' + remainder;
-            if (remaining === 0) window.location.reload();
         };
         tick();
         window.setInterval(tick, 1000);
@@ -25,26 +24,118 @@
 
     const items = form.querySelector('[data-pos-items]');
     const template = document.querySelector('[data-pos-item-template]');
-    const salesAgent = form.querySelector('[data-pos-sales-agent]');
+    const salesAgentInput = form.querySelector('[data-pos-sales-agent-input]');
+    const salesAgentGrid = form.querySelector('[data-pos-sales-agent-grid]');
+    const summaryCard = form.querySelector('[data-pos-summary-card]');
+    const submitWrap = form.querySelector('[data-pos-submit-wrap]');
+    const submitButton = form.querySelector('[data-pos-submit]');
     const modal = document.querySelector('[data-pos-discount-modal]');
-    const discountInput = modal.querySelector('[data-discount-percentage]');
+    const discountInput = modal.querySelector('[data-discount-value-input]');
     const money = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' });
     let activeDiscountRow = null;
+    let grandTotal = 0;
+    let hasSeenSummary = false;
 
-    const clampDiscount = (value) => Math.min(100, Math.max(0, Number(value) || 0));
+    const updateSubmitState = () => {
+        if (!submitButton || !submitWrap) return;
+        submitWrap.classList.toggle('hidden', !hasSeenSummary);
+        submitButton.disabled = grandTotal <= 0;
+    };
+
+    const setAgentChoiceState = (button, selected) => {
+        button.classList.toggle('border-orange-300', selected);
+        button.classList.toggle('bg-orange-50', selected);
+        button.classList.toggle('text-[#d95419]', selected);
+        button.classList.toggle('border-slate-200', !selected);
+        button.classList.toggle('bg-white', !selected);
+        button.classList.toggle('text-slate-700', !selected);
+
+        const icon = button.querySelector('[data-pos-agent-icon]');
+        if (icon) {
+            icon.classList.toggle('bg-[#d95419]', selected);
+            icon.classList.toggle('text-white', selected);
+            icon.classList.toggle('bg-slate-100', !selected);
+            icon.classList.toggle('text-slate-700', !selected);
+        }
+
+        const photo = button.querySelector('[data-pos-agent-photo]');
+        if (photo) {
+            photo.classList.toggle('ring-orange-300', selected);
+            photo.classList.toggle('ring-slate-200', !selected);
+        }
+    };
+
+    const syncSalesAgentChoice = () => {
+        if (!salesAgentGrid || !salesAgentInput) return;
+        const selected = salesAgentInput.value;
+        salesAgentGrid.querySelectorAll('[data-pos-sales-agent-choice]').forEach((button) => {
+            setAgentChoiceState(button, button.dataset.agentId === selected);
+        });
+    };
+
+    const clampDiscount = (value, maxValue = Number.POSITIVE_INFINITY) => Math.min(maxValue, Math.max(0, Number(value) || 0));
     const rowPrice = (row) => Number(row.querySelector('[data-pos-product]').selectedOptions[0]?.dataset.price || 0);
     const rowQuantity = (row) => Number(row.querySelector('[data-pos-quantity]').value || 0);
     const rowGross = (row) => rowPrice(row) * rowQuantity(row);
-    const rowBaseline = (row) => {
-        const agentDiscount = Number(salesAgent.selectedOptions[0]?.dataset.discount || 0);
-        const productDiscount = Number(row.querySelector('[data-pos-product]').selectedOptions[0]?.dataset.defaultDiscount || 0);
-        return clampDiscount(agentDiscount > 0 ? agentDiscount : productDiscount);
+    const renderProductList = (row, keyword = '') => {
+        const searchInput = row.querySelector('[data-pos-product-search]');
+        const select = row.querySelector('[data-pos-product]');
+        const list = row.querySelector('[data-pos-product-list]');
+        if (!searchInput || !select || !list) return;
+
+        const normalized = keyword.trim().toLowerCase();
+        const options = [...select.options].filter((option) => option.value !== '');
+        const filtered = normalized === ''
+            ? options
+            : options.filter((option) => option.textContent.toLowerCase().includes(normalized));
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">No matching product</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map((option) => {
+            const isSelected = option.value === select.value;
+            return '<button type="button" class="block w-full px-3 py-2 text-left text-sm ' + (isSelected ? 'bg-orange-50 text-[#d95419] font-semibold' : 'text-slate-700 hover:bg-slate-50') + '" data-pos-product-option data-value="' + option.value + '" data-label="' + option.textContent.replace(/"/g, '&quot;') + '">' + option.textContent + '</button>';
+        }).join('');
     };
 
-    const setRowBaseline = (row, force = false) => {
+    const openProductList = (row) => {
+        const list = row.querySelector('[data-pos-product-list]');
+        if (!list) return;
+        list.classList.remove('hidden');
+    };
+
+    const closeProductList = (row) => {
+        const list = row.querySelector('[data-pos-product-list]');
+        if (!list) return;
+        list.classList.add('hidden');
+    };
+
+    const syncSearchWithSelectedProduct = (row, fallbackToEmpty = false) => {
+        const searchInput = row.querySelector('[data-pos-product-search]');
+        const select = row.querySelector('[data-pos-product]');
+        if (!searchInput || !select) return;
+
+        const selectedLabel = select.selectedOptions[0]?.textContent || '';
+        searchInput.value = select.value
+            ? selectedLabel
+            : (fallbackToEmpty ? '' : searchInput.value);
+    };
+
+    const applySelectedProduct = (row, value, label) => {
+        const select = row.querySelector('[data-pos-product]');
+        const searchInput = row.querySelector('[data-pos-product-search]');
+        if (!select || !searchInput) return;
+
+        select.value = value;
+        searchInput.value = label;
+        closeProductList(row);
+    };
+    const setRowDefaultDiscount = (row, force = false) => {
         const discount = row.querySelector('[data-pos-discount]');
-        if (force || discount.dataset.customDiscount !== 'true' || discount.value === '') {
-            discount.value = rowBaseline(row).toFixed(2);
+        if (force || discount.value === '') {
+            discount.value = '0.00';
             discount.dataset.customDiscount = 'false';
         }
     };
@@ -53,7 +144,7 @@
         items.querySelectorAll('[data-pos-item]').forEach((row, index) => {
             row.querySelector('[data-pos-product]').name = 'items[' + index + '][product_id]';
             row.querySelector('[data-pos-quantity]').name = 'items[' + index + '][quantity]';
-            row.querySelector('[data-pos-discount]').name = 'items[' + index + '][discount_percentage]';
+            row.querySelector('[data-pos-discount]').name = 'items[' + index + '][discount_amount]';
         });
     };
 
@@ -62,39 +153,42 @@
         let discountTotal = 0;
 
         items.querySelectorAll('[data-pos-item]').forEach((row) => {
-            setRowBaseline(row);
             const gross = rowGross(row);
-            const percentage = clampDiscount(row.querySelector('[data-pos-discount]').value);
-            const discount = gross * percentage / 100;
+            const discountInputValue = row.querySelector('[data-pos-discount]');
+            const discount = clampDiscount(discountInputValue.value, gross);
             const net = gross - discount;
+
+            if (discount !== Number(discountInputValue.value || 0)) {
+                discountInputValue.value = discount.toFixed(2);
+            }
 
             grossTotal += gross;
             discountTotal += discount;
             row.querySelector('[data-pos-line-total]').textContent = money.format(net);
-            row.querySelector('[data-pos-discount-label]').textContent = 'Discount ' + percentage.toFixed(2).replace(/\.00$/, '') + '% · ' + money.format(discount);
+            row.querySelector('[data-pos-discount-label]').textContent = 'Discount ' + money.format(discount);
         });
 
         form.querySelector('[data-pos-gross-total]').textContent = money.format(grossTotal);
         form.querySelector('[data-pos-total-discount]').textContent = '- ' + money.format(discountTotal);
-        form.querySelector('[data-pos-grand-total]').textContent = money.format(grossTotal - discountTotal);
+        grandTotal = Math.max(0, grossTotal - discountTotal);
+        form.querySelector('[data-pos-grand-total]').textContent = money.format(grandTotal);
+        updateSubmitState();
     };
 
     const updateModalPreview = () => {
         if (!activeDiscountRow) return;
         const gross = rowGross(activeDiscountRow);
-        const percentage = clampDiscount(discountInput.value);
-        const discount = gross * percentage / 100;
+        const discount = clampDiscount(discountInput.value, gross);
         modal.querySelector('[data-discount-gross]').textContent = money.format(gross);
-        modal.querySelector('[data-discount-amount]').textContent = '- ' + money.format(discount);
+        modal.querySelector('[data-discount-preview-amount]').textContent = '- ' + money.format(discount);
         modal.querySelector('[data-discount-net]').textContent = money.format(gross - discount);
     };
 
     const openDiscountModal = (row) => {
         activeDiscountRow = row;
-        setRowBaseline(row);
-        const percentage = clampDiscount(row.querySelector('[data-pos-discount]').value);
-        modal.querySelector('[data-discount-baseline]').textContent = rowBaseline(row).toFixed(2).replace(/\.00$/, '') + '%';
-        discountInput.value = percentage.toFixed(2);
+        setRowDefaultDiscount(row);
+        const discount = clampDiscount(row.querySelector('[data-pos-discount]').value, rowGross(row));
+        discountInput.value = discount.toFixed(2);
         updateModalPreview();
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -112,20 +206,56 @@
     form.querySelector('[data-add-pos-item]')?.addEventListener('click', () => {
         items.appendChild(template.content.cloneNode(true));
         const row = items.lastElementChild;
-        setRowBaseline(row, true);
+        setRowDefaultDiscount(row, true);
+        syncSearchWithSelectedProduct(row, true);
         reindex();
         calculate();
     });
 
-    salesAgent.addEventListener('change', () => {
-        items.querySelectorAll('[data-pos-item]').forEach((row) => setRowBaseline(row, true));
-        calculate();
+    salesAgentGrid?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pos-sales-agent-choice]');
+        if (!button || !salesAgentInput) return;
+
+        salesAgentInput.value = button.dataset.agentId || '';
+        syncSalesAgentChoice();
     });
 
     items.addEventListener('click', (event) => {
+        const productOption = event.target.closest('[data-pos-product-option]');
+        if (productOption) {
+            const row = productOption.closest('[data-pos-item]');
+            applySelectedProduct(row, productOption.dataset.value || '', productOption.dataset.label || '');
+            calculate();
+            return;
+        }
+
         const discountButton = event.target.closest('[data-open-pos-discount]');
         if (discountButton) {
             openDiscountModal(discountButton.closest('[data-pos-item]'));
+            return;
+        }
+
+        const qtyPlusButton = event.target.closest('[data-pos-qty-plus]');
+        if (qtyPlusButton) {
+            const row = qtyPlusButton.closest('[data-pos-item]');
+            const quantityInput = row?.querySelector('[data-pos-quantity]');
+            if (!quantityInput) return;
+            const max = Number(quantityInput.max || 9999);
+            const value = Number(quantityInput.value || 0);
+            quantityInput.value = String(Math.min(max, value + 1));
+            calculate();
+            return;
+        }
+
+        const qtyMinusButton = event.target.closest('[data-pos-qty-minus]');
+        if (qtyMinusButton) {
+            const row = qtyMinusButton.closest('[data-pos-item]');
+            const quantityInput = row?.querySelector('[data-pos-quantity]');
+            if (!quantityInput) return;
+            const min = Number(quantityInput.min || 1);
+            const value = Number(quantityInput.value || 0);
+            quantityInput.value = String(Math.max(min, value - 1));
+            calculate();
             return;
         }
 
@@ -136,7 +266,7 @@
             const row = removeButton.closest('[data-pos-item]');
             row.querySelector('[data-pos-product]').value = '';
             row.querySelector('[data-pos-quantity]').value = 1;
-            setRowBaseline(row, true);
+            setRowDefaultDiscount(row, true);
         } else {
             removeButton.closest('[data-pos-item]').remove();
         }
@@ -147,16 +277,43 @@
 
     items.addEventListener('change', (event) => {
         const row = event.target.closest('[data-pos-item]');
-        if (row && event.target.matches('[data-pos-product]')) setRowBaseline(row, true);
+        if (row && event.target.matches('[data-pos-product]')) {
+            syncSearchWithSelectedProduct(row);
+        }
         calculate();
     });
-    items.addEventListener('input', calculate);
+    items.addEventListener('input', (event) => {
+        const row = event.target.closest('[data-pos-item]');
+        if (row && event.target.matches('[data-pos-product-search]')) {
+            const keyword = event.target.value;
+            const select = row.querySelector('[data-pos-product]');
+            if (select && !select.selectedOptions[0]?.textContent.toLowerCase().includes(keyword.trim().toLowerCase())) {
+                select.value = '';
+            }
+            renderProductList(row, keyword);
+            openProductList(row);
+        }
+        calculate();
+    });
+    items.addEventListener('focusin', (event) => {
+        const row = event.target.closest('[data-pos-item]');
+        if (!row || !event.target.matches('[data-pos-product-search]')) return;
+
+        renderProductList(row, event.target.value || '');
+        openProductList(row);
+    });
+    items.addEventListener('focusout', (event) => {
+        const row = event.target.closest('[data-pos-item]');
+        if (!row || !event.target.matches('[data-pos-product-search]')) return;
+
+        window.setTimeout(() => closeProductList(row), 120);
+    });
 
     discountInput.addEventListener('input', updateModalPreview);
     modal.querySelector('[data-apply-pos-discount]').addEventListener('click', () => {
         if (!activeDiscountRow) return;
         const discount = activeDiscountRow.querySelector('[data-pos-discount]');
-        discount.value = clampDiscount(discountInput.value).toFixed(2);
+        discount.value = clampDiscount(discountInput.value, rowGross(activeDiscountRow)).toFixed(2);
         discount.dataset.customDiscount = 'true';
         calculate();
         closeDiscountModal();
@@ -164,7 +321,7 @@
     modal.querySelector('[data-reset-pos-discount]').addEventListener('click', () => {
         if (!activeDiscountRow) return;
         const discount = activeDiscountRow.querySelector('[data-pos-discount]');
-        discount.value = rowBaseline(activeDiscountRow).toFixed(2);
+        discount.value = '0.00';
         discount.dataset.customDiscount = 'false';
         discountInput.value = discount.value;
         updateModalPreview();
@@ -176,9 +333,35 @@
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeDiscountModal();
     });
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('[data-pos-product-search]') || event.target.closest('[data-pos-product-list]')) {
+            return;
+        }
+
+        items.querySelectorAll('[data-pos-item]').forEach((row) => closeProductList(row));
+    });
 
     reindex();
-    items.querySelectorAll('[data-pos-item]').forEach((row) => setRowBaseline(row));
+    syncSalesAgentChoice();
+    items.querySelectorAll('[data-pos-item]').forEach((row) => {
+        setRowDefaultDiscount(row);
+        syncSearchWithSelectedProduct(row, true);
+        closeProductList(row);
+    });
+
+    if (summaryCard && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0]?.isIntersecting) {
+                hasSeenSummary = true;
+                updateSubmitState();
+            }
+        }, { threshold: 0.35 });
+
+        observer.observe(summaryCard);
+    } else {
+        hasSeenSummary = true;
+    }
+
     calculate();
 
     document.querySelectorAll('[data-picture-input]').forEach((button) => {
@@ -230,8 +413,12 @@
 
     form.addEventListener('submit', async (event) => {
         if (form.dataset.prepared === 'true') return;
+        if (submitButton?.disabled) {
+            event.preventDefault();
+            return;
+        }
         event.preventDefault();
-        const submit = form.querySelector('[data-pos-submit]');
+        const submit = submitButton;
         submit.disabled = true;
         submit.textContent = 'Preparing pictures...';
         await Promise.all([...form.querySelectorAll('[data-pos-picture]')].map(compressPicture));

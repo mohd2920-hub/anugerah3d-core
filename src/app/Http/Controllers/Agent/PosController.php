@@ -30,13 +30,22 @@ class PosController extends Controller
             'activeSession' => $activeSession?->load('businessSite'),
             'businessSites' => $businessSites,
             'salesAgents' => $activeSession
-                ? $activeSession->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage'])
+                ? $activeSession->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture'])
                 : collect(),
             'products' => $activeSession
                 ? Product::query()->orderBy('prd_name')->get(['id', 'prd_code', 'prd_name', 'price_selling', 'agent_discount_default', 'prd_balance'])
                 : collect(),
             'sales' => PosSale::query()
-                ->whereIn('business_site_id', $siteIds)
+                ->when(
+                    $activeSession,
+                    fn ($query) => $query
+                        ->where('business_site_id', $activeSession->business_site_id)
+                        ->whereBetween('sold_at', [
+                            $activeSession->signed_in_at,
+                            $activeSession->signed_out_at ?? now(),
+                        ]),
+                    fn ($query) => $query->whereRaw('1 = 0'),
+                )
                 ->with(['businessSite:id,site_name,city', 'salesAgent:id,agt_name', 'recordedBy:id,agt_name', 'items'])
                 ->latest('sold_at')
                 ->paginate(15),
@@ -58,11 +67,10 @@ class PosController extends Controller
                 'agent_id' => $agent->getKey(),
                 'business_site_id' => $request->integer('business_site_id'),
                 'signed_in_at' => now(),
-                'expires_at' => now()->addHour(),
             ]);
         });
 
-        return redirect()->route('agent.pos.index')->with('success', 'POS session started for one hour.');
+        return redirect()->route('agent.pos.index')->with('success', 'You have checked in to the business site.');
     }
 
     public function signOut(Request $request): RedirectResponse
@@ -73,7 +81,7 @@ class PosController extends Controller
             $session->update(['signed_out_at' => now()]);
         }
 
-        return redirect()->route('agent.pos.index')->with('success', 'You have signed out from the business site.');
+        return redirect()->route('agent.pos.index')->with('success', 'You have checked out from the business site.');
     }
 
     public function store(StorePosSaleRequest $request, CreatePosSale $createPosSale): RedirectResponse
@@ -91,7 +99,7 @@ class PosController extends Controller
         return view('agent.pos.edit', [
             'activeSession' => $session->load('businessSite'),
             'posSale' => $posSale->load('items'),
-            'salesAgents' => $session->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage']),
+            'salesAgents' => $session->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture']),
             'products' => Product::query()->orderBy('prd_name')->get(['id', 'prd_code', 'prd_name', 'price_selling', 'agent_discount_default', 'prd_balance']),
             'paymentMethods' => PosSale::paymentMethods(),
         ]);

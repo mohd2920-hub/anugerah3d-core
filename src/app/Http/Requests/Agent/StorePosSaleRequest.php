@@ -23,10 +23,10 @@ class StorePosSaleRequest extends FormRequest
         return [
             'sales_agent_id' => ['required', 'integer', 'exists:usr_agent,id'],
             'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*' => ['array:product_id,quantity,discount_percentage'],
+            'items.*' => ['array:product_id,quantity,discount_amount'],
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
-            'items.*.discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'customer_name' => ['nullable', 'string', 'max:150'],
             'customer_phone' => ['nullable', 'string', 'max:50'],
             'remark' => ['nullable', 'string', 'max:2000'],

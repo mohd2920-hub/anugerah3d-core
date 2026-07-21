@@ -62,7 +62,7 @@ class CreatePosSale
             ->keyBy('id');
     }
 
-    /** @param array<int, array{product_id: int, quantity: int, discount_percentage?: float|int|string|null}> $items */
+    /** @param array<int, array{product_id: int, quantity: int, discount_amount?: float|int|string|null}> $items */
     public function items(array $items, int $salesAgentId): array
     {
         $agentDiscount = (float) Agent::query()
@@ -72,7 +72,7 @@ class CreatePosSale
         return $this->itemRows($items, $this->productsFor($items), $agentDiscount);
     }
 
-    /** @param array<int, array{product_id: int, quantity: int, discount_percentage?: float|int|string|null}> $items */
+    /** @param array<int, array{product_id: int, quantity: int, discount_amount?: float|int|string|null}> $items */
     private function itemRows(array $items, Collection $products, float $agentDiscount): array
     {
         return collect($items)->map(function (array $item) use ($products, $agentDiscount): array {
@@ -84,10 +84,11 @@ class CreatePosSale
             $baselineDiscount = $agentDiscount > 0
                 ? $agentDiscount
                 : (float) $product->agent_discount_default;
-            $discountPercentage = isset($item['discount_percentage'])
-                ? min(100, max(0, (float) $item['discount_percentage']))
-                : $baselineDiscount;
-            $discountAmountCents = (int) round($grossTotalCents * ($discountPercentage / 100));
+            $agentDiscountAmountCents = (int) round($grossTotalCents * ($baselineDiscount / 100));
+            $customerDiscountCents = isset($item['discount_amount'])
+                ? (int) round(max(0, (float) $item['discount_amount']) * 100)
+                : 0;
+            $customerDiscountAppliedCents = min($grossTotalCents, $customerDiscountCents);
 
             return [
                 'product_id' => $product->getKey(),
@@ -95,9 +96,10 @@ class CreatePosSale
                 'product_name' => $product->prd_name,
                 'quantity' => $quantity,
                 'unit_price' => $unitPriceCents / 100,
-                'discount_percentage' => $discountPercentage,
-                'discount_amount' => $discountAmountCents / 100,
-                'line_total' => ($grossTotalCents - $discountAmountCents) / 100,
+                'agent_discount_percentage' => $baselineDiscount,
+                'agent_discount_amount' => $agentDiscountAmountCents / 100,
+                'customer_discount_amount' => $customerDiscountAppliedCents / 100,
+                'line_total' => ($grossTotalCents - $customerDiscountAppliedCents) / 100,
             ];
         })->all();
     }
