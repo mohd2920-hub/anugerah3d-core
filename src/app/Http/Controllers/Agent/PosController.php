@@ -10,12 +10,15 @@ use App\Http\Requests\Agent\StorePosSaleRequest;
 use App\Http\Requests\Agent\UpdatePosSaleRequest;
 use App\Models\Agent;
 use App\Models\PosSale;
+use App\Models\PosSaleItem;
 use App\Models\PosSession;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class PosController extends Controller
 {
@@ -24,7 +27,7 @@ class PosController extends Controller
         $agent = $request->user('agent');
         $activeSession = $this->activeSession($agent);
         $businessSites = $agent->businessSites()->orderBy('site_name')->get(['business_sites.id', 'site_name', 'city']);
-        $siteIds = $businessSites->pluck('id');
+        $products = $activeSession ? $this->posProducts() : collect();
 
         return view('agent.pos.index', [
             'activeSession' => $activeSession?->load('businessSite'),
@@ -32,8 +35,9 @@ class PosController extends Controller
             'salesAgents' => $activeSession
                 ? $activeSession->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture'])
                 : collect(),
-            'products' => $activeSession
-                ? Product::query()->orderBy('prd_name')->get(['id', 'prd_code', 'prd_name', 'price_selling', 'agent_discount_default', 'prd_balance'])
+            'products' => $products,
+            'topProducts' => $activeSession
+                ? $this->topSellingProducts($products, $activeSession->business_site_id)
                 : collect(),
             'sales' => PosSale::query()
                 ->when(
@@ -95,12 +99,14 @@ class PosController extends Controller
     {
         $session = $this->activeSession($request->user('agent'));
         abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+        $products = $this->posProducts();
 
         return view('agent.pos.edit', [
             'activeSession' => $session->load('businessSite'),
             'posSale' => $posSale->load('items'),
             'salesAgents' => $session->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture']),
-            'products' => Product::query()->orderBy('prd_name')->get(['id', 'prd_code', 'prd_name', 'price_selling', 'agent_discount_default', 'prd_balance']),
+            'products' => $products,
+            'topProducts' => $this->topSellingProducts($products, $session->business_site_id),
             'paymentMethods' => PosSale::paymentMethods(),
         ]);
     }
@@ -112,6 +118,36 @@ class PosController extends Controller
         return redirect()->route('agent.pos.index', ['tab' => 'history'])->with('success', 'Sale updated successfully.');
     }
 
+    public function destroy(Request $request, PosSale $posSale, CreatePosSale $createPosSale): RedirectResponse
+    {
+        $session = $this->activeSession($request->user('agent'));
+        abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+
+        $request->validateWithBag('deleteSale', [
+            'delete_password' => ['required', 'string'],
+        ]);
+
+        $agent = $request->user('agent');
+
+        if (! Hash::check((string) $request->input('delete_password'), $agent->password)) {
+            return back()
+                ->withInput($request->except('delete_password'))
+                ->withErrors(['delete_password' => 'The provided password is incorrect.'], 'deleteSale');
+        }
+
+        $picturePaths = [
+            ...$posSale->salePicturePaths(),
+            ...$posSale->paymentProofPaths(),
+        ];
+
+        $posSale->delete();
+        $createPosSale->deleteStoredPictures($picturePaths);
+
+        return redirect()
+            ->route('agent.pos.index', ['tab' => 'history'])
+            ->with('success', 'Sale deleted successfully.');
+    }
+
     private function activeSession(Agent $agent): ?PosSession
     {
         return PosSession::query()
@@ -120,5 +156,48 @@ class PosController extends Controller
             ->whereHas('businessSite.agents', fn ($query) => $query->whereKey($agent->getKey()))
             ->latest('signed_in_at')
             ->first();
+    }
+
+    private function posProducts(): Collection
+    {
+        return Product::query()
+            ->with('images:id,product_id,image_path,alt_text,position')
+            ->orderBy('prd_name')
+            ->get([
+                'id',
+                'prd_code',
+                'prd_name',
+                'price_selling',
+                'agent_discount_default',
+                'prd_balance',
+                'prd_picture',
+            ]);
+    }
+
+    private function topSellingProducts(Collection $products, int $businessSiteId): Collection
+    {
+        $rankedProductIds = PosSaleItem::query()
+            ->join('pos_sales', 'pos_sales.id', '=', 'pos_sale_items.pos_sale_id')
+            ->where('pos_sales.business_site_id', $businessSiteId)
+            ->select('pos_sale_items.product_id')
+            ->selectRaw('SUM(pos_sale_items.quantity) as units_sold')
+            ->groupBy('pos_sale_items.product_id')
+            ->orderByDesc('units_sold')
+            ->orderBy('pos_sale_items.product_id')
+            ->limit(14)
+            ->pluck('pos_sale_items.product_id')
+            ->map(fn ($productId): int => (int) $productId);
+
+        $rankedProducts = $rankedProductIds
+            ->map(fn (int $productId) => $products->firstWhere('id', $productId))
+            ->filter();
+
+        return $rankedProducts
+            ->concat(
+                $products
+                    ->whereNotIn('id', $rankedProductIds)
+                    ->take(14 - $rankedProducts->count()),
+            )
+            ->values();
     }
 }

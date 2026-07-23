@@ -28,6 +28,7 @@ Route::middleware('auth:agent')->group(function (): void {
     Route::post('/pos/sales', [PosController::class, 'store'])->name('pos.sales.store');
     Route::get('/pos/sales/{posSale}/edit', [PosController::class, 'edit'])->name('pos.sales.edit');
     Route::put('/pos/sales/{posSale}', [PosController::class, 'update'])->name('pos.sales.update');
+    Route::delete('/pos/sales/{posSale}', [PosController::class, 'destroy'])->name('pos.sales.destroy');
     Route::get('/profile', ProfileController::class)->name('profile');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');

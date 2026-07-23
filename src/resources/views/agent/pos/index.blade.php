@@ -73,7 +73,12 @@
                             @endforeach
                         </div>
                     @endif
-                    @if ($activeSession && $activeSession->business_site_id === $sale->business_site_id)<a href="{{ route('agent.pos.sales.edit', $sale) }}" class="mt-3 block rounded-xl border border-orange-200 py-2 text-center text-xs font-extrabold text-[#d95419]">Edit sale</a>@endif
+                    @if ($activeSession && $activeSession->business_site_id === $sale->business_site_id)
+                        <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                            <button type="button" data-open-pos-delete data-action="{{ route('agent.pos.sales.destroy', $sale) }}" data-sale-number="{{ $sale->sale_number }}" class="text-xs font-normal italic text-slate-400 transition hover:text-slate-600">Delete</button>
+                            <a href="{{ route('agent.pos.sales.edit', $sale) }}" class="rounded-xl border border-orange-200 px-4 py-2 text-center text-xs font-extrabold text-[#d95419]">Edit sale</a>
+                        </div>
+                    @endif
                 </article>
             @empty
                 <div class="rounded-3xl border border-dashed border-slate-300 p-8 text-center text-sm font-semibold text-slate-500">No POS sales recorded yet.</div>
@@ -81,6 +86,37 @@
         </div>
         {{ $sales->withQueryString()->links() }}
     @endif
+
+    <div class="fixed inset-0 z-[70] hidden items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5" data-pos-delete-modal data-open-on-load="{{ $errors->deleteSale->any() ? 'true' : 'false' }}" data-action="{{ old('delete_action') }}" data-sale-number="{{ old('delete_sale_number') }}" role="dialog" aria-modal="true" aria-labelledby="pos-delete-title">
+        <button type="button" class="absolute inset-0" data-close-pos-delete aria-label="Close delete confirmation"></button>
+        <div class="relative w-full max-w-md rounded-t-[2rem] bg-white p-5 shadow-2xl sm:rounded-[2rem]">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-red-600">Permanent action</p>
+                    <h2 id="pos-delete-title" class="mt-1 text-lg font-extrabold text-[#17324d]">Delete this sale?</h2>
+                    <p class="mt-1 text-sm leading-6 text-slate-500">Enter your agent password to confirm. This action cannot be undone.</p>
+                </div>
+                <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600" data-close-pos-delete aria-label="Close delete confirmation">×</button>
+            </div>
+
+            <form method="POST" action="{{ old('delete_action') }}" class="mt-5" data-pos-delete-form>
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="delete_action" value="{{ old('delete_action') }}" data-pos-delete-action>
+                <input type="hidden" name="delete_sale_number" value="{{ old('delete_sale_number') }}" data-pos-delete-sale-number>
+
+                <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Sale <strong class="text-[#17324d]" data-pos-delete-sale-label>{{ old('delete_sale_number') }}</strong></div>
+                <label for="pos_delete_password" class="mt-4 block text-xs font-bold uppercase tracking-wider text-slate-500">Agent password</label>
+                <input id="pos_delete_password" name="delete_password" type="password" autocomplete="current-password" required class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100">
+                @error('delete_password', 'deleteSale')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <button type="button" class="h-12 rounded-2xl border border-slate-200 text-sm font-extrabold text-slate-700" data-close-pos-delete>Cancel</button>
+                    <button type="submit" class="h-12 rounded-2xl bg-red-600 text-sm font-extrabold text-white">Delete sale</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @include('agent.pos._script')
 @endsection

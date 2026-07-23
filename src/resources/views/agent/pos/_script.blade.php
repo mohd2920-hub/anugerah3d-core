@@ -4,6 +4,60 @@
     const root = document.querySelector('[data-pos-root]');
     if (!root) return;
 
+    const deleteModal = root.querySelector('[data-pos-delete-modal]');
+    const deleteForm = deleteModal?.querySelector('[data-pos-delete-form]');
+    const deletePassword = deleteModal?.querySelector('[name="delete_password"]');
+
+    const openDeleteModal = (action, saleNumber, preservePasswordError = false) => {
+        if (!deleteModal || !deleteForm) return;
+
+        deleteForm.action = action;
+        deleteForm.querySelector('[data-pos-delete-action]').value = action;
+        deleteForm.querySelector('[data-pos-delete-sale-number]').value = saleNumber;
+        deleteModal.querySelector('[data-pos-delete-sale-label]').textContent = saleNumber;
+
+        if (!preservePasswordError && deletePassword) deletePassword.value = '';
+
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+        window.setTimeout(() => deletePassword?.focus(), 50);
+    };
+
+    const closeDeleteModal = () => {
+        if (!deleteModal) return;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    root.querySelectorAll('[data-open-pos-delete]').forEach((button) => {
+        button.addEventListener('click', () => {
+            openDeleteModal(button.dataset.action || '', button.dataset.saleNumber || '');
+        });
+    });
+
+    deleteModal?.querySelectorAll('[data-close-pos-delete]').forEach((button) => {
+        button.addEventListener('click', closeDeleteModal);
+    });
+
+    deleteForm?.addEventListener('submit', () => {
+        const submit = deleteForm.querySelector('[type="submit"]');
+        if (!submit) return;
+        submit.disabled = true;
+        submit.textContent = 'Deleting sale...';
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && deleteModal && !deleteModal.classList.contains('hidden')) {
+            closeDeleteModal();
+        }
+    });
+
+    if (deleteModal?.dataset.openOnLoad === 'true') {
+        openDeleteModal(deleteModal.dataset.action || '', deleteModal.dataset.saleNumber || '', true);
+    }
+
     const timer = root.querySelector('[data-pos-timer]');
     if (timer) {
         const signedInAt = new Date(timer.dataset.signedInAt).getTime();
@@ -24,6 +78,7 @@
 
     const items = form.querySelector('[data-pos-items]');
     const template = document.querySelector('[data-pos-item-template]');
+    const quickProducts = form.querySelector('[data-pos-quick-products]');
     const salesAgentInput = form.querySelector('[data-pos-sales-agent-input]');
     const salesAgentGrid = form.querySelector('[data-pos-sales-agent-grid]');
     const summaryCard = form.querySelector('[data-pos-summary-card]');
@@ -37,6 +92,34 @@
     let activeDiscountRow = null;
     let grandTotal = 0;
     let hasSeenSummary = false;
+    let quickProductToastTimer = null;
+
+    const showQuickProductToast = (button) => {
+        form.querySelector('[data-pos-quick-toast]')?.remove();
+        if (quickProductToastTimer) window.clearTimeout(quickProductToastTimer);
+
+        const toast = document.createElement('span');
+        toast.dataset.posQuickToast = '';
+        toast.className = 'pointer-events-none absolute z-40 bg-[#17324d] font-bold text-white shadow-lg';
+        toast.style.left = '50%';
+        toast.style.bottom = 'calc(100% + 8px)';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.width = 'max-content';
+        toast.style.minWidth = '260px';
+        toast.style.maxWidth = 'min(360px, calc(100vw - 32px))';
+        toast.style.overflow = 'hidden';
+        toast.style.padding = '10px 16px';
+        toast.style.borderRadius = '9999px';
+        toast.style.fontSize = '12px';
+        toast.style.lineHeight = '18px';
+        toast.style.textAlign = 'center';
+        toast.style.textOverflow = 'ellipsis';
+        toast.style.whiteSpace = 'nowrap';
+        toast.textContent = '✓ 1 item added  ·  ' + (button.dataset.name || '');
+        button.appendChild(toast);
+
+        quickProductToastTimer = window.setTimeout(() => toast.remove(), 1600);
+    };
 
     const updateSubmitState = () => {
         if (!submitButton || !submitWrap) return;
@@ -87,19 +170,63 @@
 
         const normalized = keyword.trim().toLowerCase();
         const options = [...select.options].filter((option) => option.value !== '');
-        const filtered = normalized === ''
+        const filtered = (normalized === ''
             ? options
-            : options.filter((option) => option.textContent.toLowerCase().includes(normalized));
+            : options.filter((option) => (option.dataset.search || '').includes(normalized)))
+            .slice(0, 20);
 
         if (filtered.length === 0) {
             list.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">No matching product</div>';
             return;
         }
 
-        list.innerHTML = filtered.map((option) => {
+        list.replaceChildren();
+        const fragment = document.createDocumentFragment();
+
+        filtered.forEach((option) => {
             const isSelected = option.value === select.value;
-            return '<button type="button" class="block w-full px-3 py-2 text-left text-sm ' + (isSelected ? 'bg-orange-50 text-[#d95419] font-semibold' : 'text-slate-700 hover:bg-slate-50') + '" data-pos-product-option data-value="' + option.value + '" data-label="' + option.textContent.replace(/"/g, '&quot;') + '">' + option.textContent + '</button>';
-        }).join('');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'flex w-full items-center gap-3 px-3 py-2 text-left ' + (isSelected ? 'bg-orange-50 text-[#d95419]' : 'text-slate-700 hover:bg-slate-50');
+            button.dataset.posProductOption = '';
+            button.dataset.value = option.value;
+            button.dataset.label = option.textContent;
+
+            if (option.dataset.image) {
+                const image = document.createElement('img');
+                image.src = option.dataset.image;
+                image.alt = '';
+                image.loading = 'lazy';
+                image.className = 'h-10 w-10 shrink-0 rounded-lg bg-slate-100 object-cover';
+                button.appendChild(image);
+            } else {
+                const placeholder = document.createElement('span');
+                placeholder.className = 'grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-sm text-slate-400';
+                placeholder.textContent = '▧';
+                button.appendChild(placeholder);
+            }
+
+            const details = document.createElement('span');
+            details.className = 'min-w-0 flex-1';
+
+            const code = document.createElement('span');
+            code.className = 'block truncate text-[10px] font-bold uppercase tracking-wider text-slate-400';
+            code.textContent = option.dataset.code || '';
+
+            const name = document.createElement('span');
+            name.className = 'mt-0.5 block truncate text-sm font-semibold';
+            name.textContent = option.dataset.name || option.textContent;
+
+            const price = document.createElement('span');
+            price.className = 'mt-0.5 block text-[11px] font-bold text-[#d95419]';
+            price.textContent = money.format(Number(option.dataset.price || 0));
+
+            details.append(code, name, price);
+            button.appendChild(details);
+            fragment.appendChild(button);
+        });
+
+        list.appendChild(fragment);
     };
 
     const openProductList = (row) => {
@@ -233,6 +360,38 @@
         calculate();
     });
 
+    quickProducts?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pos-quick-product]');
+        if (!button) return;
+        showQuickProductToast(button);
+
+        const productId = button.dataset.value || '';
+        const existingRow = [...items.querySelectorAll('[data-pos-item]')]
+            .find((row) => row.querySelector('[data-pos-product]')?.value === productId);
+
+        if (existingRow) {
+            const quantityInput = existingRow.querySelector('[data-pos-quantity]');
+            if (!quantityInput) return;
+            const max = Number(quantityInput.max || 9999);
+            quantityInput.value = String(Math.min(max, Number(quantityInput.value || 0) + 1));
+            calculate();
+            return;
+        }
+
+        let targetRow = [...items.querySelectorAll('[data-pos-item]')]
+            .find((row) => !row.querySelector('[data-pos-product]')?.value);
+
+        if (!targetRow) {
+            items.appendChild(template.content.cloneNode(true));
+            targetRow = items.lastElementChild;
+            reindex();
+        }
+
+        setRowDefaultDiscount(targetRow, true);
+        applySelectedProduct(targetRow, productId, button.dataset.label || '');
+        calculate();
+    });
+
     salesAgentGrid?.addEventListener('click', (event) => {
         const button = event.target.closest('[data-pos-sales-agent-choice]');
         if (!button || !salesAgentInput) return;
@@ -320,7 +479,10 @@
         const row = event.target.closest('[data-pos-item]');
         if (!row || !event.target.matches('[data-pos-product-search]')) return;
 
-        renderProductList(row, event.target.value || '');
+        const select = row.querySelector('[data-pos-product]');
+        const selectedLabel = select?.selectedOptions[0]?.textContent || '';
+        const keyword = select?.value && event.target.value === selectedLabel ? '' : event.target.value;
+        renderProductList(row, keyword || '');
         openProductList(row);
     });
     items.addEventListener('focusout', (event) => {

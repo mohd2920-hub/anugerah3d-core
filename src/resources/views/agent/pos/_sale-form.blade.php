@@ -8,6 +8,15 @@
     $currentItems = old('items', $isEdit
         ? $posSale->items->map(fn ($item) => ['product_id' => $item->product_id, 'quantity' => $item->quantity, 'discount_amount' => $item->customer_discount_amount ?? $item->discount_amount ?? 0])->all()
         : [['product_id' => '', 'quantity' => 1]]);
+    $productPictureUrl = function ($product): ?string {
+        $path = $product->images->first()?->image_path ?: $product->prd_picture;
+
+        if (! $path) {
+            return null;
+        }
+
+        return filter_var($path, FILTER_VALIDATE_URL) ? $path : asset(ltrim($path, '/'));
+    };
     $inputClass = 'mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100';
 @endphp
 
@@ -61,13 +70,38 @@
         @error('sales_agent_id')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
 
         <div class="mt-5 flex items-center justify-between"><p class="text-xs font-bold uppercase tracking-wider text-slate-500">Products</p><button type="button" data-add-pos-item class="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-extrabold text-[#d95419]">+ Add product</button></div>
+        @if ($topProducts->isNotEmpty())
+            <div class="mt-3">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Top selling at this site</p>
+                    <p class="text-[10px] font-semibold text-slate-400">Tap to add</p>
+                </div>
+                <div class="mt-2 grid gap-1.5" style="grid-template-columns: repeat(7, minmax(0, 1fr));" data-pos-quick-products>
+                    @foreach ($topProducts as $product)
+                        @php
+                            $pictureUrl = $productPictureUrl($product);
+                            $productLabel = $product->prd_code.' · '.$product->prd_name.' · RM '.number_format((float) $product->price_selling, 2);
+                        @endphp
+                        <button type="button" data-pos-quick-product data-value="{{ $product->id }}" data-label="{{ $productLabel }}" data-name="{{ $product->prd_name }}" class="relative min-w-0 rounded-xl border border-slate-200 bg-white p-1 transition active:scale-95 active:border-orange-300 active:bg-orange-50" style="aspect-ratio: 1 / 1;" title="{{ $product->prd_code }} · {{ $product->prd_name }}" aria-label="Add {{ $product->prd_name }}">
+                            @if ($pictureUrl)
+                                <img src="{{ $pictureUrl }}" alt="" loading="lazy" class="h-full w-full rounded-lg bg-slate-100 object-cover">
+                            @else
+                                <span class="grid h-full w-full place-items-center rounded-lg bg-slate-100 text-slate-400" aria-hidden="true">
+                                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                </span>
+                            @endif
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
         <div class="mt-3 space-y-3" data-pos-items>
             @foreach ($currentItems as $index => $currentItem)
                 <div class="rounded-2xl border border-slate-200 p-3" data-pos-item>
                     @php
                         $selectedProduct = $products->firstWhere('id', $currentItem['product_id'] ?? null);
                         $selectedProductLabel = $selectedProduct
-                            ? $selectedProduct->prd_name.' · RM '.number_format((float) $selectedProduct->price_selling, 2)
+                            ? $selectedProduct->prd_code.' · '.$selectedProduct->prd_name.' · RM '.number_format((float) $selectedProduct->price_selling, 2)
                             : '';
                     @endphp
                     <div class="flex gap-2">
@@ -75,9 +109,9 @@
                             <input type="search" value="{{ $selectedProductLabel }}" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search>
                             <select name="items[{{ $index }}][product_id]" class="sr-only" data-pos-product>
                                 <option value="">Choose product</option>
-                            @foreach ($products as $product)
-                                    <option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}" @selected((string) $currentItem['product_id'] === (string) $product->id)>{{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>
-                            @endforeach
+                                @foreach ($products as $product)
+                                    <option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-search="{{ Str::lower($product->prd_code.' '.$product->prd_name) }}" data-image="{{ $productPictureUrl($product) }}" @selected((string) $currentItem['product_id'] === (string) $product->id)>{{ $product->prd_code }} · {{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>
+                                @endforeach
                             </select>
                             <div class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg" data-pos-product-list></div>
                         </div>
@@ -180,7 +214,7 @@
 
 <template data-pos-item-template>
     <div class="rounded-2xl border border-slate-200 p-3" data-pos-item>
-        <div class="flex gap-2"><div class="relative min-w-0 flex-1"><input type="search" value="" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search><select class="sr-only" data-pos-product><option value="">Choose product</option>@foreach ($products as $product)<option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}">{{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>@endforeach</select><div class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg" data-pos-product-list></div></div><button type="button" data-remove-pos-item class="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">×</button></div>
+        <div class="flex gap-2"><div class="relative min-w-0 flex-1"><input type="search" value="" placeholder="Choose product" autocomplete="off" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" data-pos-product-search><select class="sr-only" data-pos-product><option value="">Choose product</option>@foreach ($products as $product)<option value="{{ $product->id }}" data-price="{{ $product->price_selling }}" data-default-discount="{{ $product->agent_discount_default }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-search="{{ Str::lower($product->prd_code.' '.$product->prd_name) }}" data-image="{{ $productPictureUrl($product) }}">{{ $product->prd_code }} · {{ $product->prd_name }} · RM {{ number_format((float) $product->price_selling, 2) }}</option>@endforeach</select><div class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg" data-pos-product-list></div></div><button type="button" data-remove-pos-item class="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">×</button></div>
         <div class="mt-2 grid grid-cols-2 gap-2"><div><label class="text-[10px] font-bold uppercase text-slate-400">Quantity</label><div class="mt-1 flex items-center gap-2"><button type="button" data-pos-qty-minus class="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-lg font-black text-[#17324d]">-</button><input type="number" value="1" min="1" max="9999" required class="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-center text-base font-bold" data-pos-quantity><button type="button" data-pos-qty-plus class="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-lg font-black text-[#17324d]">+</button></div></div><button type="button" class="rounded-xl bg-slate-50 px-3 py-2 text-left transition active:bg-orange-50" data-open-pos-discount><span class="block text-[10px] font-bold uppercase text-slate-400">Line total</span><span class="mt-1 block text-sm font-extrabold text-[#17324d]" data-pos-line-total>RM 0.00</span><span class="mt-1 block text-[10px] font-bold text-[#d95419]" data-pos-discount-label>Discount RM 0.00</span></button><input type="hidden" value="" data-pos-discount data-custom-discount="false"></div>
     </div>
 </template>
