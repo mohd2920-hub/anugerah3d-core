@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
     'sales_agent_id',
     'customer_name',
     'customer_phone',
+    'customer_email',
     'remark',
     'payment_method',
     'payment_remark',

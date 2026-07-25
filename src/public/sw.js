@@ -1,6 +1,6 @@
-const CACHE_NAME = 'anugerah3d-agent-v1';
+const CACHE_NAME = 'anugerah3d-agent-v2';
 const STATIC_ASSETS = [
-    '/icons/agent-app.svg',
+    '/icons/agent-app-64.png',
     '/icons/agent-app-192.png',
     '/icons/agent-app-512.png'
 ];

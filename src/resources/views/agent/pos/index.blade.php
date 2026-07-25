@@ -6,6 +6,7 @@
 @section('content')
 <div class="space-y-5" data-pos-root>
     @if (session('success'))<div class="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{{ session('success') }}</div>@endif
+    @if (session('error'))<div class="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{{ session('error') }}</div>@endif
 
     @if ($activeSession)
         <section class="overflow-hidden rounded-3xl bg-[#17324d] p-5 text-white shadow-xl">
@@ -74,9 +75,16 @@
                         </div>
                     @endif
                     @if ($activeSession && $activeSession->business_site_id === $sale->business_site_id)
-                        <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                        <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                             <button type="button" data-open-pos-delete data-action="{{ route('agent.pos.sales.destroy', $sale) }}" data-sale-number="{{ $sale->sale_number }}" class="text-xs font-normal italic text-slate-400 transition hover:text-slate-600">Delete</button>
-                            <a href="{{ route('agent.pos.sales.edit', $sale) }}" class="rounded-xl border border-orange-200 px-4 py-2 text-center text-xs font-extrabold text-[#d95419]">Edit sale</a>
+                            <div class="flex items-center gap-2">
+                                @if ($sale->customer_email)
+                                    <form method="POST" action="{{ route('agent.pos.sales.receipt', $sale) }}">@csrf<button type="submit" class="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-extrabold text-[#17324d]">Send receipt</button></form>
+                                @else
+                                    <button type="button" data-open-pos-receipt data-action="{{ route('agent.pos.sales.receipt', $sale) }}" data-sale-number="{{ $sale->sale_number }}" data-customer-name="{{ $sale->customer_name }}" class="rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-extrabold text-[#17324d]">Send receipt</button>
+                                @endif
+                                <a href="{{ route('agent.pos.sales.edit', $sale) }}" class="rounded-xl border border-orange-200 px-3 py-2 text-center text-xs font-extrabold text-[#d95419]">Edit sale</a>
+                            </div>
                         </div>
                     @endif
                 </article>
@@ -86,6 +94,40 @@
         </div>
         {{ $sales->withQueryString()->links() }}
     @endif
+
+    <div class="fixed inset-0 z-[70] hidden items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5" data-pos-receipt-modal data-open-on-load="{{ $errors->receipt->any() ? 'true' : 'false' }}" data-action="{{ old('receipt_action') }}" data-sale-number="{{ old('receipt_sale_number') }}" role="dialog" aria-modal="true" aria-labelledby="pos-receipt-title">
+        <button type="button" class="absolute inset-0" data-close-pos-receipt aria-label="Close receipt details"></button>
+        <div class="relative w-full max-w-md rounded-t-[2rem] bg-white p-5 shadow-2xl sm:rounded-[2rem]">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#e7682b]">Customer receipt</p>
+                    <h2 id="pos-receipt-title" class="mt-1 text-lg font-extrabold text-[#17324d]">Where should we send it?</h2>
+                    <p class="mt-1 text-sm leading-6 text-slate-500">Add the customer's details. We will save them to this sale and email the receipt immediately.</p>
+                </div>
+                <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600" data-close-pos-receipt aria-label="Close receipt details">×</button>
+            </div>
+
+            <form method="POST" action="{{ old('receipt_action') }}" class="mt-5" data-pos-receipt-form>
+                @csrf
+                <input type="hidden" name="receipt_action" value="{{ old('receipt_action') }}" data-pos-receipt-action>
+                <input type="hidden" name="receipt_sale_number" value="{{ old('receipt_sale_number') }}" data-pos-receipt-sale-number>
+
+                <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Sale <strong class="text-[#17324d]" data-pos-receipt-sale-label>{{ old('receipt_sale_number') }}</strong></div>
+                <label for="receipt_customer_name" class="mt-4 block text-xs font-bold uppercase tracking-wider text-slate-500">Customer name</label>
+                <input id="receipt_customer_name" name="customer_name" value="{{ old('customer_name') }}" maxlength="150" autocomplete="name" required class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                @error('customer_name', 'receipt')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+
+                <label for="receipt_customer_email" class="mt-4 block text-xs font-bold uppercase tracking-wider text-slate-500">Customer email</label>
+                <input id="receipt_customer_email" name="customer_email" type="email" value="{{ old('customer_email') }}" maxlength="150" inputmode="email" autocomplete="email" placeholder="customer@example.com" required class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                @error('customer_email', 'receipt')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <button type="button" class="h-12 rounded-2xl border border-slate-200 text-sm font-extrabold text-slate-700" data-close-pos-receipt>Cancel</button>
+                    <button type="submit" class="h-12 rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white">Save & send</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="fixed inset-0 z-[70] hidden items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-5" data-pos-delete-modal data-open-on-load="{{ $errors->deleteSale->any() ? 'true' : 'false' }}" data-action="{{ old('delete_action') }}" data-sale-number="{{ old('delete_sale_number') }}" role="dialog" aria-modal="true" aria-labelledby="pos-delete-title">
         <button type="button" class="absolute inset-0" data-close-pos-delete aria-label="Close delete confirmation"></button>

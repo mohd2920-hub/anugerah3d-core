@@ -6,6 +6,10 @@
 <div class="space-y-5">
     <section class="rounded-[1.75rem] bg-[linear-gradient(145deg,#17324d,#285875)] p-5 text-white shadow-xl shadow-slate-900/10">
         <div class="flex items-center justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-[0.16em] text-orange-300">Order records</p><p class="mt-2 text-3xl font-black">{{ count($orders) }}</p><p class="mt-1 text-sm text-slate-300">Orders placed</p></div><span class="grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-orange-300"><svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6M12 7v5l3 2"/></svg></span></div>
+        <a href="{{ route('agent.orders.create') }}" class="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-slate-950/15 transition active:scale-[0.99]">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            New order
+        </a>
     </section>
 
     <div class="flex gap-2 overflow-x-auto pb-1" data-history-filters>
@@ -27,6 +31,7 @@
             <article data-order-card data-status="{{ strtolower($order['status']) }}" data-open-order="order-detail-{{ $loop->index }}" tabindex="0" role="button" class="cursor-pointer rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition active:scale-[0.99]" aria-label="View order {{ $order['number'] }} details">
                 <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="truncate font-mono text-[11px] font-bold text-[#17324d]">{{ $order['number'] }}</p><p class="mt-1 text-[10px] text-slate-400">{{ $order['date'] }}</p></div><span class="{{ $statusClasses }} flex-none rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase">{{ $order['status'] }}</span></div>
                 <div class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4"><div><p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Items</p><p class="mt-1 text-sm font-extrabold text-slate-700">{{ $order['items'] }} units</p></div><div class="text-right"><p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Amount</p><p class="mt-1 text-base font-black text-[#e7682b]">RM {{ number_format($order['amount'], 2) }}</p></div></div>
+                <div class="mt-3 flex items-center justify-between"><span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">Payment proof: {{ count($order['payment_proofs']) }} image{{ count($order['payment_proofs']) === 1 ? '' : 's' }}</span></div>
                 <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><span class="text-[10px] font-semibold text-slate-400">{{ count($order['products']) }} product {{ Str::plural('type', count($order['products'])) }}</span><span class="inline-flex items-center gap-1 text-xs font-extrabold text-[#e7682b]">View details <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span></div>
             </article>
         @endforeach
@@ -65,12 +70,40 @@
 
                 <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><h3 class="text-sm font-extrabold text-[#17324d]">Fulfilment & payment</h3><dl class="mt-3 divide-y divide-slate-100"><div class="flex justify-between gap-4 py-3 first:pt-0"><dt class="text-xs text-slate-400">Method</dt><dd class="text-right text-xs font-extrabold text-slate-700">{{ $order['fulfilment'] }}</dd></div><div class="flex justify-between gap-4 py-3"><dt class="text-xs text-slate-400">Payment</dt><dd class="text-right text-xs font-extrabold text-slate-700">{{ $order['payment'] }}</dd></div><div class="py-3"><dt class="text-xs text-slate-400">Recipient</dt><dd class="mt-1 text-xs font-extrabold text-slate-700">{{ $order['recipient'] }} · {{ $order['phone'] }}</dd></div><div class="py-3 last:pb-0"><dt class="text-xs text-slate-400">{{ $order['fulfilment'] === 'Delivery' ? 'Delivery address' : 'Pickup location' }}</dt><dd class="mt-1 text-xs font-semibold leading-5 text-slate-700">{{ $order['address'] }}</dd></div></dl></section>
 
+                <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-center justify-between"><h3 class="text-sm font-extrabold text-[#17324d]">Payment proof</h3><span class="text-[10px] font-bold text-slate-400">{{ count($order['payment_proofs']) }} image{{ count($order['payment_proofs']) === 1 ? '' : 's' }}</span></div>
+                    @if (count($order['payment_proofs']) > 0)
+                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1">
+                            @foreach ($order['payment_proofs'] as $proofUrl)
+                                <button type="button" data-proof-preview="{{ $proofUrl }}" class="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                    <img src="{{ $proofUrl }}" alt="Payment proof" class="h-full w-full object-cover">
+                                </button>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">No payment proof uploaded for this order.</p>
+                    @endif
+                </section>
+
                 @if ($order['notes'])<section class="rounded-3xl border border-amber-200 bg-amber-50 p-4"><p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Order notes</p><p class="mt-2 text-xs font-semibold leading-5 text-amber-900">{{ $order['notes'] }}</p></section>@endif
             </div>
             <footer class="border-t border-slate-200 bg-white p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));"><button type="button" data-close-order class="h-12 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">Back to history</button></footer>
         </div>
     </div>
 @endforeach
+
+<div class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/80 p-4" data-proof-modal>
+    <button type="button" class="absolute inset-0" data-proof-close aria-label="Close payment proof preview"></button>
+    <div class="relative w-full max-w-3xl">
+        <button type="button" class="absolute -top-12 right-0 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-2xl leading-none text-white" data-proof-close aria-label="Close payment proof preview">×</button>
+        <button type="button" class="absolute left-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/20 text-2xl leading-none text-white transition hover:bg-white/30" data-proof-prev aria-label="Previous proof">‹</button>
+        <button type="button" class="absolute right-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/20 text-2xl leading-none text-white transition hover:bg-white/30" data-proof-next aria-label="Next proof">›</button>
+        <p class="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/30 px-3 py-1 text-xs font-bold text-white" data-proof-counter>1 / 1</p>
+        <div class="overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <img src="" alt="Payment proof preview" class="max-h-[78vh] w-full bg-slate-100 object-contain" data-proof-modal-src>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -92,5 +125,108 @@
         card.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openOrder(card); } });
     });
     document.querySelectorAll('[data-close-order]').forEach((button) => button.addEventListener('click', () => { const modal = button.closest('[data-order-modal]'); modal.classList.add('hidden'); modal.classList.remove('flex'); }));
+
+    const proofModal = document.querySelector('[data-proof-modal]');
+    const proofModalSrc = document.querySelector('[data-proof-modal-src]');
+    const proofCounter = document.querySelector('[data-proof-counter]');
+    const proofPrev = document.querySelector('[data-proof-prev]');
+    const proofNext = document.querySelector('[data-proof-next]');
+    let proofImages = [];
+    let proofIndex = 0;
+    let touchStartX = null;
+
+    const renderProofPreview = () => {
+        if (!proofModalSrc || proofImages.length === 0) return;
+        proofModalSrc.src = proofImages[proofIndex] || '';
+
+        if (proofCounter) {
+            proofCounter.textContent = `${proofIndex + 1} / ${proofImages.length}`;
+        }
+
+        const multiple = proofImages.length > 1;
+        proofPrev?.classList.toggle('hidden', !multiple);
+        proofNext?.classList.toggle('hidden', !multiple);
+    };
+
+    const openProofPreview = (images, index) => {
+        if (!proofModal || !proofModalSrc) return;
+        proofImages = images;
+        proofIndex = index;
+        renderProofPreview();
+        proofModal.classList.remove('hidden');
+        proofModal.classList.add('flex');
+    };
+
+    const closeProofPreview = () => {
+        if (!proofModal || !proofModalSrc) return;
+        proofModal.classList.add('hidden');
+        proofModal.classList.remove('flex');
+        proofModalSrc.src = '';
+        proofImages = [];
+        proofIndex = 0;
+        touchStartX = null;
+    };
+
+    const showPrevProof = () => {
+        if (proofImages.length <= 1) return;
+        proofIndex = (proofIndex - 1 + proofImages.length) % proofImages.length;
+        renderProofPreview();
+    };
+
+    const showNextProof = () => {
+        if (proofImages.length <= 1) return;
+        proofIndex = (proofIndex + 1) % proofImages.length;
+        renderProofPreview();
+    };
+
+    document.querySelectorAll('[data-proof-preview]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            const gallery = Array.from(button.closest('section')?.querySelectorAll('[data-proof-preview]') || []);
+            const images = gallery
+                .map((item) => item.dataset.proofPreview)
+                .filter((src) => typeof src === 'string' && src !== '');
+            const index = Math.max(0, images.indexOf(button.dataset.proofPreview || ''));
+
+            openProofPreview(images, index);
+        });
+    });
+
+    document.querySelectorAll('[data-proof-close]').forEach((button) => {
+        button.addEventListener('click', closeProofPreview);
+    });
+
+    proofPrev?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showPrevProof();
+    });
+
+    proofNext?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showNextProof();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (!proofModal || proofModal.classList.contains('hidden')) return;
+        if (event.key === 'ArrowLeft') showPrevProof();
+        if (event.key === 'ArrowRight') showNextProof();
+        if (event.key === 'Escape') closeProofPreview();
+    });
+
+    proofModalSrc?.addEventListener('touchstart', (event) => {
+        touchStartX = event.changedTouches[0]?.clientX ?? null;
+    }, { passive: true });
+
+    proofModalSrc?.addEventListener('touchend', (event) => {
+        if (touchStartX === null) return;
+        const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX;
+        const deltaX = touchEndX - touchStartX;
+        touchStartX = null;
+
+        if (Math.abs(deltaX) < 40) return;
+        if (deltaX > 0) showPrevProof();
+        if (deltaX < 0) showNextProof();
+    }, { passive: true });
 </script>
 @endpush

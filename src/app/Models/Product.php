@@ -56,6 +56,11 @@ class Product extends Model
         return $this->hasMany(PosSaleItem::class);
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

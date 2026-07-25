@@ -21,7 +21,7 @@
     <div class="space-y-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <a href="{{ route('admin.orders.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a73e8] hover:underline">
-                <span aria-hidden="true"?</span> Back to orders
+                <span aria-hidden="true"?ï¿½</span> Back to orders
             </a>
             <div class="flex flex-wrap gap-2">
                 <span class="{{ $statusClass }} inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ring-1">{{ $order->statusLabel() }}</span>
@@ -52,7 +52,7 @@
                 <div class="lg:text-right">
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">Order total</p>
                     <p class="mt-1 text-3xl font-semibold">RM {{ number_format((float) $order->total_amount, 2) }}</p>
-                    <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units · Delivery fee to be confirmed</p>
+                    <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units ï¿½ Delivery fee to be confirmed</p>
                 </div>
             </div>
         </section>
@@ -120,7 +120,7 @@
                                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] text-slate-600">{{ $item->product->color }}</span>
                                                 @endif
                                             </div>
-                                            <p class="mt-2 text-xs text-slate-500">Selling RM {{ number_format((float) $item->unit_selling_price, 2) }} · {{ number_format((float) $item->discount_percentage, 1) }}% discount</p>
+                                            <p class="mt-2 text-xs text-slate-500">Selling RM {{ number_format((float) $item->unit_selling_price, 2) }} ï¿½ {{ number_format((float) $item->discount_percentage, 1) }}% discount</p>
                                         </td>
                                         <td class="px-4 py-4 text-right font-semibold text-slate-900">{{ $item->quantity }}</td>
                                         <td class="px-4 py-4 text-right text-slate-700">RM {{ number_format((float) $item->unit_price, 2) }}</td>
@@ -232,6 +232,20 @@
                 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
                     <h2 class="font-semibold text-slate-950">Payment</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ $order->paymentMethodLabel() }}</p>
+
+                    @if (count($order->paymentProofUrls()) > 0)
+                        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment proof</p>
+                            <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
+                                @foreach ($order->paymentProofUrls() as $url)
+                                    <a href="{{ $url }}" target="_blank" rel="noopener" class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                                        <img src="{{ $url }}" alt="Payment proof" class="h-full w-full object-cover">
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('admin.orders.payment.update', $order) }}" class="mt-4 space-y-3">
                         @csrf
                         @method('PATCH')

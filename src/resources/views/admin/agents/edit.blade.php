@@ -68,6 +68,20 @@
                         </a>
                     @endif
                 </div>
+
+                @if ($agent->agt_status === \App\Models\Agent::StatusActive)
+                    <form method="POST" action="{{ route('admin.agents.registration-info.resend', $agent) }}" class="mt-4 border-t border-slate-200 pt-4" onsubmit="return confirm('This will replace the current password with a new 8-character password. Continue?');">
+                        @csrf
+                        <button type="submit" class="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 text-sm font-semibold text-[#d95419] transition hover:bg-orange-100">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                            Resend registration info
+                        </button>
+                        <p class="mt-2 text-xs leading-5 text-slate-500">Creates a new 8-character password and emails the complete login information to this agent.</p>
+                    </form>
+                @endif
+                @error('resend_registration_info')
+                    <p class="mt-3 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <div class="rounded-lg bg-white p-5 shadow-sm">

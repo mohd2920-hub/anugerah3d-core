@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#17324d">
     <meta name="description" content="Anugerah3D agent mobile platform">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icons/agent-app.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icons/agent-app.svg">
+    <link rel="icon" href="/icons/agent-app-64.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/agent-app-192.png">
     <title>@yield('title', 'Anugerah3D Agent')</title>
     @fonts
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

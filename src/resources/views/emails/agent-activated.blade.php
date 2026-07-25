@@ -1,0 +1,14 @@
+@php
+    $logoPath = public_path('images/anugerah3d-logo.png');
+    $logoUrl = isset($message) && file_exists($logoPath) ? $message->embed($logoPath) : asset('images/anugerah3d-logo.png');
+@endphp
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent account approved</title></head>
+<body style="margin:0;background:#eef3f6;font-family:Arial,Helvetica,sans-serif;color:#17324d;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f6;padding:24px 10px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 32px rgba(23,50,77,.12);">
+<tr><td style="background:linear-gradient(135deg,#17324d,#285875);padding:30px;text-align:center;color:#fff;"><img src="{{ $logoUrl }}" width="86" height="86" alt="Anugerah3D" style="display:block;margin:0 auto 16px;border-radius:20px;border:3px solid rgba(255,255,255,.8);object-fit:cover;"><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#86efac;font-weight:800;">Application approved</div><h1 style="margin:10px 0 8px;font-size:27px;">Your account is active!</h1><p style="margin:0;color:#dbeafe;font-size:14px;line-height:1.6;">Congratulations {{ $agent->agt_name }}. You may now sign in and begin your Anugerah3D journey.</p></td></tr>
+<tr><td style="padding:28px;text-align:center;"><div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:18px;text-align:left;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:#e7682b;font-weight:800;">Your agent information</div><p style="margin:12px 0 0;font-size:14px;"><span style="color:#64748b;">Name:</span> <strong>{{ $agent->agt_name }}</strong></p><p style="margin:7px 0 0;font-size:14px;"><span style="color:#64748b;">Login ID:</span> <strong>{{ $agent->login_id }}</strong></p><p style="margin:7px 0 0;font-size:14px;"><span style="color:#64748b;">Commission:</span> <strong>{{ number_format((float) $agent->commission_percentage, 2) }}%</strong></p></div><p style="margin:18px 0;color:#64748b;font-size:13px;line-height:1.6;">Use the temporary password sent in your registration email.</p><a href="{{ $loginUrl }}" style="display:inline-block;background:#e7682b;color:#fff;text-decoration:none;font-size:14px;font-weight:800;padding:14px 27px;border-radius:12px;">Login to Agent Workspace</a>@if ($referrer)<p style="margin:22px 0 0;color:#64748b;font-size:13px;">Your referrer: <strong style="color:#17324d;">{{ $referrer->agt_name }}</strong> · {{ $referrer->phone_number ?: '-' }}</p>@endif</td></tr>
+<tr><td style="background:#17324d;padding:17px;text-align:center;color:#cbd5e1;font-size:12px;">Anugerah3D · Personalised ideas, made real.</td></tr>
+</table></td></tr></table>
+</body></html>

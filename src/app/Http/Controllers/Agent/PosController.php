@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Agent\SignInPosRequest;
 use App\Http\Requests\Agent\StorePosSaleRequest;
 use App\Http\Requests\Agent\UpdatePosSaleRequest;
+use App\Mail\PosSaleReceipt;
 use App\Models\Agent;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
@@ -19,6 +20,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class PosController extends Controller
 {
@@ -90,9 +94,16 @@ class PosController extends Controller
 
     public function store(StorePosSaleRequest $request, CreatePosSale $createPosSale): RedirectResponse
     {
-        $createPosSale->handle($request->activePosSession(), $request->validated());
+        $sale = $createPosSale->handle($request->activePosSession(), $request->validated());
+        $message = 'Sale recorded successfully.';
 
-        return redirect()->route('agent.pos.index', ['tab' => 'history'])->with('success', 'Sale recorded successfully.');
+        if ($sale->customer_email !== null && $sale->customer_email !== '') {
+            $message = $this->sendCustomerReceipt($sale)
+                ? 'Sale recorded successfully. The receipt was emailed to the customer.'
+                : 'Sale recorded successfully, but the receipt email could not be sent.';
+        }
+
+        return redirect()->route('agent.pos.index', ['tab' => 'history'])->with('success', $message);
     }
 
     public function edit(Request $request, PosSale $posSale): View
@@ -116,6 +127,34 @@ class PosController extends Controller
         $updatePosSale->handle($posSale, $request->activePosSession(), $request->validated());
 
         return redirect()->route('agent.pos.index', ['tab' => 'history'])->with('success', 'Sale updated successfully.');
+    }
+
+    public function sendReceipt(Request $request, PosSale $posSale): RedirectResponse
+    {
+        $session = $this->activeSession($request->user('agent'));
+        abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+
+        if ($posSale->customer_email === null || $posSale->customer_email === '') {
+            $validated = $request->validateWithBag('receipt', [
+                'customer_name' => ['required', 'string', 'max:150'],
+                'customer_email' => ['required', 'email:rfc', 'max:150'],
+            ]);
+
+            $posSale->update([
+                'customer_name' => trim($validated['customer_name']),
+                'customer_email' => trim($validated['customer_email']),
+            ]);
+        }
+
+        if (! $this->sendCustomerReceipt($posSale)) {
+            return redirect()
+                ->route('agent.pos.index', ['tab' => 'history'])
+                ->with('error', 'The receipt email could not be sent. Please try again later.');
+        }
+
+        return redirect()
+            ->route('agent.pos.index', ['tab' => 'history'])
+            ->with('success', 'Receipt emailed to '.$posSale->customer_email.'.');
     }
 
     public function destroy(Request $request, PosSale $posSale, CreatePosSale $createPosSale): RedirectResponse
@@ -156,6 +195,31 @@ class PosController extends Controller
             ->whereHas('businessSite.agents', fn ($query) => $query->whereKey($agent->getKey()))
             ->latest('signed_in_at')
             ->first();
+    }
+
+    private function sendCustomerReceipt(PosSale $sale): bool
+    {
+        try {
+            $sale->load([
+                'businessSite:id,site_name,city',
+                'salesAgent:id,agt_name,phone_number,profile_picture',
+                'items.product:id,prd_name,prd_picture',
+                'items.product.images:id,product_id,image_path,alt_text,position',
+            ]);
+
+            Mail::to($sale->customer_email)->send(new PosSaleReceipt($sale));
+
+            return true;
+        } catch (Throwable $exception) {
+            Log::warning('Customer POS receipt email could not be sent.', [
+                'pos_sale_id' => $sale->getKey(),
+                'sale_number' => $sale->sale_number,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     private function posProducts(): Collection

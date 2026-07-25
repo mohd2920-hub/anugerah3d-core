@@ -153,6 +153,11 @@
             <div><label class="text-xs font-bold uppercase tracking-wider text-slate-500">Customer name <span class="normal-case text-slate-400">(optional)</span></label><input name="customer_name" value="{{ old('customer_name', $posSale->customer_name ?? '') }}" maxlength="150" class="{{ $inputClass }}"></div>
             <div><label class="text-xs font-bold uppercase tracking-wider text-slate-500">Phone <span class="normal-case text-slate-400">(optional)</span></label><input name="customer_phone" value="{{ old('customer_phone', $posSale->customer_phone ?? '') }}" maxlength="50" inputmode="tel" class="{{ $inputClass }}"></div>
         </div>
+        <div class="mt-3">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Customer email <span class="normal-case text-slate-400">(optional — receipt will be sent here)</span></label>
+            <input type="email" name="customer_email" value="{{ old('customer_email', $posSale->customer_email ?? '') }}" maxlength="150" inputmode="email" autocomplete="email" placeholder="customer@example.com" class="{{ $inputClass }}">
+            @error('customer_email')<p class="mt-1 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror
+        </div>
         <label class="mt-3 block text-xs font-bold uppercase tracking-wider text-slate-500">Remark</label>
         <textarea name="remark" maxlength="2000" rows="3" class="{{ $inputClass }}">{{ old('remark', $posSale->remark ?? '') }}</textarea>
 

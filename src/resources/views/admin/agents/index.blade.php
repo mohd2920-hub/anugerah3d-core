@@ -38,6 +38,14 @@
             </div>
         @endif
 
+        @if ($newRegistrationCount > 0)
+            <a href="{{ route('admin.agents.index', ['status' => \App\Models\Agent::StatusPending]) }}" class="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm transition hover:bg-blue-100">
+                <span class="grid h-11 w-11 flex-none place-items-center rounded-full bg-blue-600 font-bold text-white">{{ $newRegistrationCount }}</span>
+                <span class="min-w-0 flex-1"><span class="block font-semibold text-blue-950">Pending agent {{ \Illuminate\Support\Str::plural('registration', $newRegistrationCount) }}</span><span class="mt-0.5 block text-sm text-blue-700">Review details and assign commission before approval.</span></span>
+                <span class="text-sm font-semibold text-blue-700">Review now →</span>
+            </a>
+        @endif
+
         <div class="rounded-lg bg-white p-6 shadow-sm">
             <div class="flex items-center justify-end gap-2">
                 <button type="button" id="agent-search-toggle" data-expanded="false" class="grid h-10 w-10 place-items-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8]" aria-expanded="false" aria-controls="agent-search-form-mobile" aria-label="Toggle search">
@@ -80,12 +88,13 @@
             <table class="admin-data-table w-full text-xs">
                 <colgroup>
                     <col style="width: 8%;">
-                    <col style="width: 21%;">
-                    <col style="width: 20%;">
-                    <col style="width: 15%;">
-                    <col style="width: 14%;">
-                    <col style="width: 9%;">
+                    <col style="width: 18%;">
+                    <col style="width: 18%;">
                     <col style="width: 13%;">
+                    <col style="width: 13%;">
+                    <col style="width: 17%;">
+                    <col style="width: 9%;">
+                    <col style="width: 12%;">
                 </colgroup>
                 <thead class="bg-slate-50">
                     <tr>
@@ -94,6 +103,7 @@
                         <th class="px-3 py-3 text-left font-semibold text-slate-700">Contact</th>
                         <th class="px-3 py-3 text-left font-semibold text-slate-700">Location</th>
                         <th class="px-3 py-3 text-left font-semibold text-slate-700">Sales</th>
+                        <th class="px-3 py-3 text-left font-semibold text-slate-700">Team</th>
                         <th class="px-3 py-3 text-center font-semibold text-slate-700">Status</th>
                         <th class="rounded-tr-lg px-3 py-3 text-right font-semibold text-slate-700">Actions</th>
                     </tr>
@@ -102,7 +112,9 @@
                     @forelse($agents as $agent)
                         @php
                             $statusClass = match ($agent->agt_status) {
-                                'active' => 'bg-green-100 text-green-700',
+                                'pending' => 'bg-blue-100 text-blue-700',
+                                'new' => 'bg-blue-100 text-blue-700',
+                        'active' => 'bg-green-100 text-green-700',
                                 'blocked' => 'bg-red-100 text-red-700',
                                 'suspended' => 'bg-amber-100 text-amber-700',
                                 default => 'bg-slate-100 text-slate-600',
@@ -124,6 +136,8 @@
                             <td class="px-3 py-3">
                                 <div class="truncate font-mono text-[0.72rem] font-semibold text-slate-900" title="{{ $agent->login_id }}">{{ $agent->login_id }}</div>
                                 <div class="mt-1 truncate text-sm font-medium text-slate-900" title="{{ $agent->agt_name }}">{{ $agent->agt_name }}</div>
+                                <div class="mt-1 truncate text-[0.7rem] text-blue-600">Referrer: {{ $agent->referrer?->agt_name ?? '-' }}</div>
+
                                 @if ($agent->id_number)
                                     <div class="mt-1 truncate text-[0.72rem] text-slate-500" title="{{ $agent->id_number }}">{{ $agent->id_number }}</div>
                                 @endif
@@ -147,6 +161,11 @@
                             <td class="px-3 py-3">
                                 <div class="font-semibold text-slate-900">RM {{ $formatAmount($agent->total_sale) }}</div>
                                 <div class="mt-1 text-[0.72rem] text-slate-500">{{ $formatPercent($agent->discount_percentage) }}% discount</div>
+                            </td>
+                            <td class="px-3 py-3">
+                                <div class="text-[0.72rem] text-slate-600">Tier1 : {{ number_format((int) ($agent->team_tier1_count ?? 0)) }} members</div>
+                                <div class="mt-1 text-[0.72rem] text-slate-600">Tier2 : {{ number_format((int) ($agent->team_tier2_count ?? 0)) }} members</div>
+                                <div class="mt-1 text-[0.72rem] font-semibold text-emerald-700">Bonus : RM {{ $formatAmount($agent->team_bonus_estimate ?? 0) }}</div>
                             </td>
                             <td class="px-3 py-3 text-center">
                                 <span class="inline-flex min-w-20 items-center justify-center rounded-full px-3 py-1 text-xs font-semibold {{ $statusClass }}">
@@ -179,7 +198,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-8 text-center">
+                            <td colspan="8" class="px-6 py-8 text-center">
                                 <p class="text-slate-600">No agents found.</p>
                             </td>
                         </tr>
@@ -192,7 +211,9 @@
             @forelse($agents as $agent)
                 @php
                     $statusClass = match ($agent->agt_status) {
-                        'active' => 'bg-green-100 text-green-700',
+                        'pending' => 'bg-blue-100 text-blue-700',
+                                'new' => 'bg-blue-100 text-blue-700',
+                                'active' => 'bg-green-100 text-green-700',
                         'blocked' => 'bg-red-100 text-red-700',
                         'suspended' => 'bg-amber-100 text-amber-700',
                         default => 'bg-slate-100 text-slate-600',
@@ -214,6 +235,8 @@
                         <div class="min-w-0 flex-1">
                             <div class="break-all font-mono text-[0.72rem] font-semibold text-slate-500">{{ $agent->login_id }}</div>
                             <h2 class="mt-0.5 break-words text-base font-semibold text-slate-950">{{ $agent->agt_name }}</h2>
+                            <p class="mt-1 text-xs font-medium text-blue-600">Referrer: {{ $agent->referrer?->agt_name ?? '-' }}</p>
+
                             <span class="mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $statusClass }}">
                                 {{ $statusOptions[$agent->agt_status] ?? ucfirst($agent->agt_status) }}
                             </span>
@@ -263,6 +286,12 @@
                             <dt class="text-[0.68rem] font-semibold uppercase text-slate-500">Sales</dt>
                             <dd class="mt-1 font-semibold text-slate-900">RM {{ $formatAmount($agent->total_sale) }}</dd>
                             <dd class="mt-0.5 text-xs text-slate-500">{{ $formatPercent($agent->discount_percentage) }}% discount</dd>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 p-3">
+                            <dt class="text-[0.68rem] font-semibold uppercase text-slate-500">Team</dt>
+                            <dd class="mt-1 text-xs text-slate-700">Tier1 : {{ number_format((int) ($agent->team_tier1_count ?? 0)) }} members</dd>
+                            <dd class="mt-0.5 text-xs text-slate-700">Tier2 : {{ number_format((int) ($agent->team_tier2_count ?? 0)) }} members</dd>
+                            <dd class="mt-0.5 text-xs font-semibold text-emerald-700">Bonus : RM {{ $formatAmount($agent->team_bonus_estimate ?? 0) }}</dd>
                         </div>
                         <div class="rounded-lg bg-slate-50 p-3">
                             <dt class="text-[0.68rem] font-semibold uppercase text-slate-500">Last login</dt>

@@ -52,6 +52,8 @@ Route::middleware('auth:admin')->group(function (): void {
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('business-sites', BusinessSiteController::class)->except('show');
     Route::put('/agents/{agent}/profile-picture', [AgentController::class, 'updateProfilePicture'])->name('agents.profile-picture.update');
+    Route::patch('/agents/{agent}/approve', [AgentController::class, 'approve'])->name('agents.approve');
     Route::put('/agents/{agent}/password', [AgentController::class, 'resetPassword'])->name('agents.password.update');
+    Route::post('/agents/{agent}/resend-registration-info', [AgentController::class, 'resendRegistrationInfo'])->name('agents.registration-info.resend');
     Route::resource('agents', AgentController::class);
 });

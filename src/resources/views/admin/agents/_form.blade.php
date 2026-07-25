@@ -56,6 +56,83 @@
         </div>
     </div>
 
+    <div>
+        @php
+            $selectedReferrerId = (string) old('referrer_id', $agent->referrer_id ?? '');
+            $selectedReferrer = $referrerOptions->first(fn ($option) => (string) $option->getKey() === $selectedReferrerId);
+            $selectedReferrerPicture = $selectedReferrer?->profile_picture
+                ? (filter_var($selectedReferrer->profile_picture, FILTER_VALIDATE_URL) ? $selectedReferrer->profile_picture : asset($selectedReferrer->profile_picture))
+                : null;
+        @endphp
+        <label class="mb-2 block text-sm font-medium text-slate-700">Referrer Agent</label>
+        <div class="relative" data-referrer-picker>
+            <input type="hidden" id="referrer_id" name="referrer_id" value="{{ $selectedReferrerId }}" data-referrer-value>
+            <button type="button" data-referrer-trigger aria-expanded="false" class="flex min-h-14 w-full items-center gap-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-left shadow-sm outline-none transition hover:border-blue-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                <span data-referrer-trigger-avatar class="grid h-10 w-10 flex-none place-items-center overflow-hidden rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+                    @if ($selectedReferrerPicture)
+                        <img src="{{ $selectedReferrerPicture }}" alt="" class="h-full w-full object-cover">
+                    @elseif ($selectedReferrer)
+                        {{ $selectedReferrer->initials() }}
+                    @else
+                        <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M17 8h4m-2-2v4"/></svg>
+                    @endif
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span data-referrer-trigger-label class="block truncate text-sm font-semibold {{ $selectedReferrer ? 'text-slate-900' : 'text-slate-500' }}">
+                        {{ $selectedReferrer ? $selectedReferrer->agt_name.' · '.$selectedReferrer->login_id : 'Choose referrer agent' }}
+                    </span>
+                    <span class="mt-0.5 block text-xs text-slate-400">Optional</span>
+                </span>
+                <svg class="h-5 w-5 flex-none text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            <div data-referrer-panel class="absolute left-0 right-0 top-full z-50 mt-2 hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-slate-100 p-3">
+                    <div class="relative">
+                        <svg class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                        <input type="search" data-referrer-search placeholder="Search agent name, login ID or phone" autocomplete="off" class="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                    </div>
+                </div>
+
+                <div class="max-h-72 overflow-y-auto p-2" data-referrer-options>
+                    <button type="button" data-referrer-option data-value="" data-label="Choose referrer agent" data-search="no referrer" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-slate-50">
+                        <span data-option-avatar class="grid h-10 w-10 flex-none place-items-center rounded-full bg-slate-100 text-slate-400"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8"/></svg></span>
+                        <span><span class="block text-sm font-semibold text-slate-700">No referrer</span><span class="block text-xs text-slate-400">Register without a referring agent</span></span>
+                    </button>
+
+                    @foreach ($referrerOptions as $referrerOption)
+                        @continue($isEdit && $referrerOption->is($agent))
+                        @php
+                            $referrerPicture = $referrerOption->profile_picture
+                                ? (filter_var($referrerOption->profile_picture, FILTER_VALIDATE_URL) ? $referrerOption->profile_picture : asset($referrerOption->profile_picture))
+                                : null;
+                            $referrerLabel = $referrerOption->agt_name.' · '.$referrerOption->login_id;
+                        @endphp
+                        <button type="button" data-referrer-option data-value="{{ $referrerOption->getKey() }}" data-label="{{ $referrerLabel }}" data-search="{{ \Illuminate\Support\Str::lower($referrerOption->agt_name.' '.$referrerOption->login_id.' '.$referrerOption->phone_number.' '.$referrerOption->email) }}" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-blue-50">
+                            <span data-option-avatar class="grid h-10 w-10 flex-none place-items-center overflow-hidden rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+                                @if ($referrerPicture)
+                                    <img src="{{ $referrerPicture }}" alt="" loading="lazy" class="h-full w-full object-cover">
+                                @else
+                                    {{ $referrerOption->initials() }}
+                                @endif
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-semibold text-slate-900">{{ $referrerOption->agt_name }}</span>
+                                <span class="block truncate text-xs text-slate-500">{{ $referrerOption->login_id }}{{ $referrerOption->phone_number ? ' · '.$referrerOption->phone_number : '' }}</span>
+                            </span>
+                            <svg data-selected-check class="{{ $selectedReferrerId === (string) $referrerOption->getKey() ? '' : 'hidden' }} h-5 w-5 flex-none text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4 4L19 6"/></svg>
+                        </button>
+                    @endforeach
+
+                    <p data-referrer-empty class="hidden px-3 py-8 text-center text-sm text-slate-500">No matching agent found.</p>
+                </div>
+            </div>
+        </div>
+        @error('referrer_id')
+            <span class="mt-1 block text-sm text-red-600">{{ $message }}</span>
+        @enderror
+    </div>
+
     <div class="grid gap-4 md:grid-cols-2">
         <div>
             <label for="email" class="mb-2 block text-sm font-medium text-slate-700">
@@ -141,6 +218,14 @@
             @enderror
         </div>
 
+        <div>
+            <label for="commission_percentage" class="mb-2 block text-sm font-medium text-slate-700">Commission (%)</label>
+            <input type="number" id="commission_percentage" name="commission_percentage" value="{{ old('commission_percentage', $agent->commission_percentage ?? '') }}" placeholder="e.g. 5.00" step="0.01" min="0" max="100" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+            @error('commission_percentage')
+                <span class="mt-1 block text-sm text-red-600">{{ $message }}</span>
+            @enderror
+        </div>
+
         @if ($isEdit)
             <div>
                 <label for="total_sale" class="mb-2 block text-sm font-medium text-slate-700">
@@ -191,3 +276,59 @@
         </a>
     </div>
 </form>
+<script>
+    (function () {
+        const picker = document.querySelector('[data-referrer-picker]');
+        if (! picker) return;
+
+        const trigger = picker.querySelector('[data-referrer-trigger]');
+        const panel = picker.querySelector('[data-referrer-panel]');
+        const search = picker.querySelector('[data-referrer-search]');
+        const value = picker.querySelector('[data-referrer-value]');
+        const label = picker.querySelector('[data-referrer-trigger-label]');
+        const avatar = picker.querySelector('[data-referrer-trigger-avatar]');
+        const options = Array.from(picker.querySelectorAll('[data-referrer-option]'));
+        const empty = picker.querySelector('[data-referrer-empty]');
+
+        function setOpen(open) {
+            panel.classList.toggle('hidden', ! open);
+            trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) {
+                search.value = '';
+                options.forEach((option) => option.classList.remove('hidden'));
+                empty.classList.add('hidden');
+                window.setTimeout(() => search.focus(), 0);
+            }
+        }
+
+        trigger.addEventListener('click', () => setOpen(panel.classList.contains('hidden')));
+
+        search.addEventListener('input', () => {
+            const query = search.value.trim().toLowerCase();
+            let visible = 0;
+            options.forEach((option) => {
+                const matches = (option.dataset.search || '').includes(query);
+                option.classList.toggle('hidden', ! matches);
+                if (matches) visible++;
+            });
+            empty.classList.toggle('hidden', visible !== 0);
+        });
+
+        options.forEach((option) => option.addEventListener('click', () => {
+            value.value = option.dataset.value;
+            label.textContent = option.dataset.label;
+            label.classList.toggle('text-slate-500', option.dataset.value === '');
+            label.classList.toggle('text-slate-900', option.dataset.value !== '');
+            avatar.innerHTML = option.querySelector('[data-option-avatar]').innerHTML;
+            options.forEach((item) => item.querySelector('[data-selected-check]')?.classList.toggle('hidden', item !== option));
+            setOpen(false);
+        }));
+
+        document.addEventListener('click', (event) => {
+            if (! picker.contains(event.target)) setOpen(false);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') setOpen(false);
+        });
+    })();
+</script>

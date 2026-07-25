@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Agent\AgentRegistrationController;
 use App\Http\Controllers\Agent\DashboardController;
 use App\Http\Controllers\Agent\HistoryController;
 use App\Http\Controllers\Agent\LoginController;
@@ -7,7 +8,13 @@ use App\Http\Controllers\Agent\OrderController;
 use App\Http\Controllers\Agent\PosController;
 use App\Http\Controllers\Agent\ProfileController;
 use App\Http\Controllers\Agent\ProgressController;
+use App\Http\Controllers\Agent\TeamController;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware(['signed', 'throttle:20,1'])->group(function (): void {
+    Route::get('/register-agent/{referrer}', [AgentRegistrationController::class, 'create'])->name('registration.create');
+    Route::post('/register-agent/{referrer}', [AgentRegistrationController::class, 'store'])->name('registration.store');
+});
 
 Route::middleware('guest:agent')->group(function (): void {
     Route::redirect('/', '/login')->name('home');
@@ -17,15 +24,19 @@ Route::middleware('guest:agent')->group(function (): void {
 
 Route::middleware('auth:agent')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/history', HistoryController::class)->name('history');
     Route::redirect('/products', '/dashboard');
     Route::redirect('/catalogue', '/dashboard');
     Route::get('/progress', ProgressController::class)->name('progress');
+    Route::get('/team', [TeamController::class, 'index'])->name('team.index');
+    Route::get('/team/{teamAgent}', [TeamController::class, 'show'])->name('team.show');
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos/sign-in', [PosController::class, 'signIn'])->name('pos.sign-in');
     Route::post('/pos/sign-out', [PosController::class, 'signOut'])->name('pos.sign-out');
     Route::post('/pos/sales', [PosController::class, 'store'])->name('pos.sales.store');
+    Route::post('/pos/sales/{posSale}/receipt', [PosController::class, 'sendReceipt'])->name('pos.sales.receipt');
     Route::get('/pos/sales/{posSale}/edit', [PosController::class, 'edit'])->name('pos.sales.edit');
     Route::put('/pos/sales/{posSale}', [PosController::class, 'update'])->name('pos.sales.update');
     Route::delete('/pos/sales/{posSale}', [PosController::class, 'destroy'])->name('pos.sales.destroy');

@@ -58,6 +58,64 @@
         openDeleteModal(deleteModal.dataset.action || '', deleteModal.dataset.saleNumber || '', true);
     }
 
+    const receiptModal = root.querySelector('[data-pos-receipt-modal]');
+    const receiptForm = receiptModal?.querySelector('[data-pos-receipt-form]');
+    const receiptName = receiptModal?.querySelector('[name="customer_name"]');
+    const receiptEmail = receiptModal?.querySelector('[name="customer_email"]');
+
+    const openReceiptModal = (action, saleNumber, customerName = '', preserveErrors = false) => {
+        if (!receiptModal || !receiptForm) return;
+
+        receiptForm.action = action;
+        receiptForm.querySelector('[data-pos-receipt-action]').value = action;
+        receiptForm.querySelector('[data-pos-receipt-sale-number]').value = saleNumber;
+        receiptModal.querySelector('[data-pos-receipt-sale-label]').textContent = saleNumber;
+
+        if (!preserveErrors) {
+            if (receiptName) receiptName.value = customerName;
+            if (receiptEmail) receiptEmail.value = '';
+        }
+
+        receiptModal.classList.remove('hidden');
+        receiptModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+        window.setTimeout(() => (receiptName?.value ? receiptEmail : receiptName)?.focus(), 50);
+    };
+
+    const closeReceiptModal = () => {
+        if (!receiptModal) return;
+        receiptModal.classList.add('hidden');
+        receiptModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    root.querySelectorAll('[data-open-pos-receipt]').forEach((button) => {
+        button.addEventListener('click', () => {
+            openReceiptModal(button.dataset.action || '', button.dataset.saleNumber || '', button.dataset.customerName || '');
+        });
+    });
+
+    receiptModal?.querySelectorAll('[data-close-pos-receipt]').forEach((button) => {
+        button.addEventListener('click', closeReceiptModal);
+    });
+
+    receiptForm?.addEventListener('submit', () => {
+        const submit = receiptForm.querySelector('[type="submit"]');
+        if (!submit) return;
+        submit.disabled = true;
+        submit.textContent = 'Sending receipt...';
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && receiptModal && !receiptModal.classList.contains('hidden')) {
+            closeReceiptModal();
+        }
+    });
+
+    if (receiptModal?.dataset.openOnLoad === 'true') {
+        openReceiptModal(receiptModal.dataset.action || '', receiptModal.dataset.saleNumber || '', receiptName?.value || '', true);
+    }
+
     const timer = root.querySelector('[data-pos-timer]');
     if (timer) {
         const signedInAt = new Date(timer.dataset.signedInAt).getTime();

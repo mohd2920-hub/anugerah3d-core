@@ -29,6 +29,7 @@ class StorePosSaleRequest extends FormRequest
             'items.*.discount_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'customer_name' => ['nullable', 'string', 'max:150'],
             'customer_phone' => ['nullable', 'string', 'max:50'],
+            'customer_email' => ['nullable', 'email:rfc', 'max:150'],
             'remark' => ['nullable', 'string', 'max:2000'],
             'payment_method' => ['required', Rule::in(array_keys(PosSale::paymentMethods()))],
             'payment_remark' => ['nullable', 'string', 'max:500'],

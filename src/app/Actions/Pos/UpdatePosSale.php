@@ -32,6 +32,7 @@ class UpdatePosSale
                     'sales_agent_id' => $data['sales_agent_id'],
                     'customer_name' => $data['customer_name'] ?? null,
                     'customer_phone' => $data['customer_phone'] ?? null,
+                    'customer_email' => $data['customer_email'] ?? null,
                     'remark' => $data['remark'] ?? null,
                     'payment_method' => $data['payment_method'],
                     'payment_remark' => $data['payment_remark'] ?? null,

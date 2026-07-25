@@ -48,6 +48,7 @@ class HistoryController extends Controller
             'phone' => $order->phone_number,
             'address' => $order->delivery_address ?: 'Anugerah3D pickup counter',
             'notes' => $order->notes,
+            'payment_proofs' => $order->paymentProofUrls(),
             'products' => $order->items->map(fn ($item): array => [
                 'code' => $item->product_code,
                 'name' => $item->product_name,

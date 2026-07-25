@@ -20,5 +20,7 @@
         </main>
 
         <x-public.footer />
+
+        @stack('scripts')
     </body>
 </html>

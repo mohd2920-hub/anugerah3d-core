@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,6 +15,8 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
     'login_id',
+    'referrer_id',
+    'referral_code',
     'agt_name',
     'id_number',
     'email',
@@ -24,6 +27,9 @@ use Illuminate\Notifications\Notifiable;
     'city',
     'state',
     'discount_percentage',
+    'commission_percentage',
+    'tier1_percentage',
+    'tier2_percentage',
     'profile_picture',
     'last_login_at',
     'last_login_ip',
@@ -36,6 +42,10 @@ class Agent extends Authenticatable
     use HasFactory, Notifiable;
 
     public const StatusActive = 'active';
+
+    public const StatusNew = 'new';
+
+    public const StatusPending = 'pending';
 
     public const StatusInactive = 'inactive';
 
@@ -51,6 +61,8 @@ class Agent extends Authenticatable
     protected $attributes = [
         'agt_status' => self::StatusActive,
         'discount_percentage' => 0,
+        'tier1_percentage' => 7,
+        'tier2_percentage' => 3,
         'total_sale' => 0,
     ];
 
@@ -60,6 +72,8 @@ class Agent extends Authenticatable
     public static function statuses(): array
     {
         return [
+            self::StatusPending => 'Pending approval',
+            self::StatusNew => 'New registration',
             self::StatusActive => 'Active',
             self::StatusInactive => 'Inactive',
             self::StatusBlocked => 'Blocked',
@@ -70,6 +84,16 @@ class Agent extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referrer_id');
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(self::class, 'referrer_id');
     }
 
     public function businessSites(): BelongsToMany
@@ -114,6 +138,31 @@ class Agent extends Authenticatable
             ->implode('');
 
         return $initials !== '' ? $initials : 'AG';
+    }
+
+    public function referralUrl(): string
+    {
+        return rtrim((string) config('domains.public_url', 'https://anugerah3d.com'), '/').'/joinus/'.$this->referral_code;
+    }
+
+    public function referralInviteMessage(): string
+    {
+        return "Hi! 👋 Saya ingin menjemput anda menyertai Anugerah3D sebagai agent. Platform ini membuka peluang untuk anda berkongsi produk kreatif 3D, membina rangkaian dan menjana pendapatan bersama komuniti yang positif. Daftar melalui pautan khas saya di bawah:\n\n".$this->referralUrl()."\n\nJom sertai platform yang hebat ini. Saya sedia membantu anda bermula! 🌟";
+    }
+
+    public function referralWhatsappUrl(string $phone): ?string
+    {
+        $phone = preg_replace('/\D+/', '', $phone);
+
+        if ($phone === '') {
+            return null;
+        }
+
+        if (str_starts_with($phone, '0')) {
+            $phone = '60'.substr($phone, 1);
+        }
+
+        return 'https://wa.me/'.$phone.'?text='.rawurlencode($this->referralInviteMessage());
     }
 
     public function loginInfoMessage(?string $plainPassword = null): string
@@ -163,10 +212,26 @@ class Agent extends Authenticatable
      *
      * @return array<string, string>
      */
+    protected static function booted(): void
+    {
+        static::creating(function (Agent $agent): void {
+            if ($agent->referral_code) {
+                return;
+            }
+
+            do {
+                $agent->referral_code = strtoupper(str()->random(8));
+            } while (self::query()->where('referral_code', $agent->referral_code)->exists());
+        });
+    }
+
     protected function casts(): array
     {
         return [
             'discount_percentage' => 'decimal:1',
+            'commission_percentage' => 'decimal:2',
+            'tier1_percentage' => 'decimal:2',
+            'tier2_percentage' => 'decimal:2',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'total_sale' => 'decimal:2',

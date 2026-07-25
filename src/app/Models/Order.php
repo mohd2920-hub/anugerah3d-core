@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -21,6 +23,7 @@ use Illuminate\Support\Str;
     'delivery_address',
     'notes',
     'payment_method',
+    'payment_proof_paths',
     'payment_status',
     'subtotal',
     'delivery_fee',
@@ -127,12 +130,51 @@ class Order extends Model
         return $this->fulfilment_method === 'delivery' ? 'Delivery' : 'Self pickup';
     }
 
+    /** @return array<int, string> */
+    public function paymentProofPaths(): array
+    {
+        $paths = is_array($this->payment_proof_paths) ? $this->payment_proof_paths : [];
+
+        return array_values(array_filter($paths, fn ($path) => is_string($path) && $path !== ''));
+    }
+
+    /** @return array<int, string> */
+    public function paymentProofUrls(): array
+    {
+        return array_map(fn (string $path): string => $this->pictureUrl($path), $this->paymentProofPaths());
+    }
+
+    public function pictureUrl(string $path): string
+    {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        if (File::exists(public_path($path))) {
+            return asset($path);
+        }
+
+        return Storage::disk($this->pictureDisk())->url($path);
+    }
+
+    private function pictureDisk(): string
+    {
+        $default = (string) config('filesystems.default', 'public');
+
+        if ($default === 's3' && class_exists('League\\Flysystem\\AwsS3V3\\PortableVisibilityConverter')) {
+            return 's3';
+        }
+
+        return 'public';
+    }
+
     protected function casts(): array
     {
         return [
             'subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'payment_proof_paths' => 'array',
             'total_units' => 'integer',
             'placed_at' => 'datetime',
             'admin_notification_sent_at' => 'datetime',

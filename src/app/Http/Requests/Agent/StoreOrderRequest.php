@@ -22,6 +22,8 @@ class StoreOrderRequest extends FormRequest
             'delivery_address' => ['nullable', 'required_if:fulfilment_method,delivery', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'payment_method' => ['required', Rule::in(['bank_transfer', 'pay_later'])],
+            'payment_proofs' => ['nullable', 'required_if:payment_method,bank_transfer', 'array', 'max:5'],
+            'payment_proofs.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.product_id' => ['required', 'integer', 'distinct', Rule::exists('products', 'id')],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
