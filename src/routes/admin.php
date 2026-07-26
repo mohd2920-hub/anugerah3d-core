@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\SystemManagementController;
+use App\Http\Controllers\Admin\WeeklyClosingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest:admin')->group(function (): void {
@@ -48,6 +49,10 @@ Route::middleware('auth:admin')->group(function (): void {
     Route::patch('/orders/{order}/process', [OrderController::class, 'process'])->name('orders.process');
     Route::patch('/orders/{order}/complete', [OrderController::class, 'complete'])->name('orders.complete');
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
+    Route::get('/weekly-closings', [WeeklyClosingController::class, 'index'])->name('weekly-closings.index');
+    Route::get('/weekly-closings/{weeklyClosing}', [WeeklyClosingController::class, 'show'])->name('weekly-closings.show');
+    Route::patch('/weekly-closings/{weeklyClosing}/agents/{agentSummary}/payment', [WeeklyClosingController::class, 'updatePayment'])->name('weekly-closings.payments.update');
 
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('business-sites', BusinessSiteController::class)->except('show');

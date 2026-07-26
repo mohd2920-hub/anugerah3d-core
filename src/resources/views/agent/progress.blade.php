@@ -43,6 +43,11 @@
             <p class="text-xs font-semibold text-slate-500">RM {{ number_format($teamSalesTotal, 2) }} ({{ number_format($teamOrderCount) }} orders)</p>
             <p class="mt-1 text-[11px] font-bold text-cyan-700">Bonus rate: Tier 1 {{ number_format((float) ($agent->tier1_percentage ?? 7), 2) }}% • Tier 2 {{ number_format((float) ($agent->tier2_percentage ?? 3), 2) }}%</p>
         </a>
+        <a href="{{ route('agent.weekly-performance.index') }}" class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition active:scale-[0.99]">
+            <span class="grid h-10 w-10 place-items-center rounded-2xl bg-indigo-100 text-indigo-700"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg></span>
+            <p class="mt-1 text-lg font-black text-[#17324d]">Weekly performance</p>
+            <p class="text-xs font-semibold text-slate-500">Refer past weeks: bonus, team order and POS.</p>
+        </a>
     </section>
 
     <section class="relative overflow-hidden rounded-[1.75rem] border border-orange-200 bg-[linear-gradient(135deg,#fff7ed,#fffbeb)] p-5 shadow-sm" data-referral-card data-invite-message="{{ $referralMessage }}">

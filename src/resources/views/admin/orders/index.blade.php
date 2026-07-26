@@ -30,7 +30,7 @@
             </div>
         @endif
 
-        <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Order summary">
+        <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Order summary">
             <a href="{{ route('admin.orders.index') }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">All orders</p>
                 <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['total']) }}</p>
@@ -46,7 +46,18 @@
             <a href="{{ route('admin.orders.index', ['status' => 'completed']) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:border-emerald-400">
                 <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Completed</p>
                 <p class="mt-2 text-2xl font-semibold text-emerald-900">{{ number_format($summary['completed']) }}</p>
+                <p class="mt-1 text-xs text-emerald-800">Sales: RM {{ number_format((float) $summary['completed_sales_amount'], 2) }}</p>
             </a>
+            <div class="rounded-lg border border-teal-200 bg-teal-50 p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">Total profit</p>
+                <p class="mt-2 text-2xl font-semibold text-teal-900">RM {{ number_format((float) $summary['total_profit'], 2) }}</p>
+                <p class="mt-1 text-xs text-teal-800">Net (after bonus)</p>
+            </div>
+            <div class="rounded-lg border border-violet-200 bg-violet-50 p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Bonus</p>
+                <a href="{{ route('admin.orders.index', ['payment_status' => 'paid']) }}" class="mt-2 block rounded-md px-2 py-1 text-sm font-semibold text-violet-900 hover:bg-violet-100">Paid: RM {{ number_format((float) $summary['bonus_paid'], 2) }}</a>
+                <a href="{{ route('admin.orders.index', ['payment_status' => 'unpaid']) }}" class="mt-1 block rounded-md px-2 py-1 text-sm font-semibold text-violet-900 hover:bg-violet-100">Pending: RM {{ number_format((float) $summary['bonus_pending'], 2) }}</a>
+            </div>
         </section>
 
         <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
@@ -84,7 +95,7 @@
 
         <section class="hidden overflow-visible rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">
             <div class="overflow-x-auto">
-                <table class="admin-data-table w-full min-w-[1050px] text-xs">
+                <table class="admin-data-table w-full min-w-[1140px] text-xs">
                     <thead class="bg-slate-50">
                         <tr>
                             <th class="px-3 py-3 text-left font-semibold text-slate-700">Order</th>
@@ -94,6 +105,7 @@
                             <th class="px-3 py-3 text-left font-semibold text-slate-700">Payment</th>
                             <th class="px-3 py-3 text-left font-semibold text-slate-700">Stock</th>
                             <th class="px-3 py-3 text-right font-semibold text-slate-700">Total</th>
+                            <th class="w-44 px-3 py-3 text-right font-semibold text-slate-700">Profit</th>
                             <th class="px-3 py-3 text-left font-semibold text-slate-700">Status</th>
                             <th class="px-3 py-3 text-right font-semibold text-slate-700">Action</th>
                         </tr>
@@ -107,7 +119,7 @@
                                 </td>
                                 <td class="px-3 py-3">
                                     <p class="font-semibold text-slate-900">{{ $order->agent->agt_name }}</p>
-                                    <p class="mt-1 text-slate-500">{{ $order->recipient_name }} · {{ $order->phone_number }}</p>
+                                    <p class="mt-1 text-slate-500">{{ $order->recipient_name }} ï¿½ {{ $order->phone_number }}</p>
                                 </td>
                                 <td class="px-3 py-3 text-slate-600">
                                     <p>{{ $order->placed_at->format('d M Y') }}</p>
@@ -135,6 +147,24 @@
                                     <p class="font-semibold text-slate-900">RM {{ number_format((float) $order->total_amount, 2) }}</p>
                                     <p class="mt-1 text-slate-500">Delivery TBC</p>
                                 </td>
+                                <td class="px-3 py-3 text-right align-middle">
+                                    @php
+                                        $profitAmount = (float) $order->profit_amount;
+                                        $profitClass = $profitAmount > 0
+                                            ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                                            : ($profitAmount < 0
+                                                ? 'bg-red-100 text-red-800 ring-red-200'
+                                                : 'bg-slate-100 text-slate-700 ring-slate-200');
+                                    @endphp
+                                    <p class="text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</p>
+                                    @if ((float) $order->bonus_total > 0)
+                                        <p class="mt-1 text-slate-500">
+                                            Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
+                                            <span class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700" title="Rate used: Tier1 {{ number_format((float) $order->tier1_bonus_rate, 2) }}% and Tier2 {{ number_format((float) $order->tier2_bonus_rate, 2) }}%">i</span>
+                                        </p>
+                                    @endif
+                                    <span class="mt-2 inline-flex min-h-8 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-bold ring-1 {{ $profitClass }}">RM {{ number_format($profitAmount, 2) }}</span>
+                                </td>
                                 <td class="px-3 py-3">
                                     <span class="{{ $statusClass($order->status) }} inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1">{{ $order->statusLabel() }}</span>
                                 </td>
@@ -158,7 +188,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="px-6 py-10 text-center text-slate-600">No orders match the selected filters.</td></tr>
+                            <tr><td colspan="10" class="px-6 py-10 text-center text-slate-600">No orders match the selected filters.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -178,7 +208,7 @@
 
                     <div class="mt-4">
                         <p class="font-semibold text-slate-900">{{ $order->agent->agt_name }}</p>
-                        <p class="mt-1 text-sm text-slate-600">{{ $order->recipient_name }} · {{ $order->phone_number }}</p>
+                        <p class="mt-1 text-sm text-slate-600">{{ $order->recipient_name }} ï¿½ {{ $order->phone_number }}</p>
                     </div>
 
                     <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -191,6 +221,25 @@
                             <dt class="text-xs font-semibold uppercase text-slate-500">Total</dt>
                             <dd class="mt-1 font-semibold text-slate-900">RM {{ number_format((float) $order->total_amount, 2) }}</dd>
                             <dd class="mt-1 text-xs text-slate-500">{{ $order->paymentStatusLabel() }}</dd>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 p-3">
+                            <dt class="text-xs font-semibold uppercase text-slate-500">Profit</dt>
+                            <dd class="mt-1 text-xs text-slate-600">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</dd>
+                            @if ((float) $order->bonus_total > 0)
+                                <dd class="mt-1 text-xs text-slate-600">
+                                    Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
+                                    <span class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700" title="Rate used: Tier1 {{ number_format((float) $order->tier1_bonus_rate, 2) }}% and Tier2 {{ number_format((float) $order->tier2_bonus_rate, 2) }}%">i</span>
+                                </dd>
+                            @endif
+                            @php
+                                $mobileProfitAmount = (float) $order->profit_amount;
+                                $mobileProfitClass = $mobileProfitAmount > 0
+                                    ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                                    : ($mobileProfitAmount < 0
+                                        ? 'bg-red-100 text-red-800 ring-red-200'
+                                        : 'bg-slate-100 text-slate-700 ring-slate-200');
+                            @endphp
+                            <dd class="mt-2"><span class="inline-flex min-h-8 items-center justify-center rounded-lg px-3 py-1.5 text-sm font-bold ring-1 {{ $mobileProfitClass }}">RM {{ number_format($mobileProfitAmount, 2) }}</span></dd>
                         </div>
                         <div class="rounded-lg bg-slate-50 p-3">
                             <dt class="text-xs font-semibold uppercase text-slate-500">Fulfilment</dt>

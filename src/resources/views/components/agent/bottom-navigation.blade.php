@@ -12,8 +12,8 @@
             <span @class(['grid h-8 w-10 place-items-center rounded-full transition', 'bg-orange-100' => request()->routeIs('agent.pos.*')])><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v12H3z"/><path d="M7 12h.01M17 12h.01"/><circle cx="12" cy="12" r="2"/></svg></span>
             POS
         </a>
-        <a href="{{ route('agent.progress') }}" @class(['group flex flex-col items-center justify-center gap-1 text-[9px] font-bold transition', 'text-[#e7682b]' => request()->routeIs('agent.progress'), 'text-slate-400' => !request()->routeIs('agent.progress')])>
-            <span @class(['grid h-8 w-10 place-items-center rounded-full transition', 'bg-orange-100' => request()->routeIs('agent.progress')])><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg></span>
+        <a href="{{ route('agent.progress') }}" @class(['group flex flex-col items-center justify-center gap-1 text-[9px] font-bold transition', 'text-[#e7682b]' => request()->routeIs('agent.progress', 'agent.weekly-performance.*'), 'text-slate-400' => !request()->routeIs('agent.progress', 'agent.weekly-performance.*')])>
+            <span @class(['grid h-8 w-10 place-items-center rounded-full transition', 'bg-orange-100' => request()->routeIs('agent.progress', 'agent.weekly-performance.*')])><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg></span>
             Progress
         </a>
         <a href="{{ route('agent.profile') }}" @class(['group flex flex-col items-center justify-center gap-1 text-[9px] font-bold transition', 'text-[#e7682b]' => request()->routeIs('agent.profile'), 'text-slate-400' => !request()->routeIs('agent.profile')])>

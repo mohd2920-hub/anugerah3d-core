@@ -14,67 +14,20 @@
 
     <div class="space-y-3">
         <div class="flex items-center justify-between">
-            <p class="text-sm font-extrabold text-[#17324d]"><span data-catalogue-count>{{ $products->count() }}</span> products</p>
+            <p class="text-sm font-extrabold text-[#17324d]"><span data-catalogue-count>{{ $products->count() }}</span> / {{ $catalogueTotal ?? $products->count() }} products</p>
             <button type="button" data-clear-catalogue-search class="hidden text-xs font-bold text-[#e7682b]">Clear</button>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-            @foreach ($products as $product)
-                @php
-                    $legacyPicture = $product->prd_picture
-                        ? (filter_var($product->prd_picture, FILTER_VALIDATE_URL) ? $product->prd_picture : asset(ltrim($product->prd_picture, '/')))
-                        : null;
-                    $galleryImages = $product->images
-                        ->take(5)
-                        ->map(fn ($image) => [
-                            'src' => filter_var($image->image_path, FILTER_VALIDATE_URL) ? $image->image_path : asset(ltrim($image->image_path, '/')),
-                            'alt' => $image->alt_text ?: $product->prd_name,
-                        ])
-                        ->values();
-                    if ($galleryImages->isEmpty() && $legacyPicture) {
-                        $galleryImages->push(['src' => $legacyPicture, 'alt' => $product->prd_name]);
-                    }
-                    $searchValue = Str::lower($product->prd_code.' '.$product->prd_name);
-                    $isPreOrder = (int) $product->prd_balance <= 0;
-                @endphp
-                <article id="catalogue-product-{{ $product->id }}" data-catalogue-card data-search-value="{{ $searchValue }}" data-product-name="{{ $product->prd_name }}" data-gallery-images="{{ $galleryImages->toJson() }}" class="scroll-mt-28 flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="relative aspect-square overflow-hidden bg-slate-100">
-                        @if ($galleryImages->isNotEmpty())
-                            <div data-catalogue-gallery class="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none]">
-                                @foreach ($galleryImages as $image)
-                                    <button type="button" data-catalogue-slide data-image-index="{{ $loop->index }}" class="h-full min-w-full snap-center" aria-label="Open picture {{ $loop->iteration }} of {{ $galleryImages->count() }} for {{ $product->prd_name }}">
-                                        <img src="{{ $image['src'] }}" alt="{{ $image['alt'] }}" loading="lazy" class="h-full w-full object-cover">
-                                    </button>
-                                @endforeach
-                            </div>
-                            @if ($galleryImages->count() > 1)
-                                <div class="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center gap-1.5" data-catalogue-dots aria-label="Choose product picture">
-                                    @foreach ($galleryImages as $image)
-                                        <button type="button" data-catalogue-dot data-image-index="{{ $loop->index }}" class="pointer-events-auto h-1.5 rounded-full bg-white/70 shadow-sm transition-all {{ $loop->first ? 'w-4 bg-white' : 'w-1.5' }}" aria-label="Show picture {{ $loop->iteration }}"></button>
-                                    @endforeach
-                                </div>
-                            @endif
-                        @else
-                            <div class="grid h-full place-items-center bg-[linear-gradient(145deg,#f1f5f9,#e8eef5)] text-slate-300"><svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
-                        @endif
-                        @if ($isPreOrder)
-                            <div class="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-slate-950/50 p-3 text-center backdrop-blur-[1px]"><span class="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-lg">Out of stock</span></div>
-                        @else
-                            <span class="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-extrabold uppercase text-emerald-700 shadow-sm">In stock</span>
-                        @endif
-                    </div>
-
-                    <div class="flex flex-1 flex-col p-3">
-                        <p class="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $product->prd_code }}</p>
-                        <h3 class="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#17324d]">{{ $product->prd_name }}</h3>
-                        <div class="mt-3 flex items-end justify-between gap-2 border-t border-slate-100 pt-3">
-                            <span class="text-[9px] font-semibold text-slate-500">Selling price</span>
-                            <span class="text-base font-black text-[#e7682b]">RM {{ number_format((float) $product->price_selling, 2) }}</span>
-                        </div>
-                    </div>
-                </article>
-            @endforeach
+        <div data-catalogue-grid class="grid grid-cols-2 gap-3">
+            @include('agent.partials._catalogue-cards', ['products' => $products])
         </div>
+
+        <div data-catalogue-loading class="{{ ($catalogueHasMore ?? false) ? 'flex' : 'hidden' }} items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <img src="{{ asset('images/loading.gif') }}" alt="Loading products" class="h-5 w-5">
+            <span class="text-xs font-semibold text-slate-500">Loading more products...</span>
+        </div>
+
+        <div data-catalogue-sentinel class="h-8"></div>
 
         <div data-no-catalogue-results class="hidden rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">No products match your search.</div>
     </div>
@@ -112,6 +65,14 @@
     const clearSearch = root.querySelector('[data-clear-catalogue-search]');
     const resultCount = root.querySelector('[data-catalogue-count]');
     const noResults = root.querySelector('[data-no-catalogue-results]');
+    const grid = root.querySelector('[data-catalogue-grid]');
+    const loading = root.querySelector('[data-catalogue-loading]');
+    const sentinel = root.querySelector('[data-catalogue-sentinel]');
+    const endpoint = @json(route('agent.dashboard.products'));
+    let nextPage = {{ ($catalogueHasMore ?? false) ? 2 : 'null' }};
+    let isLoading = false;
+    let query = '';
+    let debounceTimer = null;
     const imageModal = document.querySelector('[data-catalogue-image-modal]');
     const modalImage = imageModal.querySelector('[data-catalogue-modal-image]');
     const modalName = imageModal.querySelector('[data-catalogue-modal-name]');
@@ -126,26 +87,80 @@
         document.body.appendChild(imageModal);
     }
 
-    const filterProducts = () => {
-        const query = searchInput.value.trim().toLowerCase();
-        let count = 0;
-
-        root.querySelectorAll('[data-catalogue-card]').forEach((card) => {
-            const isVisible = query === '' || card.dataset.searchValue.includes(query);
-            card.classList.toggle('hidden', !isVisible);
-            card.classList.toggle('flex', isVisible);
-            if (isVisible) count++;
-        });
-
-        resultCount.textContent = count;
-        clearSearch.classList.toggle('hidden', query === '');
-        noResults.classList.toggle('hidden', count > 0);
+    const setLoading = (value) => {
+        isLoading = value;
+        loading.classList.toggle('hidden', !value && nextPage === null);
+        loading.classList.toggle('flex', value || nextPage !== null);
     };
 
-    searchInput.addEventListener('input', filterProducts);
+    const escapeHtml = (value) => {
+        const div = document.createElement('div');
+        div.textContent = value;
+        return div.innerHTML;
+    };
+
+    const fetchProducts = async ({ reset = false } = {}) => {
+        if (isLoading) return;
+
+        const targetPage = reset ? 1 : nextPage;
+        if (targetPage === null) return;
+
+        setLoading(true);
+
+        try {
+            const response = await fetch(`${endpoint}?page=${targetPage}&search=${encodeURIComponent(query)}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (reset) {
+                grid.innerHTML = '';
+            }
+
+            if (data.html) {
+                grid.insertAdjacentHTML('beforeend', data.html);
+            }
+
+            initializeCards();
+            nextPage = data.next_page;
+            resultCount.textContent = String(grid.querySelectorAll('[data-catalogue-card]').length);
+            noResults.classList.toggle('hidden', grid.querySelectorAll('[data-catalogue-card]').length > 0);
+        } catch (error) {
+            noResults.classList.remove('hidden');
+            noResults.textContent = 'Unable to load products. Please try again.';
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    searchInput.addEventListener('input', () => {
+        query = searchInput.value.trim().toLowerCase();
+        clearSearch.classList.toggle('hidden', query === '');
+
+        if (debounceTimer) {
+            window.clearTimeout(debounceTimer);
+        }
+
+        debounceTimer = window.setTimeout(() => {
+            nextPage = 1;
+            fetchProducts({ reset: true });
+        }, 250);
+    });
+
     clearSearch.addEventListener('click', () => {
         searchInput.value = '';
-        filterProducts();
+        query = '';
+        nextPage = 1;
+        fetchProducts({ reset: true });
+        clearSearch.classList.add('hidden');
         searchInput.focus();
     });
 
@@ -159,27 +174,36 @@
         });
     };
 
-    root.querySelectorAll('[data-catalogue-card]').forEach((card) => {
-        const gallery = card.querySelector('[data-catalogue-gallery]');
-        if (!gallery) return;
+    const initializeCards = () => {
+        root.querySelectorAll('[data-catalogue-card]').forEach((card) => {
+            if (card.dataset.initialized === '1') {
+                return;
+            }
 
-        let scrollTimer = null;
-        gallery.addEventListener('scroll', () => {
-            if (scrollTimer) window.clearTimeout(scrollTimer);
-            scrollTimer = window.setTimeout(() => {
-                const activeIndex = Math.round(gallery.scrollLeft / Math.max(1, gallery.clientWidth));
-                setActiveCardDot(card, activeIndex);
-            }, 60);
-        }, { passive: true });
+            card.dataset.initialized = '1';
+            const gallery = card.querySelector('[data-catalogue-gallery]');
+            if (!gallery) return;
 
-        card.querySelectorAll('[data-catalogue-dot]').forEach((dot) => {
-            dot.addEventListener('click', () => {
-                const index = Number(dot.dataset.imageIndex || 0);
-                gallery.scrollTo({ left: gallery.clientWidth * index, behavior: 'smooth' });
-                setActiveCardDot(card, index);
+            let scrollTimer = null;
+            gallery.addEventListener('scroll', () => {
+                if (scrollTimer) window.clearTimeout(scrollTimer);
+                scrollTimer = window.setTimeout(() => {
+                    const activeIndex = Math.round(gallery.scrollLeft / Math.max(1, gallery.clientWidth));
+                    setActiveCardDot(card, activeIndex);
+                }, 60);
+            }, { passive: true });
+
+            card.querySelectorAll('[data-catalogue-dot]').forEach((dot) => {
+                dot.addEventListener('click', () => {
+                    const index = Number(dot.dataset.imageIndex || 0);
+                    gallery.scrollTo({ left: gallery.clientWidth * index, behavior: 'smooth' });
+                    setActiveCardDot(card, index);
+                });
             });
         });
-    });
+    };
+
+    initializeCards();
 
     const renderImageModal = () => {
         const image = modalImages[modalIndex];
@@ -232,11 +256,28 @@
         document.body.classList.remove('overflow-hidden');
     };
 
-    root.querySelectorAll('[data-catalogue-slide]').forEach((slide) => {
-        slide.addEventListener('click', () => {
-            openImageModal(slide.closest('[data-catalogue-card]'), Number(slide.dataset.imageIndex || 0));
-        });
+    root.addEventListener('click', (event) => {
+        const slide = event.target.closest('[data-catalogue-slide]');
+        if (!slide) {
+            return;
+        }
+
+        openImageModal(slide.closest('[data-catalogue-card]'), Number(slide.dataset.imageIndex || 0));
     });
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting && nextPage !== null && !isLoading) {
+                    fetchProducts();
+                }
+            });
+        }, {
+            rootMargin: '160px 0px',
+        });
+
+        observer.observe(sentinel);
+    }
 
     imageModal.querySelectorAll('[data-close-catalogue-image]').forEach((button) => button.addEventListener('click', closeImageModal));
     previousButton.addEventListener('click', () => {
@@ -253,6 +294,9 @@
         if (event.key === 'ArrowLeft' && modalImages.length > 1) previousButton.click();
         if (event.key === 'ArrowRight' && modalImages.length > 1) nextButton.click();
     });
+
+    loading.classList.toggle('hidden', nextPage === null);
+    loading.classList.toggle('flex', nextPage !== null);
 })();
 </script>
 @endpush

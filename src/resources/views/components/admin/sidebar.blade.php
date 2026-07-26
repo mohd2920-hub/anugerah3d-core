@@ -10,6 +10,7 @@
             request()->routeIs('admin.agents.create') => 'Add Agent',
             request()->routeIs('admin.agents.edit') => 'Edit Agent',
             request()->routeIs('admin.orders.*') => 'Orders',
+            request()->routeIs('admin.weekly-closings.*') => 'Weekly Closing',
             request()->routeIs('admin.sales.*') => 'Sales',
             request()->routeIs('admin.business-sites.*') => 'Business Sites',
             request()->routeIs('admin.agents.*') => 'Agents',
@@ -113,7 +114,11 @@
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),
                     'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.agents.*'),
                 ])>Agents</a>
-                <span class="{{ $disabledNavClass }}" aria-disabled="true">Reports</span>
+                <a href="{{ route('admin.weekly-closings.index') }}" @class([
+                    'rounded-lg px-3 py-2.5 transition',
+                    'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.weekly-closings.*'),
+                    'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.weekly-closings.*'),
+                ])>Weekly Closing</a>
 
                 <details class="group/sys" {{ $systemActive ? 'open' : '' }}>
                     <summary @class([
@@ -234,7 +239,11 @@
                     'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.agents.*'),
                     'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.agents.*'),
                 ])>Agents</a>
-            <span class="{{ $disabledNavClass }}" aria-disabled="true">Reports</span>
+            <a href="{{ route('admin.weekly-closings.index') }}" @class([
+                'rounded-lg px-3 py-2.5 transition',
+                'bg-white text-[#1a73e8] shadow-sm' => request()->routeIs('admin.weekly-closings.*'),
+                'text-slate-300 hover:bg-white/10 hover:text-white' => ! request()->routeIs('admin.weekly-closings.*'),
+            ])>Weekly Closing</a>
 
             <details class="group/sys mt-1" {{ $systemActive ? 'open' : '' }}>
                 <summary @class([

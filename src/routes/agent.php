@@ -9,6 +9,7 @@ use App\Http\Controllers\Agent\PosController;
 use App\Http\Controllers\Agent\ProfileController;
 use App\Http\Controllers\Agent\ProgressController;
 use App\Http\Controllers\Agent\TeamController;
+use App\Http\Controllers\Agent\WeeklyPerformanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['signed', 'throttle:20,1'])->group(function (): void {
@@ -24,12 +25,14 @@ Route::middleware('guest:agent')->group(function (): void {
 
 Route::middleware('auth:agent')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/dashboard/products', [DashboardController::class, 'cataloguePage'])->name('dashboard.products');
     Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('/history', HistoryController::class)->name('history');
     Route::redirect('/products', '/dashboard');
     Route::redirect('/catalogue', '/dashboard');
     Route::get('/progress', ProgressController::class)->name('progress');
+    Route::get('/weekly-performance', [WeeklyPerformanceController::class, 'index'])->name('weekly-performance.index');
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
     Route::get('/team/{teamAgent}', [TeamController::class, 'show'])->name('team.show');
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');

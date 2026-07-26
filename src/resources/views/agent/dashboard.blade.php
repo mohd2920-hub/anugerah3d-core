@@ -85,6 +85,10 @@
     @endif
 
 
-    @include('agent.partials.product-catalogue')
+    @include('agent.partials.product-catalogue', [
+        'products' => $catalogueProducts->getCollection(),
+        'catalogueTotal' => $catalogueProducts->total(),
+        'catalogueHasMore' => $catalogueProducts->hasMorePages(),
+    ])
 </div>
 @endsection

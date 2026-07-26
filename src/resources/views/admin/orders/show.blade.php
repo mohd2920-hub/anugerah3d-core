@@ -53,6 +53,13 @@
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">Order total</p>
                     <p class="mt-1 text-3xl font-semibold">RM {{ number_format((float) $order->total_amount, 2) }}</p>
                     <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units � Delivery fee to be confirmed</p>
+                    <p class="mt-1 text-xs text-slate-300">Cost: RM {{ number_format((float) $order->total_cost, 2) }} � Profit: RM {{ number_format((float) $order->profit_amount, 2) }}</p>
+                    @if ((float) $order->bonus_total > 0)
+                        <p class="mt-1 text-xs text-slate-300">
+                            Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
+                            <span class="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700" title="Rate used: Tier1 {{ number_format((float) $order->tier1_bonus_rate, 2) }}% and Tier2 {{ number_format((float) $order->tier2_bonus_rate, 2) }}%">i</span>
+                        </p>
+                    @endif
                 </div>
             </div>
         </section>
@@ -93,6 +100,7 @@
                                     <th class="px-4 py-3 text-right font-semibold">Qty</th>
                                     <th class="px-4 py-3 text-right font-semibold">Agent price</th>
                                     <th class="px-4 py-3 text-right font-semibold">Line total</th>
+                                    <th class="px-4 py-3 text-right font-semibold">Financial</th>
                                     <th class="px-4 py-3 text-right font-semibold">Reserved</th>
                                     <th class="px-4 py-3 text-right font-semibold">Balance</th>
                                     <th class="px-4 py-3 text-left font-semibold">Readiness</th>
@@ -104,11 +112,37 @@
                                         $missing = $item->missingReservationQuantity();
                                         $available = max(0, (int) $item->product->prd_balance);
                                         $insufficient = $missing > $available;
+                                        $lineCost = (float) ($item->product?->cost_rm ?? 0) * (int) $item->quantity;
+                                        $lineTier1Bonus = $order->agent?->referrer
+                                            ? round((float) $item->line_total * ((float) $order->tier1_bonus_rate / 100), 2)
+                                            : 0.0;
+                                        $lineTier2Bonus = $order->agent?->referrer?->referrer
+                                            ? round((float) $item->line_total * ((float) $order->tier2_bonus_rate / 100), 2)
+                                            : 0.0;
+                                        $lineBonus = round($lineTier1Bonus + $lineTier2Bonus, 2);
+                                        $lineProfit = (float) $item->line_total - $lineCost - $lineBonus;
+                                        $picturePath = $item->product?->prd_picture;
+                                        $pictureUrl = $picturePath
+                                            ? (filter_var($picturePath, FILTER_VALIDATE_URL) ? $picturePath : asset(ltrim((string) $picturePath, '/')))
+                                            : null;
                                     @endphp
                                     <tr class="align-top">
                                         <td class="px-4 py-4">
-                                            <p class="font-semibold text-slate-900">{{ $item->product_name }}</p>
-                                            <p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p>
+                                            <div class="flex items-start gap-3">
+                                                <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                                    @if ($pictureUrl)
+                                                        <img src="{{ $pictureUrl }}" alt="{{ $item->product_name }}" loading="lazy" class="h-full w-full object-cover">
+                                                    @else
+                                                        <div class="grid h-full w-full place-items-center text-slate-300">
+                                                            <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <p class="text-[15px] font-extrabold leading-tight text-slate-900">{{ $item->product_name }}</p>
+                                                    <p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p>
+                                                </div>
+                                            </div>
                                             <div class="mt-2 flex flex-wrap gap-1.5">
                                                 @if ($item->is_preorder)
                                                     <span class="rounded-full bg-orange-50 px-2 py-0.5 text-[0.68rem] font-semibold text-orange-700">Pre-order</span>
@@ -125,6 +159,11 @@
                                         <td class="px-4 py-4 text-right font-semibold text-slate-900">{{ $item->quantity }}</td>
                                         <td class="px-4 py-4 text-right text-slate-700">RM {{ number_format((float) $item->unit_price, 2) }}</td>
                                         <td class="px-4 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $item->line_total, 2) }}</td>
+                                        <td class="px-4 py-4 text-right">
+                                            <p class="text-xs text-slate-500">Cost: RM {{ number_format($lineCost, 2) }}</p>
+                                            <p class="mt-1 text-xs text-slate-500">Bonus: RM {{ number_format($lineBonus, 2) }}</p>
+                                            <p class="mt-1 text-sm font-extrabold text-slate-900">RM {{ number_format($lineProfit, 2) }}</p>
+                                        </td>
                                         <td class="px-4 py-4 text-right text-slate-700">{{ $item->reserved_quantity }}</td>
                                         <td class="px-4 py-4 text-right text-slate-700">{{ $available }}</td>
                                         <td class="px-4 py-4">
@@ -143,17 +182,22 @@
                                 <tr>
                                     <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Products subtotal</td>
                                     <td class="px-4 py-3 text-right font-semibold text-slate-900">RM {{ number_format((float) $order->subtotal, 2) }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <p class="text-xs text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">Bonus: RM {{ number_format((float) $order->bonus_total, 2) }}</p>
+                                        <p class="mt-1 text-sm font-extrabold text-slate-900">RM {{ number_format((float) $order->profit_amount, 2) }}</p>
+                                    </td>
                                     <td colspan="3"></td>
                                 </tr>
                                 <tr>
                                     <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Delivery fee</td>
                                     <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $order->delivery_fee === null ? 'To be confirmed' : 'RM '.number_format((float) $order->delivery_fee, 2) }}</td>
-                                    <td colspan="3"></td>
+                                    <td colspan="4"></td>
                                 </tr>
                                 <tr>
                                     <td colspan="3" class="px-4 py-3 text-right font-semibold text-slate-900">Order total</td>
                                     <td class="px-4 py-3 text-right text-lg font-semibold text-[#1a73e8]">RM {{ number_format((float) $order->total_amount, 2) }}</td>
-                                    <td colspan="3"></td>
+                                    <td colspan="4"></td>
                                 </tr>
                             </tfoot>
                         </table>

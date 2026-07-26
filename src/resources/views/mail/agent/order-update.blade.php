@@ -164,5 +164,5 @@ If anything about this order needs attention, you can reply to this email or che
 </p>
 
 Thanks,<br>
-{{ config('app.name') }}
+Anugerah3D
 </x-mail::message>

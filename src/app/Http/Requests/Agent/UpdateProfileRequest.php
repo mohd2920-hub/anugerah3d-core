@@ -31,6 +31,9 @@ class UpdateProfileRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:250'],
             'city' => ['nullable', 'string', 'max:100'],
             'state' => ['nullable', 'string', 'max:100', Rule::exists('data_state', 'name')],
+            'bank_name' => ['nullable', 'string', 'max:120'],
+            'bank_account_name' => ['nullable', 'string', 'max:150'],
+            'bank_account_number' => ['nullable', 'string', 'max:80'],
         ];
     }
 
@@ -46,6 +49,9 @@ class UpdateProfileRequest extends FormRequest
             'address' => $nullableString($this->input('address')),
             'city' => $nullableString($this->input('city')),
             'state' => $nullableString($this->input('state')),
+            'bank_name' => $nullableString($this->input('bank_name')),
+            'bank_account_name' => $nullableString($this->input('bank_account_name')),
+            'bank_account_number' => $nullableString($this->input('bank_account_number')),
         ]);
     }
 }

@@ -162,5 +162,5 @@ This email is sent automatically to keep the admin team updated with the latest 
 </p>
 
 Thanks,<br>
-{{ config('app.name') }}
+Anugerah3D
 </x-mail::message>

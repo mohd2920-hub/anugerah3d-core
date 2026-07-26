@@ -54,6 +54,9 @@
             <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phone number</dt><dd class="mt-1 text-sm font-semibold text-slate-700">{{ $agent->phone_number ?: 'Not provided' }}</dd></div>
             <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ID number</dt><dd class="mt-1 text-sm font-semibold text-slate-700">{{ $agent->id_number ?: 'Not provided' }}</dd></div>
             <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Address</dt><dd class="mt-1 text-sm font-semibold leading-6 text-slate-700">{{ $agent->address ?: 'Not provided' }}@if($agent->city || $agent->state)<br>{{ collect([$agent->city, $agent->state])->filter()->implode(', ') }}@endif</dd></div>
+            <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Bank</dt><dd class="mt-1 text-sm font-semibold text-slate-700">{{ $agent->bank_name ?: 'Not provided' }}</dd></div>
+            <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account name</dt><dd class="mt-1 text-sm font-semibold text-slate-700">{{ $agent->bank_account_name ?: 'Not provided' }}</dd></div>
+            <div class="py-4"><dt class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account number</dt><dd class="mt-1 text-sm font-semibold text-slate-700">{{ $agent->bank_account_number ?: 'Not provided' }}</dd></div>
         </dl>
     </section>
 
@@ -95,6 +98,14 @@
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label for="city" class="text-xs font-bold uppercase tracking-wider text-slate-500">City</label><input id="city" name="city" value="{{ old('city', $agent->city) }}" autocomplete="address-level2" class="{{ $inputClass }}">@error('city', 'profileUpdate')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror</div>
                 <div><label for="state" class="text-xs font-bold uppercase tracking-wider text-slate-500">State</label><select id="state" name="state" autocomplete="address-level1" class="{{ $inputClass }}"><option value="">Select state</option>@foreach ($states as $state)<option value="{{ $state->name }}" @selected(old('state', $agent->state) === $state->name)>{{ $state->name }}</option>@endforeach</select>@error('state', 'profileUpdate')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror</div>
+            </div>
+            <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Payment account details</p>
+                <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div><label for="bank_name" class="text-xs font-bold uppercase tracking-wider text-slate-500">Bank</label><input id="bank_name" name="bank_name" value="{{ old('bank_name', $agent->bank_name) }}" class="{{ $inputClass }}">@error('bank_name', 'profileUpdate')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror</div>
+                    <div><label for="bank_account_name" class="text-xs font-bold uppercase tracking-wider text-slate-500">Account name</label><input id="bank_account_name" name="bank_account_name" value="{{ old('bank_account_name', $agent->bank_account_name) }}" class="{{ $inputClass }}">@error('bank_account_name', 'profileUpdate')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror</div>
+                </div>
+                <div class="mt-4"><label for="bank_account_number" class="text-xs font-bold uppercase tracking-wider text-slate-500">Account number</label><input id="bank_account_number" name="bank_account_number" value="{{ old('bank_account_number', $agent->bank_account_number) }}" class="{{ $inputClass }}">@error('bank_account_number', 'profileUpdate')<p class="mt-1.5 text-xs font-semibold text-red-600">{{ $message }}</p>@enderror</div>
             </div>
             <div class="sticky bottom-0 -mx-5 mt-2 border-t border-slate-100 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"><button class="h-12 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white shadow-lg shadow-slate-900/15">Save changes</button></div>
         </form>
