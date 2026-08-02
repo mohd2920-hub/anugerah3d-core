@@ -38,6 +38,8 @@ Route::middleware('auth:agent')->group(function (): void {
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos/sign-in', [PosController::class, 'signIn'])->name('pos.sign-in');
     Route::post('/pos/sign-out', [PosController::class, 'signOut'])->name('pos.sign-out');
+    // Some mobile/PWA restores revisit the last form action as a GET request.
+    Route::get('/pos/sales', fn () => redirect()->route('agent.pos.index', ['tab' => 'history'], 303));
     Route::post('/pos/sales', [PosController::class, 'store'])->name('pos.sales.store');
     Route::post('/pos/sales/{posSale}/receipt', [PosController::class, 'sendReceipt'])->name('pos.sales.receipt');
     Route::get('/pos/sales/{posSale}/edit', [PosController::class, 'edit'])->name('pos.sales.edit');

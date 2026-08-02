@@ -57,10 +57,16 @@
             @else
                 <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#e7682b]">Agent registration</p>
                 <h2 class="mt-2 text-2xl font-black text-[#17324d]">Let's get to know you</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-500">Complete the simple form below. Your email will also be your login ID.</p>
+                <p class="mt-2 text-sm leading-6 text-slate-500">Complete the simple form below. Choose the login ID you want to use when your account is approved.</p>
 
                 <form method="POST" action="{{ $submissionUrl }}" enctype="multipart/form-data" class="mt-7 space-y-5">
                     @csrf
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-bold text-slate-700">Login ID <span class="text-red-500">*</span></span>
+                        <input id="agent_registration_login" name="login_id" value="{{ old('login_id') }}" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="choose your login id" required data-availability-url="{{ $loginAvailabilityUrl }}" class="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 lowercase outline-none transition focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
+                        <span class="mt-1.5 block text-xs font-semibold text-slate-500" data-login-id-feedback>Use this login ID to sign in after approval.</span>
+                        @error('login_id')<span class="mt-1.5 block text-xs font-semibold text-red-600">{{ $message }}</span>@enderror
+                    </label>
                     <label class="block">
                         <span class="mb-2 block text-sm font-bold text-slate-700">Full name <span class="text-red-500">*</span></span>
                         <input name="agt_name" value="{{ old('agt_name') }}" autocomplete="name" required class="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 outline-none transition focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
@@ -93,10 +99,6 @@
                             <span class="mb-2 block text-sm font-bold text-slate-700">Email <span class="text-red-500">*</span></span>
                             <input id="agent_registration_email" name="email" value="{{ old('email') }}" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required class="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 outline-none transition focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
                             @error('email')<span class="mt-1.5 block text-xs font-semibold text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-bold text-slate-700">Login ID <span class="font-normal text-slate-400">(automatic)</span></span>
-                            <input id="agent_registration_login" value="{{ old('email') }}" readonly tabindex="-1" placeholder="Same as your email" class="h-12 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 text-slate-500 outline-none">
                         </label>
                     </div>
 
@@ -140,14 +142,85 @@
 @push('scripts')
 <script>
 (() => {
-    const email = document.getElementById('agent_registration_email');
-    const login = document.getElementById('agent_registration_login');
+    const loginInput = document.getElementById('agent_registration_login');
+    const loginFeedback = document.querySelector('[data-login-id-feedback]');
     const pictureInput = document.querySelector('[data-profile-picture-input]');
     const picturePreview = document.querySelector('[data-profile-picture-preview]');
     const picturePlaceholder = document.querySelector('[data-profile-picture-placeholder]');
     const pictureLabel = document.querySelector('[data-profile-picture-label]');
 
     let pictureUrl;
+    let availabilityTimer;
+    let availabilityRequest;
+
+    const setLoginFeedback = (message, color = '') => {
+        if (!loginFeedback) return;
+
+        loginFeedback.textContent = message;
+        loginFeedback.style.color = color;
+    };
+
+    const checkLoginIdAvailability = () => {
+        if (!loginInput) return;
+
+        const value = loginInput.value.trim().toLowerCase();
+        const availabilityUrl = loginInput.dataset.availabilityUrl;
+
+        if (loginInput.value !== value) {
+            loginInput.value = value;
+        }
+
+        if (availabilityRequest) {
+            availabilityRequest.abort();
+            availabilityRequest = null;
+        }
+
+        window.clearTimeout(availabilityTimer);
+
+        if (value === '') {
+            loginInput.setCustomValidity('Please enter a login ID.');
+            setLoginFeedback('Login ID is required.', '#dc2626');
+            return;
+        }
+
+        if (!availabilityUrl) {
+            loginInput.setCustomValidity('');
+            setLoginFeedback('Use this login ID to sign in after approval.', '');
+            return;
+        }
+
+        loginInput.setCustomValidity('Checking login ID availability.');
+        setLoginFeedback('Checking login ID availability...', '#64748b');
+
+        availabilityTimer = window.setTimeout(async () => {
+            availabilityRequest = new AbortController();
+
+            try {
+                const response = await fetch(availabilityUrl + '?login_id=' + encodeURIComponent(value), {
+                    headers: { Accept: 'application/json' },
+                    signal: availabilityRequest.signal,
+                });
+                const data = await response.json();
+
+                if (response.ok && data.available) {
+                    loginInput.setCustomValidity('');
+                    setLoginFeedback(data.message || 'This login ID is available.', '#15803d');
+                    return;
+                }
+
+                loginInput.setCustomValidity(data.message || 'This login ID is already taken.');
+                setLoginFeedback(data.message || 'This login ID is already taken.', '#dc2626');
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                loginInput.setCustomValidity('Unable to confirm login ID availability right now.');
+                setLoginFeedback('Unable to confirm login ID availability right now.', '#dc2626');
+            }
+        }, 320);
+    };
+
     pictureInput?.addEventListener('change', () => {
         const picture = pictureInput.files?.[0];
         if (!picture || !picturePreview) return;
@@ -159,10 +232,13 @@
         picturePlaceholder?.classList.add('hidden');
         if (pictureLabel) pictureLabel.textContent = 'Profile picture ready';
     });
-    if (!email || !login) return;
-    const syncLogin = () => login.value = email.value.trim();
-    email.addEventListener('input', syncLogin);
-    syncLogin();
+
+    loginInput?.addEventListener('input', checkLoginIdAvailability);
+    loginInput?.addEventListener('blur', () => loginInput.reportValidity());
+
+    if (loginInput?.value.trim()) {
+        checkLoginIdAvailability();
+    }
 })();
 </script>
 @endpush

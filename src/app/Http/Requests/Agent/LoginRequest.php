@@ -85,6 +85,6 @@ class LoginRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['login_id' => Str::upper(trim((string) $this->input('login_id')))]);
+        $this->merge(['login_id' => Str::lower(trim((string) $this->input('login_id')))]);
     }
 }

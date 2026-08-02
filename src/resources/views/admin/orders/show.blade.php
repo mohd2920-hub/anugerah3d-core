@@ -234,6 +234,11 @@
                     <h2 class="font-semibold text-slate-950">Order actions</h2>
                     <p class="mt-1 text-sm text-slate-500">Actions are recorded in the activity log.</p>
 
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <a href="{{ route('admin.orders.print.full', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print full</a>
+                        <a href="{{ route('admin.orders.print.order', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print order</a>
+                    </div>
+
                     <div class="mt-5 space-y-3">
                         @if ($order->status === 'pending')
                             @if ($stockShortages->isEmpty())

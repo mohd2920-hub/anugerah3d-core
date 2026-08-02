@@ -11,6 +11,10 @@ Route::get('/joinagent/{referralCode}', [AgentRegistrationController::class, 're
 Route::get('/joinus/{referralCode}', [AgentRegistrationController::class, 'createFromReferral'])
     ->where('referralCode', '[A-Za-z0-9]{8}')
     ->name('join-agent.create');
+Route::get('/joinus/{referralCode}/login-id-availability', [AgentRegistrationController::class, 'checkLoginIdAvailability'])
+    ->where('referralCode', '[A-Za-z0-9]{8}')
+    ->middleware('throttle:30,1')
+    ->name('join-agent.login-id-availability');
 Route::post('/joinus/{referralCode}', [AgentRegistrationController::class, 'storeFromReferral'])
     ->where('referralCode', '[A-Za-z0-9]{8}')
     ->middleware('throttle:10,1')

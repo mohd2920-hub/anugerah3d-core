@@ -5,6 +5,7 @@ namespace App\Http\Requests\Agent;
 use App\Models\Agent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StoreAgentRegistrationRequest extends FormRequest
@@ -29,6 +30,11 @@ class StoreAgentRegistrationRequest extends FormRequest
                 'email:rfc',
                 'max:100',
                 Rule::unique($agentTable, 'email'),
+            ],
+            'login_id' => [
+                'required',
+                'string',
+                'max:100',
                 Rule::unique($agentTable, 'login_id'),
             ],
             'phone_number' => ['required', 'string', 'max:50', 'regex:/^[0-9+() .-]{8,50}$/', Rule::unique($agentTable, 'phone_number')],
@@ -43,9 +49,19 @@ class StoreAgentRegistrationRequest extends FormRequest
         return [
             'profile_picture_file.required' => 'Please add or take a profile picture.',
             'profile_picture_file.max' => 'The profile picture must not be larger than 5 MB.',
-            'email.unique' => 'This email is already registered as an email or login ID.',
+            'email.unique' => 'This email is already registered.',
+            'login_id.required' => 'Please enter a login ID.',
+            'login_id.unique' => 'This login ID is already taken.',
             'phone_number.regex' => 'Enter a valid WhatsApp number.',
             'phone_number.unique' => 'This WhatsApp number has already been registered.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => trim((string) $this->input('email')),
+            'login_id' => Str::lower(trim((string) $this->input('login_id'))),
+        ]);
     }
 }

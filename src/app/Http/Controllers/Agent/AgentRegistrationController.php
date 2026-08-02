@@ -9,13 +9,17 @@ use App\Mail\AgentRegistrationReceived;
 use App\Models\Agent;
 use App\Models\DataState;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -49,6 +53,7 @@ class AgentRegistrationController extends Controller
             'referrer' => $referrer,
             'states' => DataState::query()->orderBy('name')->get(['name']),
             'submissionUrl' => route('public.join-agent.store', ['referralCode' => $referrer->referral_code]),
+            'loginAvailabilityUrl' => route('public.join-agent.login-id-availability', ['referralCode' => $referrer->referral_code]),
         ]);
     }
 
@@ -61,6 +66,35 @@ class AgentRegistrationController extends Controller
             $referrer,
             route('public.join-agent.create', ['referralCode' => $referrer->referral_code]),
         );
+    }
+
+    public function checkLoginIdAvailability(Request $request, string $referralCode): JsonResponse
+    {
+        $this->activeReferrer($referralCode);
+        $loginId = $this->normalizeLoginId((string) $request->query('login_id', ''));
+
+        $validator = Validator::make(
+            ['login_id' => $loginId],
+            ['login_id' => ['required', 'string', 'max:100', Rule::unique((new Agent)->getTable(), 'login_id')]],
+            [
+                'login_id.required' => 'Please enter a login ID.',
+                'login_id.unique' => 'This login ID is already taken.',
+            ],
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'available' => false,
+                'login_id' => $loginId,
+                'message' => $validator->errors()->first('login_id'),
+            ], 422);
+        }
+
+        return response()->json([
+            'available' => true,
+            'login_id' => $loginId,
+            'message' => 'This login ID is available.',
+        ]);
     }
 
     private function activeReferrer(string $referralCode): Agent
@@ -103,7 +137,7 @@ class AgentRegistrationController extends Controller
         $attributes = [
                 ...$validated,
                 'referrer_id' => $referrer->getKey(),
-                'login_id' => $validated['email'],
+                'login_id' => $validated['login_id'],
                 'password' => $plainPassword,
                 'agt_status' => Agent::StatusPending,
                 'discount_percentage' => 0,
@@ -182,6 +216,11 @@ class AgentRegistrationController extends Controller
         imagedestroy($thumb);
 
         return $relativePath;
+    }
+
+    private function normalizeLoginId(string $value): string
+    {
+        return Str::lower(trim($value));
     }
 
     private function sendApplicantEmail(Agent $agent, Agent $referrer, string $plainPassword): void

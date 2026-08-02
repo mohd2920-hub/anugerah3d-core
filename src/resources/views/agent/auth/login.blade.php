@@ -30,7 +30,7 @@
                     <span class="mb-2 block text-sm font-bold text-slate-700">Login ID or phone number</span>
                     <span class="relative block">
                         <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>
-                        <input name="login_id" type="text" value="{{ old('login_id') }}" autocomplete="username" autocapitalize="off" inputmode="text" placeholder="e.g. AGT1001 or 0132729040" required class="h-13 w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-base font-medium outline-none transition placeholder:normal-case placeholder:text-slate-400 focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
+                        <input name="login_id" type="text" value="{{ old('login_id') }}" autocomplete="username" autocapitalize="off" inputmode="text" placeholder="e.g. agt1001 or 0132729040" required class="h-13 w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-base font-medium outline-none transition placeholder:normal-case placeholder:text-slate-400 focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
                     </span>
                     @error('login_id')<span class="mt-2 block text-xs font-semibold text-red-600">{{ $message }}</span>@enderror
                 </label>

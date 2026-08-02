@@ -159,7 +159,7 @@ class Agent extends Authenticatable
 
     public function referralInviteMessage(): string
     {
-        return "Hi! 👋 Saya ingin menjemput anda menyertai Anugerah3D sebagai agent. Platform ini membuka peluang untuk anda berkongsi produk kreatif 3D, membina rangkaian dan menjana pendapatan bersama komuniti yang positif. Daftar melalui pautan khas saya di bawah:\n\n".$this->referralUrl()."\n\nJom sertai platform yang hebat ini. Saya sedia membantu anda bermula! 🌟";
+        return "Hi! 👋 Saya ingin menjemput anda menyertai Anugerah3D untuk melihat catalog. Dan anda boleh beli dengan harga jimat 25%. Platform ini membuka peluang untuk anda berkongsi produk kreatif 3D,. Daftar melalui pautan khas saya di bawah:\n\n".$this->referralUrl()."\n\nJom sertai platform yang hebat ini. Saya sedia membantu anda bermula! 🌟";
     }
 
     public function referralWhatsappUrl(string $phone): ?string
@@ -184,6 +184,7 @@ class Agent extends Authenticatable
             'Name: '.$this->agt_name,
             'Login ID: '.$this->login_id,
             'Password: '.($plainPassword ?: '[set or reset password before sharing]'),
+            'URL: https://agent.anugerah3d.com',
         ]);
     }
 

@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Models\AdminUser;
 use App\Models\Agent;
 use App\Models\BusinessSite;
+use App\Models\Order;
+use App\Models\Product;
 use Database\Seeders\DataStateSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -176,7 +178,7 @@ class AgentManagementTest extends TestCase
                 'password_confirmation' => 'NewAgentPass123',
             ])
             ->assertRedirect(route('admin.agents.edit', $agent))
-            ->assertSessionHas('agent_login_info');
+            ->assertSessionHas('agent_login_info', fn (array $loginInfo): bool => str_contains($loginInfo['message'], 'URL: https://agent.anugerah3d.com'));
 
         $agent->refresh();
 
@@ -228,10 +230,107 @@ class AgentManagementTest extends TestCase
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
+    public function test_order_detail_page_displays_print_actions(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $order = $this->createPrintableOrder();
+
+        $this->actingAs($admin, "admin")
+            ->get($this->adminUrl("/orders/{$order->id}"))
+            ->assertOk()
+            ->assertSeeText("Print full")
+            ->assertSeeText("Print order")
+            ->assertSee(route("admin.orders.print.full", $order), false)
+            ->assertSee(route("admin.orders.print.order", $order), false);
+    }
+
+    public function test_admin_can_view_full_order_print_page(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $order = $this->createPrintableOrder();
+
+        $this->actingAs($admin, "admin")
+            ->get($this->adminUrl("/orders/{$order->id}/print-full"))
+            ->assertOk()
+            ->assertSeeText("Order {$order->order_number}")
+            ->assertSeeText("Stock shortages")
+            ->assertSeeText($order->agent->agt_name)
+            ->assertSeeText("Agent discount")
+            ->assertSee("A4 landscape", false);
+    }
+
+    public function test_admin_can_view_a5_order_print_page(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $order = $this->createPrintableOrder();
+
+        $this->actingAs($admin, "admin")
+            ->get($this->adminUrl("/orders/{$order->id}/print-order"))
+            ->assertOk()
+            ->assertSeeText("Print order")
+            ->assertSeeText($order->recipient_name)
+            ->assertSeeText($order->agent->login_id)
+            ->assertSeeText("Order note")
+            ->assertSee("A5 portrait", false);
+    }
+
+    private function createPrintableOrder(): Order
+    {
+        $agent = Agent::factory()->create([
+            "login_id" => "AGT-PRINT-001",
+            "agt_name" => "Printable Agent",
+            "email" => "printable-agent@example.com",
+            "phone_number" => "0127788990",
+            "address" => "12 Jalan Cetak",
+            "city" => "Shah Alam",
+            "state" => "Selangor",
+        ]);
+
+        $product = Product::factory()->create([
+            "prd_code" => "PRT-001",
+            "prd_name" => "Printable Product",
+            "prd_balance" => 1,
+            "cost_rm" => 4.20,
+            "price_selling" => 10.00,
+            "agent_discount_default" => 10.0,
+        ]);
+
+        $order = Order::query()->create([
+            "idempotency_key" => (string) str()->uuid(),
+            "order_number" => "A3D-PRINT-0001",
+            "agent_id" => $agent->id,
+            "status" => Order::StatusPending,
+            "fulfilment_method" => "delivery",
+            "recipient_name" => "Nur Aisyah",
+            "phone_number" => "0123456789",
+            "delivery_address" => "88 Jalan Melur, Shah Alam",
+            "notes" => "Please call before delivery.",
+            "payment_method" => "bank_transfer",
+            "payment_status" => Order::PaymentStatusUnpaid,
+            "subtotal" => 27.00,
+            "delivery_fee" => null,
+            "total_amount" => 27.00,
+            "total_units" => 3,
+            "placed_at" => now(),
+        ]);
+
+        $order->items()->create([
+            "product_id" => $product->id,
+            "product_code" => $product->prd_code,
+            "product_name" => $product->prd_name,
+            "quantity" => 3,
+            "reserved_quantity" => 1,
+            "unit_selling_price" => 10.00,
+            "discount_percentage" => 10.0,
+            "unit_price" => 9.00,
+            "line_total" => 27.00,
+            "is_preorder" => false,
+        ]);
+
+        return $order->fresh();
+    }
+
+
     private function validPayload(array $overrides = []): array
     {
         return array_merge([

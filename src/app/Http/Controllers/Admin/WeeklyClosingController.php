@@ -48,7 +48,10 @@ class WeeklyClosingController extends Controller
         ];
 
         $rows = $weeklyClosing->agentSummaries()
-            ->with(['agent:id,agt_name,email', 'paidByAdmin:id,name'])
+            ->with([
+                'agent:id,agt_name,email,bank_name,bank_account_name,bank_account_number',
+                'paidByAdmin:id,name',
+            ])
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): Builder {
                 return $query->where(function (Builder $query) use ($filters): void {
                     $query->where('agent_name', 'like', "%{$filters['search']}%")
@@ -84,35 +87,36 @@ class WeeklyClosingController extends Controller
         $previousStatus = (string) $agentSummary->payout_status;
         $status = $request->validated('payout_status');
         $attachmentPath = $agentSummary->payment_attachment_path;
+        $notifyAgent = (bool) $request->validated('notify_agent');
+        $agentSummary->loadMissing('agent:id,email,bank_name,bank_account_name,bank_account_number');
 
         if ($request->hasFile('payment_attachment')) {
             $attachmentPath = $this->storePaymentAttachment($request->file('payment_attachment'));
             $this->deleteAttachment($agentSummary->payment_attachment_path);
         }
 
-        $notifyAgent = (bool) $request->validated('notify_agent');
-        $didNotifyAgent = false;
-
         if ($status === 'paid') {
+            $recipientEmail = (string) ($agentSummary->agent?->email ?? $agentSummary->agent_email);
             $agentSummary->forceFill([
                 'payout_status' => 'paid',
                 'paid_at' => now(),
                 'paid_by_admin_id' => $request->user('admin')?->getKey(),
+                'agent_bank_name' => $agentSummary->agent?->bank_name,
+                'agent_bank_account_name' => $agentSummary->agent?->bank_account_name,
+                'agent_bank_account_number' => $agentSummary->agent?->bank_account_number,
                 'payment_reference' => $request->validated('payment_reference'),
                 'payment_receipt_datetime_text' => $request->validated('payment_receipt_datetime_text'),
                 'payment_attachment_path' => $attachmentPath,
                 'payment_notes' => $request->validated('payment_notes'),
             ])->save();
 
-            if ($notifyAgent && ($agentSummary->agent_email || $agentSummary->agent?->email)) {
-                Mail::to((string) ($agentSummary->agent?->email ?? $agentSummary->agent_email))
+            if ($notifyAgent) {
+                Mail::to($recipientEmail)
                     ->send(new WeeklyClosingPaymentMadeMail($agentSummary->id));
 
                 $agentSummary->forceFill([
                     'notified_agent_at' => now(),
                 ])->save();
-
-                $didNotifyAgent = true;
 
                 AdminActivity::record(
                     request: $request,
@@ -126,7 +130,7 @@ class WeeklyClosingController extends Controller
                         'agent_summary_id' => $agentSummary->id,
                         'agent_id' => $agentSummary->agent_id,
                         'agent_name' => $agentSummary->agent_name,
-                        'agent_email' => $agentSummary->agent_email,
+                        'agent_email' => $recipientEmail,
                     ],
                 );
             }
@@ -145,12 +149,16 @@ class WeeklyClosingController extends Controller
                     'agent_name' => $agentSummary->agent_name,
                     'from_status' => $previousStatus,
                     'to_status' => 'paid',
-                    'notify_agent' => $didNotifyAgent,
+                    'notify_agent' => $notifyAgent,
                     'has_attachment' => $attachmentPath !== null,
                 ],
             );
 
-            return back()->with('success', 'Payment updated to paid for '.$agentSummary->agent_name.($didNotifyAgent ? ' Agent has been notified by email.' : '.'));
+            $message = $notifyAgent
+                ? 'Payment successful and email has been sent to '.$recipientEmail.'.'
+                : 'Payment successful.';
+
+            return back()->with('success', $message);
         }
 
         $agentSummary->forceFill([

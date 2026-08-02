@@ -44,6 +44,8 @@ Route::middleware('auth:admin')->group(function (): void {
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{order}/print-full', [OrderController::class, 'printFull'])->name('orders.print.full');
+    Route::get('/orders/{order}/print-order', [OrderController::class, 'printOrder'])->name('orders.print.order');
     Route::resource('sales', SaleController::class)->only(['index', 'show']);
     Route::patch('/orders/{order}/payment', [OrderController::class, 'updatePayment'])->name('orders.payment.update');
     Route::patch('/orders/{order}/process', [OrderController::class, 'process'])->name('orders.process');
