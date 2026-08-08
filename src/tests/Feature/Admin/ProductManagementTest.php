@@ -36,6 +36,7 @@ class ProductManagementTest extends TestCase
         $product = Product::factory()->create([
             'prd_code' => 'A3D-TEST-001',
             'prd_name' => 'Desk Name Plate',
+            'product_type' => 'standard',
         ]);
 
         $this->actingAs($admin, 'admin')
@@ -81,6 +82,27 @@ class ProductManagementTest extends TestCase
             'prd_name' => 'Desk Name Plate',
             'prd_balance' => 25,
         ]);
+    }
+
+    public function test_create_page_displays_clicker_ui_controls(): void
+    {
+        $admin = AdminUser::factory()->create();
+
+        $this->actingAs($admin, 'admin')
+            ->get($this->adminUrl('/products/create'))
+            ->assertOk()
+            ->assertSeeText('Product Type')
+            ->assertSeeText('STANDARD')
+            ->assertSeeText('CLICKER')
+            ->assertSeeText('Casing')
+            ->assertSeeText('Huruf')
+            ->assertSeeText('Character Pricing')
+            ->assertSeeText('Setiap character ada harga masing-masing.')
+            ->assertSee('name="clicker_casing_images[]"', false)
+            ->assertSee('name="clicker_huruf_images[]"', false)
+            ->assertDontSee('name="clicker_character_count"', false)
+            ->assertSee('name="clicker_character_prices[1]"', false)
+            ->assertSee('name="clicker_character_prices[8]"', false);
     }
 
     public function test_product_code_must_be_unique(): void
@@ -261,6 +283,7 @@ class ProductManagementTest extends TestCase
         return array_merge([
             'prd_code' => 'A3D-TEST-001',
             'prd_name' => 'Desk Name Plate',
+            'product_type' => 'standard',
             'weight_g' => 18.5,
             'width_mm' => 60,
             'height_mm' => 28,
