@@ -10,6 +10,8 @@ use App\Http\Requests\Agent\StorePosSaleRequest;
 use App\Http\Requests\Agent\UpdatePosSaleRequest;
 use App\Mail\PosSaleReceipt;
 use App\Models\Agent;
+use App\Models\BusinessSite;
+use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\PosSession;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PosController extends Controller
@@ -29,12 +32,24 @@ class PosController extends Controller
     public function index(Request $request): View
     {
         $agent = $request->user('agent');
-        $activeSession = $this->activeSession($agent);
-        $businessSites = $agent->businessSites()->orderBy('site_name')->get(['business_sites.id', 'site_name', 'city']);
+        $activeSession = $this->activeSession($agent)?->load('businessSite');
+        $activeOperation = $activeSession ? $this->activeOperation($activeSession) : null;
+        $businessSites = $agent->businessSites()->orderBy('site_name')->get(['business_sites.id', 'site_name', 'city', 'opened_at']);
         $products = $activeSession ? $this->posProducts() : collect();
+        $operationSales = $activeOperation
+            ? $activeOperation->sales()
+                ->toBase()
+                ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
+                ->first()
+            : null;
 
         return view('agent.pos.index', [
-            'activeSession' => $activeSession?->load('businessSite'),
+            'activeSession' => $activeSession,
+            'activeOperation' => $activeOperation,
+            'operationSales' => [
+                'count' => (int) ($operationSales->sales_count ?? 0),
+                'total' => (float) ($operationSales->sales_total ?? 0),
+            ],
             'businessSites' => $businessSites,
             'salesAgents' => $activeSession
                 ? $activeSession->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture'])
@@ -45,16 +60,11 @@ class PosController extends Controller
                 : collect(),
             'sales' => PosSale::query()
                 ->when(
-                    $activeSession,
-                    fn ($query) => $query
-                        ->where('business_site_id', $activeSession->business_site_id)
-                        ->whereBetween('sold_at', [
-                            $activeSession->signed_in_at,
-                            $activeSession->signed_out_at ?? now(),
-                        ]),
+                    $activeOperation,
+                    fn ($query) => $query->whereBelongsTo($activeOperation, 'businessSiteOperation'),
                     fn ($query) => $query->whereRaw('1 = 0'),
                 )
-                ->with(['businessSite:id,site_name,city', 'salesAgent:id,agt_name', 'recordedBy:id,agt_name', 'items'])
+                ->with(['businessSite:id,site_name,city', 'businessSiteOperation:id,business_site_id,opened_at,closed_at', 'salesAgent:id,agt_name', 'recordedBy:id,agt_name', 'items'])
                 ->latest('sold_at')
                 ->paginate(15),
             'paymentMethods' => PosSale::paymentMethods(),
@@ -66,6 +76,18 @@ class PosController extends Controller
         $agent = $request->user('agent');
 
         DB::transaction(function () use ($agent, $request): void {
+            $businessSite = BusinessSite::query()
+                ->whereKey($request->integer('business_site_id'))
+                ->whereHas('agents', fn ($query) => $query->whereKey($agent->getKey()))
+                ->lockForUpdate()
+                ->first();
+
+            if ($businessSite === null || ! $businessSite->isOpen()) {
+                throw ValidationException::withMessages([
+                    'business_site_id' => 'Please ask an admin to open the business site.',
+                ]);
+            }
+
             PosSession::query()
                 ->whereBelongsTo($agent)
                 ->whereNull('signed_out_at')
@@ -73,7 +95,7 @@ class PosController extends Controller
 
             PosSession::query()->create([
                 'agent_id' => $agent->getKey(),
-                'business_site_id' => $request->integer('business_site_id'),
+                'business_site_id' => $businessSite->getKey(),
                 'signed_in_at' => now(),
             ]);
         });
@@ -109,7 +131,7 @@ class PosController extends Controller
     public function edit(Request $request, PosSale $posSale): View
     {
         $session = $this->activeSession($request->user('agent'));
-        abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+        abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
         $products = $this->posProducts();
 
         return view('agent.pos.edit', [
@@ -132,7 +154,7 @@ class PosController extends Controller
     public function sendReceipt(Request $request, PosSale $posSale): RedirectResponse
     {
         $session = $this->activeSession($request->user('agent'));
-        abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+        abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
 
         if ($posSale->customer_email === null || $posSale->customer_email === '') {
             $validated = $request->validateWithBag('receipt', [
@@ -160,7 +182,7 @@ class PosController extends Controller
     public function destroy(Request $request, PosSale $posSale, CreatePosSale $createPosSale): RedirectResponse
     {
         $session = $this->activeSession($request->user('agent'));
-        abort_unless($session !== null && $session->business_site_id === $posSale->business_site_id, 403);
+        abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
 
         $request->validateWithBag('deleteSale', [
             'delete_password' => ['required', 'string'],
@@ -187,12 +209,30 @@ class PosController extends Controller
             ->with('success', 'Sale deleted successfully.');
     }
 
+    private function activeOperation(PosSession $session): ?BusinessSiteOperation
+    {
+        return BusinessSiteOperation::query()
+            ->where('business_site_id', $session->business_site_id)
+            ->whereNull('closed_at')
+            ->latest('opened_at')
+            ->first();
+    }
+
+    private function saleBelongsToActiveOperation(?PosSession $session, PosSale $sale): bool
+    {
+        return $session !== null
+            && $this->activeOperation($session)?->is($sale->businessSiteOperation);
+    }
+
     private function activeSession(Agent $agent): ?PosSession
     {
         return PosSession::query()
             ->active()
             ->whereBelongsTo($agent)
             ->whereHas('businessSite.agents', fn ($query) => $query->whereKey($agent->getKey()))
+            ->whereHas('businessSite', fn ($query) => $query
+                ->open()
+                ->whereHas('operations', fn ($query) => $query->whereNull('closed_at')))
             ->latest('signed_in_at')
             ->first();
     }

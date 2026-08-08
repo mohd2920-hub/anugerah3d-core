@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Agent;
 
 use App\Models\Agent;
+use App\Models\BusinessSite;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SignInPosRequest extends FormRequest
 {
@@ -33,6 +35,29 @@ class SignInPosRequest extends FormRequest
     {
         return [
             'business_site_id.exists' => 'Please choose a business site assigned to your account.',
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $agent = $this->user('agent');
+
+                if (! $agent instanceof Agent || $validator->errors()->has('business_site_id')) {
+                    return;
+                }
+
+                $isClosed = BusinessSite::query()
+                    ->whereKey($this->integer('business_site_id'))
+                    ->whereHas('agents', fn ($query) => $query->whereKey($agent->getKey()))
+                    ->whereNull('opened_at')
+                    ->exists();
+
+                if ($isClosed) {
+                    $validator->errors()->add('business_site_id', 'Please ask an admin to open the business site.');
+                }
+            },
         ];
     }
 }

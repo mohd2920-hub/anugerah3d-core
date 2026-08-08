@@ -76,7 +76,7 @@
         <aside class="space-y-5">
             <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
                 <h3 class="font-semibold text-slate-950">Business site</h3>
-                <p class="mt-4 font-semibold text-slate-900">{{ $sale->businessSite->site_name }}</p><p class="mt-1 text-sm text-slate-500">{{ $sale->businessSite->city }}</p>
+                <p class="mt-4 font-semibold text-slate-900">{{ $sale->businessSite->site_name }}</p><p class="mt-1 text-sm text-slate-500">{{ $sale->businessSite->city }}</p><a href="{{ route('admin.business-site-operations.show', $sale->businessSiteOperation) }}" class="mt-4 inline-flex rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-[#1a73e8] hover:bg-blue-50">View session #{{ $sale->business_site_operation_id }}</a>
             </section>
             <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
                 <h3 class="font-semibold text-slate-950">Agents</h3>

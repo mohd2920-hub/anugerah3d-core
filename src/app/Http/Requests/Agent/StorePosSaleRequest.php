@@ -73,6 +73,9 @@ class StorePosSaleRequest extends FormRequest
         return PosSession::query()
             ->active()
             ->whereBelongsTo($agent)
+            ->whereHas('businessSite', fn ($query) => $query
+                ->open()
+                ->whereHas('operations', fn ($query) => $query->whereNull('closed_at')))
             ->latest('signed_in_at')
             ->first();
     }

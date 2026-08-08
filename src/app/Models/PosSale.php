@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
     'sale_number',
     'pos_session_id',
     'business_site_id',
+    'business_site_operation_id',
     'recorded_by_agent_id',
     'sales_agent_id',
     'customer_name',
@@ -50,6 +51,11 @@ class PosSale extends Model
     public function businessSite(): BelongsTo
     {
         return $this->belongsTo(BusinessSite::class);
+    }
+
+    public function businessSiteOperation(): BelongsTo
+    {
+        return $this->belongsTo(BusinessSiteOperation::class);
     }
 
     public function recordedBy(): BelongsTo

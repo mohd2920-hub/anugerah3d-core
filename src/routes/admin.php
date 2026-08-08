@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AgentController;
 use App\Http\Controllers\Admin\BusinessSiteController;
+use App\Http\Controllers\Admin\BusinessSiteOperationController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\Admin\OrderController;
@@ -57,7 +58,11 @@ Route::middleware('auth:admin')->group(function (): void {
     Route::patch('/weekly-closings/{weeklyClosing}/agents/{agentSummary}/payment', [WeeklyClosingController::class, 'updatePayment'])->name('weekly-closings.payments.update');
 
     Route::resource('products', ProductController::class)->except('show');
-    Route::resource('business-sites', BusinessSiteController::class)->except('show');
+    Route::get('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'show'])->name('business-site-operations.show');
+    Route::delete('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'destroy'])->name('business-site-operations.destroy');
+    Route::patch('/business-sites/{businessSite}/start', [BusinessSiteController::class, 'start'])->name('business-sites.start');
+    Route::patch('/business-sites/{businessSite}/stop', [BusinessSiteController::class, 'stop'])->name('business-sites.stop');
+    Route::resource('business-sites', BusinessSiteController::class);
     Route::put('/agents/{agent}/profile-picture', [AgentController::class, 'updateProfilePicture'])->name('agents.profile-picture.update');
     Route::patch('/agents/{agent}/approve', [AgentController::class, 'approve'])->name('agents.approve');
     Route::put('/agents/{agent}/password', [AgentController::class, 'resetPassword'])->name('agents.password.update');

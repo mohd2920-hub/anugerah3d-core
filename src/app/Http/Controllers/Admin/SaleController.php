@@ -64,6 +64,7 @@ class SaleController extends Controller
         $sale->load([
             'businessSite:id,site_name,city',
             'salesAgent:id,agt_name,login_id,email,phone_number',
+            'businessSiteOperation:id,business_site_id,opened_at,closed_at',
             'recordedBy:id,agt_name,login_id,email,phone_number',
             'posSession:id,agent_id,business_site_id,signed_in_at,signed_out_at',
             'items.product:id,prd_picture',

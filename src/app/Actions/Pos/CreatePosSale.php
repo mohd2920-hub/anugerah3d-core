@@ -3,6 +3,8 @@
 namespace App\Actions\Pos;
 
 use App\Models\Agent;
+use App\Models\BusinessSite;
+use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\Product;
@@ -22,11 +24,23 @@ class CreatePosSale
 
         try {
             return DB::transaction(function () use ($session, $data, $paths): PosSale {
+                $businessSite = BusinessSite::query()
+                    ->open()
+                    ->lockForUpdate()
+                    ->findOrFail($session->business_site_id);
+
+                $operation = BusinessSiteOperation::query()
+                    ->whereBelongsTo($businessSite)
+                    ->whereNull('closed_at')
+                    ->lockForUpdate()
+                    ->latest('opened_at')
+                    ->firstOrFail();
                 $items = $this->items($data['items'], $data['sales_agent_id']);
                 $sale = PosSale::query()->create([
                     'sale_number' => 'POS-'.now()->format('Ymd').'-'.Str::upper(Str::random(8)),
                     'pos_session_id' => $session->getKey(),
                     'business_site_id' => $session->business_site_id,
+                    'business_site_operation_id' => $operation->getKey(),
                     'recorded_by_agent_id' => $session->agent_id,
                     'sales_agent_id' => $data['sales_agent_id'],
                     'customer_name' => $data['customer_name'] ?? null,
