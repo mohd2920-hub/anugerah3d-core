@@ -75,7 +75,7 @@
                             $colorName = $product->color ?: '-';
                             $safeColor = is_string($product->color) && preg_match('/\A(?:#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\z/', $product->color) ? $product->color : '#cbd5e1';
                         @endphp
-                        <tr class="transition hover:bg-slate-50">
+                        <tr class="cursor-pointer transition hover:bg-slate-50 focus-within:bg-slate-50" data-row-link="{{ route("admin.products.show", $product) }}" tabindex="0" role="link" aria-label="View {{ $product->prd_name }}">
                             <td class="px-3 py-3">
                                 @if ($product->prd_picture)
                                     <div class="relative h-11 w-11 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
@@ -115,12 +115,15 @@
                                 <div class="mt-1 text-[0.72rem] text-slate-500">Sell RM {{ $formatAmount($product->price_selling) }}</div>
                             </td>
                             <td class="px-3 py-3 text-center text-slate-600">{{ $formatAmount($product->agent_discount_default) }}%</td>
-                            <td class="relative px-3 py-3 text-right">
+                            <td class="relative px-3 py-3 text-right" data-stop-row-link>
                                 <div class="relative inline-flex" data-action-menu>
                                     <button type="button" data-action-menu-button class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2" aria-haspopup="menu" aria-expanded="false">
                                         Actions
                                     </button>
-                                    <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-36 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                                    <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-40 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                                        <a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+                                            View
+                                        </a>
                                         <a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                             Edit
                                         </a>
@@ -150,7 +153,7 @@
                     $colorName = $product->color ?: '-';
                     $safeColor = is_string($product->color) && preg_match('/\A(?:#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\z/', $product->color) ? $product->color : '#cbd5e1';
                 @endphp
-                <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <article class="cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md focus-within:border-blue-200" data-row-link="{{ route("admin.products.show", $product) }}" tabindex="0" role="link" aria-label="View {{ $product->prd_name }}">
                     <div class="flex items-start gap-3">
                         @if ($product->prd_picture)
                             <div class="relative h-16 w-16 flex-none overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
@@ -170,7 +173,10 @@
                             <button type="button" data-action-menu-button class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2" aria-haspopup="menu" aria-expanded="false">
                                 Actions
                             </button>
-                            <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-36 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                            <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-40 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                                <a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+                                    View
+                                </a>
                                 <a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                     Edit
                                 </a>
@@ -271,7 +277,35 @@
 
     <script>
         (function () {
-            const modal = document.getElementById('delete-confirm-modal');
+            const modal = document.getElementById("delete-confirm-modal");
+            const rowLinkSelector = "[data-row-link]";
+
+            function shouldIgnoreRowLink(target) {
+                return Boolean(target.closest("[data-stop-row-link], [data-action-menu], a, button, form, input, select, textarea, label"));
+            }
+
+            document.querySelectorAll(rowLinkSelector).forEach(function (element) {
+                element.addEventListener("click", function (event) {
+                    if (shouldIgnoreRowLink(event.target)) {
+                        return;
+                    }
+
+                    window.location.href = element.dataset.rowLink;
+                });
+
+                element.addEventListener("keydown", function (event) {
+                    if (event.key !== "Enter" && event.key !== " ") {
+                        return;
+                    }
+
+                    if (shouldIgnoreRowLink(event.target)) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    window.location.href = element.dataset.rowLink;
+                });
+            });
 
             function closeActionMenus() {
                 document.querySelectorAll('[data-action-menu-panel]').forEach(function (panel) {
