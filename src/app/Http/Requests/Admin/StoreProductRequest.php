@@ -22,9 +22,10 @@ class StoreProductRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'prd_code' => ['required', 'string', 'max:80', Rule::unique((new Product)->getTable(), 'prd_code')],
             'prd_name' => ['required', 'string', 'max:255'],
+            'product_type' => ['required', 'string', Rule::in(['standard', 'clicker'])],
             'weight_g' => ['required', 'numeric', 'min:0'],
             'width_mm' => ['required', 'numeric', 'min:0'],
             'height_mm' => ['required', 'numeric', 'min:0'],
@@ -39,7 +40,22 @@ class StoreProductRequest extends FormRequest
             'product_images' => ['nullable', 'array', 'max:5'],
             'product_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'main_image' => ['nullable', 'string', 'regex:/^new-[0-4]$/'],
+            'clicker_character_prices' => ['nullable', 'array'],
+            'clicker_casing_images' => ['nullable', 'array', 'max:10'],
+            'clicker_casing_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'clicker_huruf_images' => ['nullable', 'array', 'max:10'],
+            'clicker_huruf_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
+
+        foreach (range(1, 8) as $characterCount) {
+            $rules["clicker_character_prices.$characterCount"] = [
+                Rule::requiredIf(fn (): bool => $this->input('product_type') === 'clicker'),
+                'numeric',
+                'min:0',
+            ];
+        }
+
+        return $rules;
     }
 
     /**
@@ -51,15 +67,23 @@ class StoreProductRequest extends FormRequest
             function (Validator $validator): void {
                 $mainImage = $this->string('main_image')->toString();
 
-                if ($mainImage === '') {
+                if ($mainImage !== '') {
+                    $index = (int) str($mainImage)->after('new-')->toString();
+                    $uploads = array_values($this->file('product_images', []));
+
+                    if (! isset($uploads[$index])) {
+                        $validator->errors()->add('main_image', 'Choose a valid main picture.');
+                    }
+                }
+
+                if ($this->input('product_type') !== 'clicker') {
                     return;
                 }
 
-                $index = (int) str($mainImage)->after('new-')->toString();
-                $uploads = array_values($this->file('product_images', []));
+                $prices = $this->input('clicker_character_prices', []);
 
-                if (! isset($uploads[$index])) {
-                    $validator->errors()->add('main_image', 'Choose a valid main picture.');
+                if (count($prices) < 8) {
+                    $validator->errors()->add('clicker_character_prices', 'Enter a price for each character count from 1 to 8.');
                 }
             },
         ];

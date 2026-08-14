@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'prd_code',
     'prd_name',
+    'product_type',
     'weight_g',
     'width_mm',
     'height_mm',

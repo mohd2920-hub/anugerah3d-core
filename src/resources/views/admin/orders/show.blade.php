@@ -16,6 +16,10 @@
             'refunded' => 'bg-violet-50 text-violet-700 ring-violet-200',
             default => 'bg-slate-100 text-slate-700 ring-slate-200',
         };
+        $grossSubtotal = $order->grossSubtotalAmount();
+        $discountAmount = $order->discountAmount();
+        $effectiveDiscountPercentage = $order->effectiveDiscountPercentage();
+        $deliveryFeeLabel = $order->deliveryFeeLabel();
     @endphp
 
     <div class="space-y-5">
@@ -52,8 +56,9 @@
                 <div class="lg:text-right">
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">Order total</p>
                     <p class="mt-1 text-3xl font-semibold">RM {{ number_format((float) $order->total_amount, 2) }}</p>
-                    <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units � Delivery fee to be confirmed</p>
-                    <p class="mt-1 text-xs text-slate-300">Cost: RM {{ number_format((float) $order->total_cost, 2) }} � Profit: RM {{ number_format((float) $order->profit_amount, 2) }}</p>
+                    <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units | Gross RM {{ number_format($grossSubtotal, 2) }} | Discount RM {{ number_format($discountAmount, 2) }} ({{ number_format($effectiveDiscountPercentage, 1) }}%)</p>
+                    <p class="mt-1 text-xs text-slate-300">Delivery charge: {{ $deliveryFeeLabel }}</p>
+                    <p class="mt-1 text-xs text-slate-300">Cost: RM {{ number_format((float) $order->total_cost, 2) }} | Profit: RM {{ number_format((float) $order->profit_amount, 2) }}</p>
                     @if ((float) $order->bonus_total > 0)
                         <p class="mt-1 text-xs text-slate-300">
                             Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
@@ -98,7 +103,7 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left font-semibold">Product</th>
                                     <th class="px-4 py-3 text-right font-semibold">Qty</th>
-                                    <th class="px-4 py-3 text-right font-semibold">Agent price</th>
+                                    <th class="px-4 py-3 text-right font-semibold">Price</th>
                                     <th class="px-4 py-3 text-right font-semibold">Line total</th>
                                     <th class="px-4 py-3 text-right font-semibold">Financial</th>
                                     <th class="px-4 py-3 text-right font-semibold">Reserved</th>
@@ -143,7 +148,26 @@
                                                     <p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p>
                                                 </div>
                                             </div>
-                                            <div class="mt-2 flex flex-wrap gap-1.5">
+                                            <div class="mt-2 space-y-1.5">
+                                                @if ($item->isClicker())
+                                                    @php
+                                                        $clickerCharacters = collect($item->clicker_characters ?? [])
+                                                            ->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+                                                            ->filter()
+                                                            ->values();
+                                                    @endphp
+                                                    <div class="flex flex-col items-start gap-1">
+                                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-600">Characters ({{ (int) ($item->clicker_character_count ?? $clickerCharacters->count()) }})</span>
+                                                        <div class="flex flex-nowrap items-center gap-1 overflow-x-auto pb-0.5">
+                                                            @forelse ($clickerCharacters as $character)
+                                                                <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-orange-200 bg-[linear-gradient(180deg,#fff7ed,#ffedd5)] text-[10px] font-black text-[#c2410c] shadow-sm">{{ $character }}</span>
+                                                            @empty
+                                                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] text-slate-500">-</span>
+                                                            @endforelse
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                                <div class="flex flex-wrap gap-1.5">
                                                 @if ($item->is_preorder)
                                                     <span class="rounded-full bg-orange-50 px-2 py-0.5 text-[0.68rem] font-semibold text-orange-700">Pre-order</span>
                                                 @endif
@@ -153,8 +177,9 @@
                                                 @if ($item->product->color)
                                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] text-slate-600">{{ $item->product->color }}</span>
                                                 @endif
+                                                </div>
                                             </div>
-                                            <p class="mt-2 text-xs text-slate-500">Selling RM {{ number_format((float) $item->unit_selling_price, 2) }} � {{ number_format((float) $item->discount_percentage, 1) }}% discount</p>
+                                            <p class="mt-2 text-xs text-slate-500">Selling RM {{ number_format((float) $item->unit_selling_price, 2) }} | Discount {{ number_format((float) $item->discount_percentage, 1) }}%</p>
                                         </td>
                                         <td class="px-4 py-4 text-right font-semibold text-slate-900">{{ $item->quantity }}</td>
                                         <td class="px-4 py-4 text-right text-slate-700">RM {{ number_format((float) $item->unit_price, 2) }}</td>
@@ -180,8 +205,8 @@
                             </tbody>
                             <tfoot class="border-t border-slate-200 bg-slate-50">
                                 <tr>
-                                    <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Products subtotal</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">RM {{ number_format((float) $order->subtotal, 2) }}</td>
+                                    <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Gross subtotal</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">RM {{ number_format($grossSubtotal, 2) }}</td>
                                     <td class="px-4 py-3 text-right">
                                         <p class="text-xs text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</p>
                                         <p class="mt-1 text-xs text-slate-500">Bonus: RM {{ number_format((float) $order->bonus_total, 2) }}</p>
@@ -190,8 +215,18 @@
                                     <td colspan="3"></td>
                                 </tr>
                                 <tr>
+                                    <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Eligible discount</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-emerald-700">- RM {{ number_format($discountAmount, 2) }} ({{ number_format($effectiveDiscountPercentage, 1) }}%)</td>
+                                    <td colspan="4"></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Products subtotal</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">RM {{ number_format((float) $order->subtotal, 2) }}</td>
+                                    <td colspan="4"></td>
+                                </tr>
+                                <tr>
                                     <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Delivery fee</td>
-                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $order->delivery_fee === null ? 'To be confirmed' : 'RM '.number_format((float) $order->delivery_fee, 2) }}</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ $deliveryFeeLabel }}</td>
                                     <td colspan="4"></td>
                                 </tr>
                                 <tr>

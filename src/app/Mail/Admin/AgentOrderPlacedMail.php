@@ -27,7 +27,7 @@ class AgentOrderPlacedMail extends Mailable
         $order = Order::query()
             ->with([
                 'agent:id,agt_name,login_id,email,phone_number',
-                'items:id,order_id,product_code,product_name,quantity,unit_selling_price,discount_percentage,unit_price,line_total,is_preorder',
+                'items:id,order_id,product_code,product_name,quantity,clicker_character_count,clicker_characters,unit_selling_price,discount_percentage,unit_price,line_total,is_preorder',
             ])
             ->findOrFail($this->orderId);
 

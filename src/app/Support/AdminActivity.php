@@ -49,6 +49,7 @@ class AdminActivity
             Str::contains($routeName, 'login') => 'Login',
             Str::contains($routeName, 'logout') => 'Profile',
             Str::contains($routeName, 'profile') => 'Profile',
+            Str::contains($routeName, 'agent-email-templates') => 'Email to Agen',
             Str::contains($routeName, 'agents') => 'Agents',
             Str::contains($routeName, 'products') => 'Products',
             Str::contains($routeName, 'system.manage-data') => 'Manage Data',

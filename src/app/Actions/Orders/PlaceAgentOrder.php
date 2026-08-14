@@ -8,8 +8,9 @@ use App\Models\Agent;
 use App\Models\Order;
 use App\Models\Product;
 use App\Support\AdminActivity;
-use Illuminate\Http\UploadedFile;
+use App\Support\AgentOrderDiscount;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -46,10 +47,22 @@ class PlaceAgentOrder
                     ->get()
                     ->keyBy('id');
 
+                $clickerPricesByProduct = DB::table('product_clicker_prices')
+                    ->whereIn('product_id', $products->modelKeys())
+                    ->get(['product_id', 'character_count', 'price_rm'])
+                    ->groupBy('product_id')
+                    ->map(fn (Collection $rows): array => $rows
+                        ->mapWithKeys(fn ($row): array => [
+                            (int) $row->character_count => (int) round((float) $row->price_rm * 100),
+                        ])
+                        ->all());
+
                 $this->ensureEveryProductExists($items, $products);
 
+                $grossSubtotalCents = 0;
                 $subtotalCents = 0;
                 $totalUnits = 0;
+                $pendingItems = [];
                 $orderItems = [];
 
                 foreach ($items as $index => $item) {
@@ -57,6 +70,7 @@ class PlaceAgentOrder
                     $product = $products->get($item['product_id']);
                     $quantity = (int) $item['quantity'];
                     $isPreorder = $product->prd_balance <= 0;
+                    $isClicker = ($product->product_type ?? 'standard') === 'clicker';
 
                     if (! $isPreorder && $quantity > $product->prd_balance) {
                         throw ValidationException::withMessages([
@@ -64,30 +78,86 @@ class PlaceAgentOrder
                         ]);
                     }
 
-                    $discountPercentage = (float) ($agent->discount_percentage > 0
-                        ? $agent->discount_percentage
-                        : $product->agent_discount_default);
-                    $sellingPriceCents = (int) round((float) $product->price_selling * 100);
-                    $discountTenths = (int) round($discountPercentage * 10);
+                    $clickerCharacterCount = null;
+                    $clickerCharacters = [];
+
+                    if ($isClicker) {
+                        $clickerCharacterCount = (int) ($item['clicker_character_count'] ?? 0);
+                        $clickerCharacters = collect($item['clicker_characters'] ?? [])
+                            ->map(fn (mixed $character): string => trim((string) $character))
+                            ->filter()
+                            ->values()
+                            ->all();
+
+                        $clickerUnitPriceCents = data_get(
+                            $clickerPricesByProduct,
+                            $product->getKey().'.'.$clickerCharacterCount,
+                        );
+
+                        if (! is_int($clickerUnitPriceCents)) {
+                            throw ValidationException::withMessages([
+                                "items.{$index}.clicker_character_count" => "Price for {$clickerCharacterCount} characters is not configured for {$product->prd_name}.",
+                            ]);
+                        }
+
+                        $sellingPriceCents = $clickerUnitPriceCents;
+                    } else {
+                        $sellingPriceCents = (int) round((float) $product->price_selling * 100);
+                    }
+
+                    $grossSubtotalCents += $sellingPriceCents * $quantity;
+                    $totalUnits += $quantity;
+                    $pendingItems[] = [
+                        'product' => $product,
+                        'quantity' => $quantity,
+                        'reserved_quantity' => $isPreorder ? 0 : $quantity,
+                        'is_preorder' => $isPreorder,
+                        'selling_price_cents' => $sellingPriceCents,
+                        'is_clicker' => $isClicker,
+                        'clicker_character_count' => $clickerCharacterCount,
+                        'clicker_characters' => $clickerCharacters,
+                    ];
+                }
+
+                $discountPercentage = AgentOrderDiscount::resolvePercentage(
+                    $grossSubtotalCents,
+                    (float) $agent->discount_percentage,
+                );
+                $discountTenths = (int) round($discountPercentage * 10);
+                $deliveryFeeCents = (string) $data['fulfilment_method'] === 'delivery'
+                    ? AgentOrderDiscount::DELIVERY_FEE_CENTS
+                    : 0;
+
+                foreach ($pendingItems as $pendingItem) {
+                    /** @var Product $product */
+                    $product = $pendingItem['product'];
+                    $quantity = (int) $pendingItem['quantity'];
+                    $sellingPriceCents = (int) $pendingItem['selling_price_cents'];
                     $unitPriceCents = (int) round($sellingPriceCents * (1000 - $discountTenths) / 1000);
                     $lineTotalCents = $unitPriceCents * $quantity;
 
                     $subtotalCents += $lineTotalCents;
-                    $totalUnits += $quantity;
-                    $orderItems[] = [
+                    $orderItem = [
                         'product_id' => $product->getKey(),
                         'product_code' => $product->prd_code,
                         'product_name' => $product->prd_name,
                         'quantity' => $quantity,
-                        'reserved_quantity' => $isPreorder ? 0 : $quantity,
+                        'reserved_quantity' => (int) $pendingItem['reserved_quantity'],
                         'unit_selling_price' => $this->money($sellingPriceCents),
                         'discount_percentage' => number_format($discountPercentage, 1, '.', ''),
                         'unit_price' => $this->money($unitPriceCents),
                         'line_total' => $this->money($lineTotalCents),
-                        'is_preorder' => $isPreorder,
+                        'is_preorder' => (bool) $pendingItem['is_preorder'],
                     ];
 
-                    if (! $isPreorder) {
+                    if ((bool) ($pendingItem['is_clicker'] ?? false)) {
+                        $orderItem['clicker_character_count'] = (int) ($pendingItem['clicker_character_count'] ?? 0);
+                        $orderItem['clicker_characters'] = $pendingItem['clicker_characters'] ?? [];
+                    }
+
+                    $orderItems[] = $orderItem;
+
+                    if (! $pendingItem['is_preorder']) {
                         $product->decrement('prd_balance', $quantity);
                     }
                 }
@@ -103,8 +173,8 @@ class PlaceAgentOrder
                     'payment_method' => $data['payment_method'],
                     'payment_proof_paths' => $paymentProofPaths,
                     'subtotal' => $this->money($subtotalCents),
-                    'delivery_fee' => null,
-                    'total_amount' => $this->money($subtotalCents),
+                    'delivery_fee' => $deliveryFeeCents > 0 ? $this->money($deliveryFeeCents) : null,
+                    'total_amount' => $this->money($subtotalCents + $deliveryFeeCents),
                     'total_units' => $totalUnits,
                     'placed_at' => now(),
                 ]);

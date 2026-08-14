@@ -125,9 +125,44 @@ class Order extends Model
         return $this->payment_method === 'pay_later' ? 'Pay later' : 'Bank transfer';
     }
 
+    public function grossSubtotalAmount(): float
+    {
+        return round($this->items->sum(function (OrderItem $item): float {
+            return (float) $item->unit_selling_price * (int) $item->quantity;
+        }), 2);
+    }
+
+    public function discountAmount(): float
+    {
+        return round(max(0, $this->grossSubtotalAmount() - (float) $this->subtotal), 2);
+    }
+
+    public function effectiveDiscountPercentage(): float
+    {
+        $grossSubtotal = $this->grossSubtotalAmount();
+
+        if ($grossSubtotal <= 0) {
+            return 0.0;
+        }
+
+        return round(($this->discountAmount() / $grossSubtotal) * 100, 1);
+    }
+
     public function fulfilmentLabel(): string
     {
         return $this->fulfilment_method === 'delivery' ? 'Delivery' : 'Self pickup';
+    }
+
+    public function deliveryFeeAmount(): float
+    {
+        return round((float) ($this->delivery_fee ?? 0), 2);
+    }
+
+    public function deliveryFeeLabel(): string
+    {
+        return $this->delivery_fee === null
+            ? 'No delivery charge'
+            : 'RM '.number_format((float) $this->delivery_fee, 2);
     }
 
     /** @return array<int, string> */

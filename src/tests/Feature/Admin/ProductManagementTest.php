@@ -8,6 +8,7 @@ use App\Models\Product;
 use Database\Seeders\MaterialSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -104,6 +105,105 @@ class ProductManagementTest extends TestCase
             ->assertSee('name="clicker_character_prices[1]"', false)
             ->assertSee('name="clicker_character_prices[8]"', false);
     }
+    public function test_admin_can_create_clicker_product_with_character_prices(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $characterPrices = $this->validClickerCharacterPrices();
+
+        $this->actingAs($admin, 'admin')
+            ->post($this->adminUrl('/products'), $this->validPayload([
+                'product_type' => 'clicker',
+                'clicker_character_prices' => $characterPrices,
+            ]))
+            ->assertRedirect(route('admin.products.index'));
+
+        $product = Product::query()->where('prd_code', 'A3D-TEST-001')->firstOrFail();
+
+        $this->assertSame('clicker', $product->product_type);
+
+        foreach ($characterPrices as $characterCount => $price) {
+            $this->assertDatabaseHas('product_clicker_prices', [
+                'product_id' => $product->getKey(),
+                'character_count' => (int) $characterCount,
+                'price_rm' => number_format((float) $price, 2, '.', ''),
+            ]);
+        }
+    }
+
+    public function test_edit_page_displays_clicker_character_pricing_for_clicker_product(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $product = Product::factory()->create([
+            'product_type' => 'clicker',
+        ]);
+
+        $prices = [];
+
+        foreach ($this->validClickerCharacterPrices() as $characterCount => $price) {
+            $prices[] = [
+                'product_id' => $product->getKey(),
+                'character_count' => (int) $characterCount,
+                'price_rm' => number_format((float) $price, 2, '.', ''),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        DB::table('product_clicker_prices')->insert($prices);
+
+        $this->actingAs($admin, 'admin')
+            ->get($this->adminUrl("/products/{$product->id}/edit"))
+            ->assertOk()
+            ->assertSeeText('Character Pricing')
+            ->assertSee('name="clicker_character_prices[1]"', false)
+            ->assertSee('name="clicker_character_prices[8]"', false)
+            ->assertSee('value="12.00"', false)
+            ->assertSee('value="33.00"', false);
+    }
+
+    public function test_admin_can_update_clicker_product_character_prices(): void
+    {
+        $admin = AdminUser::factory()->create();
+        $product = Product::factory()->create([
+            'product_type' => 'clicker',
+        ]);
+
+        $existing = [];
+
+        foreach ($this->validClickerCharacterPrices() as $characterCount => $price) {
+            $existing[] = [
+                'product_id' => $product->getKey(),
+                'character_count' => (int) $characterCount,
+                'price_rm' => number_format((float) $price, 2, '.', ''),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        DB::table('product_clicker_prices')->insert($existing);
+
+        $updatedPrices = $this->validClickerCharacterPrices([
+            1 => 18.00,
+            8 => 44.00,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put($this->adminUrl("/products/{$product->id}"), $this->validPayload([
+                'prd_code' => $product->prd_code,
+                'product_type' => 'clicker',
+                'clicker_character_prices' => $updatedPrices,
+            ]))
+            ->assertRedirect(route('admin.products.index'));
+
+        foreach ($updatedPrices as $characterCount => $price) {
+            $this->assertDatabaseHas('product_clicker_prices', [
+                'product_id' => $product->getKey(),
+                'character_count' => (int) $characterCount,
+                'price_rm' => number_format((float) $price, 2, '.', ''),
+            ]);
+        }
+    }
+
 
     public function test_product_code_must_be_unique(): void
     {
@@ -272,6 +372,24 @@ class ProductManagementTest extends TestCase
         $this->assertDatabaseMissing('products', [
             'id' => $product->id,
         ]);
+    }
+
+    /**
+     * @param  array<int, string>  $overrides
+     * @return array<int, string>
+     */
+    private function validClickerCharacterPrices(array $overrides = []): array
+    {
+        return array_replace([
+            1 => '12.00',
+            2 => '15.00',
+            3 => '18.00',
+            4 => '21.00',
+            5 => '24.00',
+            6 => '27.00',
+            7 => '30.00',
+            8 => '33.00',
+        ], $overrides);
     }
 
     /**

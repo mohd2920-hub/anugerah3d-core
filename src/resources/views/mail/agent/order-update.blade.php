@@ -2,6 +2,9 @@
 @php
 	$paymentProofUrls = $order->paymentProofUrls();
 	$paymentProofCount = count($paymentProofUrls);
+	$deliveryFeeLabel = $order->fulfilment_method === 'delivery' ? 'RM ' . number_format((float) ($order->delivery_fee ?? 6), 2) : 'RM 0.00';
+	$locationLabel = $order->fulfilment_method === 'delivery' ? 'Delivery address' : 'Pickup location';
+	$locationValue = $order->delivery_address ?: 'Anugerah3D pickup counter';
 @endphp
 
 <div style="padding:24px 24px 18px;border-radius:24px;background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 48%,#fef3c7 100%);border:1px solid #fed7aa;box-shadow:0 18px 40px rgba(251,146,60,.14);margin-bottom:24px;">
@@ -9,7 +12,7 @@
 	<div style="margin-top:10px;font-size:28px;line-height:1.15;font-weight:900;color:#7c2d12;">
 		@switch($updateType)
 		@case('submitted')
-		Order Submitted Successfully
+		Order Confirmed
 		@break
 		@case('processing')
 		Order Is Now Processing
@@ -28,7 +31,7 @@
 		@endswitch
 	</div>
 	<div style="margin-top:10px;color:#9a3412;font-size:15px;line-height:1.6;">
-		Hi {{ $order->agent->agt_name }}, this is the latest update for your order <strong>{{ $order->order_number }}</strong>.
+		Hi {{ $order->agent->agt_name }}, thank you for ordering with Anugerah3D. Here is your latest order summary for <strong>{{ $order->order_number }}</strong>.
 	</div>
 </div>
 
@@ -71,8 +74,20 @@
 			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->placed_at->format('d M Y, h:i A') }}</td>
 		</tr>
 		<tr>
+			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Recipient</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->recipient_name }}</td>
+		</tr>
+		<tr>
+			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Phone</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->phone_number }}</td>
+		</tr>
+		<tr>
 			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Payment method</td>
 			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->paymentMethodLabel() }}</td>
+		</tr>
+		<tr>
+			<td style="padding:6px 0;color:#6b7280;font-size:13px;">{{ $locationLabel }}</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $locationValue }}</td>
 		</tr>
 		<tr>
 			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Total units</td>
@@ -87,7 +102,7 @@
 
 @switch($updateType)
 @case('submitted')
-Your order has been submitted successfully and recorded in our system. The admin team has been notified.
+Your order has been received successfully and our team has already been notified. We will verify stock, payment, and fulfilment details before moving it to processing.
 @break
 @case('processing')
 Your order has passed the stock check and is now being processed.
@@ -107,13 +122,47 @@ There is a new update for your order.
 
 <div style="background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:18px 20px;box-shadow:0 12px 30px rgba(15,23,42,.06);margin:18px 0;">
 	<div style="font-size:16px;font-weight:900;color:#111827;margin-bottom:12px;">Items</div>
-	<x-mail::table>
-| Product | Qty | Unit price | Line total |
-| :-- | --: | --: | --: |
-@foreach ($order->items as $item)
-| {{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }} | {{ $item->quantity }} | RM {{ number_format((float) $item->unit_price, 2) }} | RM {{ number_format((float) $item->line_total, 2) }} |
-@endforeach
-	</x-mail::table>
+	<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+		<thead>
+			<tr>
+				<th align="left" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Product</th>
+				<th align="left" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Characters</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Qty</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Unit price</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Line total</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach ($order->items as $item)
+				@php
+					$characters = $item->isClicker()
+						? collect($item->clicker_characters ?? [])
+							->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+							->filter()
+							->values()
+						: collect();
+				@endphp
+				<tr>
+					<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#111827;font-weight:700;">{{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }}</td>
+					<td style="padding:10px;border-bottom:1px solid #f1f5f9;">
+						@if ($characters->isNotEmpty())
+							<div style="margin-bottom:5px;"><span style="display:inline-block;border-radius:999px;background:#e2e8f0;padding:2px 8px;color:#334155;font-size:10px;font-weight:700;text-transform:uppercase;">Characters ({{ (int) ($item->clicker_character_count ?? $characters->count()) }})</span></div>
+							<div style="white-space:nowrap;">
+								@foreach ($characters as $character)
+									<span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:6px;border:1px solid #fdba74;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:900;margin-right:3px;">{{ $character }}</span>
+								@endforeach
+							</div>
+						@else
+							<span style="font-size:12px;color:#94a3b8;">-</span>
+						@endif
+					</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;font-weight:700;">{{ $item->quantity }}</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;">RM {{ number_format((float) $item->unit_price, 2) }}</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#9a3412;font-weight:900;">RM {{ number_format((float) $item->line_total, 2) }}</td>
+				</tr>
+			@endforeach
+		</tbody>
+	</table>
 </div>
 
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:18px 20px;box-shadow:0 10px 24px rgba(15,23,42,.05);margin-bottom:18px;">
@@ -125,7 +174,7 @@ There is a new update for your order.
 		</tr>
 		<tr>
 			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Delivery fee</td>
-			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->delivery_fee === null ? 'To be confirmed' : 'RM '.number_format((float) $order->delivery_fee, 2) }}</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $deliveryFeeLabel }}</td>
 		</tr>
 		<tr>
 			<td style="padding:8px 0 0;color:#6b7280;font-size:13px;">Order total</td>
@@ -156,7 +205,7 @@ There is a new update for your order.
 @endif
 
 <x-mail::button :url="$historyUrl">
-View Order History
+Track Order History
 </x-mail::button>
 
 <p style="margin-top:22px;color:#6b7280;font-size:13px;line-height:1.7;">

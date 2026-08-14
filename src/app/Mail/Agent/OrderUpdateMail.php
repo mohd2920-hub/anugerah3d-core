@@ -22,7 +22,7 @@ class OrderUpdateMail extends Mailable
     public function envelope(): Envelope
     {
         $subject = match ($this->updateType) {
-            'submitted' => "Order submitted successfully: {$this->orderNumber}",
+            'submitted' => "Your Anugerah3D order is confirmed: {$this->orderNumber}",
             'processing' => "Your order is now processing: {$this->orderNumber}",
             'completed' => "Your order is complete: {$this->orderNumber}",
             'cancelled' => "Your order was cancelled: {$this->orderNumber}",
@@ -38,7 +38,7 @@ class OrderUpdateMail extends Mailable
         $order = Order::query()
             ->with([
                 'agent:id,agt_name,email',
-                'items:id,order_id,product_code,product_name,quantity,unit_price,line_total,is_preorder',
+                'items:id,order_id,product_code,product_name,quantity,clicker_character_count,clicker_characters,unit_price,line_total,is_preorder',
             ])
             ->findOrFail($this->orderId);
 

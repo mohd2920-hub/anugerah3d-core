@@ -129,6 +129,7 @@
         });
         document.querySelector('[data-delivery-address]').classList.toggle('hidden', !isDelivery);
         document.querySelector('[name="delivery_address"]').required = isDelivery;
+        renderCheckout();
     }));
 
     document.querySelectorAll('[data-payment-option] input').forEach((input) => input.addEventListener('change', () => {
@@ -176,6 +177,20 @@
         values().forEach((item, index) => {
             payload.append(`items[${index}][product_id]`, String(Number(item.id)));
             payload.append(`items[${index}][quantity]`, String(Number(item.quantity)));
+
+            if (item.productType === 'clicker') {
+                const characterCount = Number(item.clickerCharacterCount || 0);
+                const characters = Array.isArray(item.clickerCharacters)
+                    ? item.clickerCharacters
+                        .map((character) => String(character || '').trim())
+                        .filter((character) => character !== '')
+                    : [];
+
+                payload.append(`items[${index}][clicker_character_count]`, String(characterCount));
+                characters.slice(0, characterCount).forEach((character) => {
+                    payload.append(`items[${index}][clicker_characters][]`, character);
+                });
+            }
         });
 
         proofFiles.forEach((file) => payload.append('payment_proofs[]', file));
@@ -188,10 +203,19 @@
                 },
                 body: payload,
             });
-            const result = await response.json();
+            const contentType = response.headers.get('content-type') || '';
+            const rawBody = await response.text();
+            const isJsonResponse = contentType.includes('application/json');
+            const result = isJsonResponse
+                ? JSON.parse(rawBody || '{}')
+                : { message: rawBody };
 
             if (!response.ok) {
                 const validationMessage = result.errors ? Object.values(result.errors).flat()[0] : null;
+                if (!isJsonResponse) {
+                    throw new Error('Server returned an invalid response. Please refresh and try again.');
+                }
+
                 throw new Error(validationMessage || result.message || 'Unable to place the order. Please try again.');
             }
 

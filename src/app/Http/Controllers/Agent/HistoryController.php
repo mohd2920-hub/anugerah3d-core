@@ -55,6 +55,8 @@ class HistoryController extends Controller
                 'quantity' => $item->quantity,
                 'price' => (float) $item->unit_price,
                 'preorder' => $item->is_preorder,
+                'clicker_character_count' => (int) ($item->clicker_character_count ?? 0),
+                'clicker_characters' => $item->clickerCharactersText(),
             ])->all(),
             'timeline' => $this->timeline($order),
         ];

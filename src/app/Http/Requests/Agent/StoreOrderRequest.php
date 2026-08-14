@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\Agent;
 
+use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreOrderRequest extends FormRequest
 {
@@ -27,6 +30,73 @@ class StoreOrderRequest extends FormRequest
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.product_id' => ['required', 'integer', 'distinct', Rule::exists('products', 'id')],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
+            'items.*.clicker_character_count' => ['nullable', 'integer', 'min:1', 'max:8'],
+            'items.*.clicker_characters' => ['nullable', 'array', 'max:8'],
+            'items.*.clicker_characters.*' => ['nullable', 'string', 'max:1'],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $items = collect($this->input('items', []));
+                $productIds = $items
+                    ->pluck('product_id')
+                    ->filter(fn (mixed $id): bool => is_numeric($id))
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->values();
+
+                if ($productIds->isEmpty()) {
+                    return;
+                }
+
+                $products = Product::query()
+                    ->whereKey($productIds)
+                    ->get(['id', 'product_type'])
+                    ->keyBy('id');
+
+                foreach ($items as $index => $item) {
+                    $product = $products->get((int) ($item['product_id'] ?? 0));
+
+                    if (! $product instanceof Product) {
+                        continue;
+                    }
+
+                    if ($product->product_type !== 'clicker') {
+                        if (array_key_exists('clicker_character_count', $item) || array_key_exists('clicker_characters', $item)) {
+                            $validator->errors()->add("items.{$index}.clicker_character_count", 'Character selection is only available for clicker products.');
+                        }
+
+                        continue;
+                    }
+
+                    $characterCount = (int) ($item['clicker_character_count'] ?? 0);
+
+                    if ($characterCount < 1 || $characterCount > 8) {
+                        $validator->errors()->add("items.{$index}.clicker_character_count", 'Choose between 1 and 8 characters for this clicker.');
+                        continue;
+                    }
+
+                    $characters = collect($item['clicker_characters'] ?? [])
+                        ->map(fn (mixed $character): string => trim((string) $character))
+                        ->filter()
+                        ->values();
+
+                    if ($characters->count() !== $characterCount) {
+                        $validator->errors()->add("items.{$index}.clicker_characters", "Enter exactly {$characterCount} characters for this clicker.");
+                        continue;
+                    }
+
+                    $invalidCharacter = $characters->first(
+                        fn (string $character): bool => mb_strlen($character) !== 1,
+                    );
+
+                    if ($invalidCharacter !== null) {
+                        $validator->errors()->add("items.{$index}.clicker_characters", 'Each clicker field accepts one character only.');
+                    }
+                }
+            },
         ];
     }
 }

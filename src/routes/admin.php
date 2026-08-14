@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AgentController;
+use App\Http\Controllers\Admin\AgentEmailTemplateController;
 use App\Http\Controllers\Admin\BusinessSiteController;
 use App\Http\Controllers\Admin\BusinessSiteOperationController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -57,7 +58,7 @@ Route::middleware('auth:admin')->group(function (): void {
     Route::get('/weekly-closings/{weeklyClosing}', [WeeklyClosingController::class, 'show'])->name('weekly-closings.show');
     Route::patch('/weekly-closings/{weeklyClosing}/agents/{agentSummary}/payment', [WeeklyClosingController::class, 'updatePayment'])->name('weekly-closings.payments.update');
 
-    Route::resource('products', ProductController::class)->except('show');
+    Route::resource('products', ProductController::class);
     Route::get('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'show'])->name('business-site-operations.show');
     Route::delete('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'destroy'])->name('business-site-operations.destroy');
     Route::patch('/business-sites/{businessSite}/start', [BusinessSiteController::class, 'start'])->name('business-sites.start');
@@ -67,5 +68,11 @@ Route::middleware('auth:admin')->group(function (): void {
     Route::patch('/agents/{agent}/approve', [AgentController::class, 'approve'])->name('agents.approve');
     Route::put('/agents/{agent}/password', [AgentController::class, 'resetPassword'])->name('agents.password.update');
     Route::post('/agents/{agent}/resend-registration-info', [AgentController::class, 'resendRegistrationInfo'])->name('agents.registration-info.resend');
+    Route::get('/agent-email-templates', [AgentEmailTemplateController::class, 'index'])->name('agent-email-templates.index');
+    Route::get('/agent-email-templates/create', [AgentEmailTemplateController::class, 'create'])->name('agent-email-templates.create');
+    Route::post('/agent-email-templates', [AgentEmailTemplateController::class, 'store'])->name('agent-email-templates.store');
+    Route::get('/agent-email-templates/{agentEmailTemplate}/edit', [AgentEmailTemplateController::class, 'edit'])->name('agent-email-templates.edit');
+    Route::put('/agent-email-templates/{agentEmailTemplate}', [AgentEmailTemplateController::class, 'update'])->name('agent-email-templates.update');
+    Route::post('/agent-email-templates/{agentEmailTemplate}/send', [AgentEmailTemplateController::class, 'send'])->name('agent-email-templates.send');
     Route::resource('agents', AgentController::class);
 });

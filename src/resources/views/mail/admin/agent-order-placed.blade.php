@@ -2,6 +2,10 @@
 @php
 	$paymentProofUrls = $order->paymentProofUrls();
 	$paymentProofCount = count($paymentProofUrls);
+	$grossSubtotal = $order->grossSubtotalAmount();
+	$discountAmount = $order->discountAmount();
+	$effectiveDiscountPercentage = $order->effectiveDiscountPercentage();
+	$deliveryFeeLabel = $order->deliveryFeeLabel();
 @endphp
 
 <div style="padding:24px 24px 18px;border-radius:24px;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 46%,#e0f2fe 100%);border:1px solid #bfdbfe;box-shadow:0 18px 40px rgba(59,130,246,.12);margin-bottom:24px;">
@@ -101,13 +105,51 @@
 
 <div style="background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:18px 20px;box-shadow:0 12px 30px rgba(15,23,42,.06);margin-bottom:18px;">
 	<div style="font-size:16px;font-weight:900;color:#111827;margin-bottom:12px;">Items</div>
-	<x-mail::table>
-| Product | Qty | Selling | Discount | Agent price | Line total |
-| :-- | --: | --: | --: | --: | --: |
-@foreach ($order->items as $item)
-| {{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }} | {{ $item->quantity }} | RM {{ number_format((float) $item->unit_selling_price, 2) }} | {{ number_format((float) $item->discount_percentage, 1) }}% | RM {{ number_format((float) $item->unit_price, 2) }} | RM {{ number_format((float) $item->line_total, 2) }} |
-@endforeach
-	</x-mail::table>
+	<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+		<thead>
+			<tr>
+				<th align="left" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Product</th>
+				<th align="left" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Characters</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Qty</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Selling</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Discount</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Price</th>
+				<th align="right" style="background:#f8fafc;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#64748b;">Line total</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach ($order->items as $item)
+				@php
+					$characters = $item->isClicker()
+						? collect($item->clicker_characters ?? [])
+							->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+							->filter()
+							->values()
+						: collect();
+				@endphp
+				<tr>
+					<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#111827;font-weight:700;">{{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }}</td>
+					<td style="padding:10px;border-bottom:1px solid #f1f5f9;">
+						@if ($characters->isNotEmpty())
+							<div style="margin-bottom:5px;"><span style="display:inline-block;border-radius:999px;background:#e2e8f0;padding:2px 8px;color:#334155;font-size:10px;font-weight:700;text-transform:uppercase;">Characters ({{ (int) ($item->clicker_character_count ?? $characters->count()) }})</span></div>
+							<div style="white-space:nowrap;">
+								@foreach ($characters as $character)
+									<span style="display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:6px;border:1px solid #fdba74;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:900;margin-right:3px;">{{ $character }}</span>
+								@endforeach
+							</div>
+						@else
+							<span style="font-size:12px;color:#94a3b8;">-</span>
+						@endif
+					</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;font-weight:700;">{{ $item->quantity }}</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;">RM {{ number_format((float) $item->unit_selling_price, 2) }}</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;">{{ number_format((float) $item->discount_percentage, 1) }}%</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#0f172a;">RM {{ number_format((float) $item->unit_price, 2) }}</td>
+					<td align="right" style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#9a3412;font-weight:900;">RM {{ number_format((float) $item->line_total, 2) }}</td>
+				</tr>
+			@endforeach
+		</tbody>
+	</table>
 </div>
 
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:18px 20px;box-shadow:0 10px 24px rgba(15,23,42,.05);margin-bottom:18px;">
@@ -116,6 +158,14 @@
 		<tr>
 			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Total units</td>
 			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">{{ $order->total_units }}</td>
+		</tr>
+		<tr>
+			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Gross subtotal</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">RM {{ number_format($grossSubtotal, 2) }}</td>
+		</tr>
+		<tr>
+			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Eligible discount</td>
+			<td style="padding:6px 0;text-align:right;font-weight:700;color:#15803d;">- RM {{ number_format($discountAmount, 2) }} ({{ number_format($effectiveDiscountPercentage, 1) }}%)</td>
 		</tr>
 		<tr>
 			<td style="padding:6px 0;color:#6b7280;font-size:13px;">Products subtotal</td>

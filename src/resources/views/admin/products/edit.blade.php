@@ -236,7 +236,6 @@
                 <form method="POST" action="{{ route("admin.products.update", $product) }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @method("PUT")
-                    <input type="hidden" name="product_type" value="{{ $productVariant }}">
 
                     <div>
                         <label for="prd_code" class="mb-2 block text-sm font-medium text-slate-700">
@@ -258,39 +257,162 @@
                         @enderror
                     </div>
 
-                    @if ($productVariant === "clicker")
-                        <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <section data-clicker-product-builder class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-sm font-semibold text-slate-900">Character Pricing</h3>
-                                <p class="mt-1 text-xs text-slate-500">Setiap character ada harga masing masing.</p>
+                                <h2 class="text-sm font-semibold text-slate-900">Product Type</h2>
+                                <p class="mt-1 text-xs text-slate-500">Pilih STANDARD untuk form biasa, atau CLICKER untuk buka paparan UI tambahan.</p>
+                            </div>
+                        </div>
+
+                        <input data-product-type-input type="hidden" name="product_type" value="{{ $productVariant }}">
+                        <input data-product-variant-input type="hidden" name="product_variant_ui" value="{{ $productVariant }}">
+
+                        <div class="mt-4 inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                            <button
+                                type="button"
+                                data-product-variant-button
+                                data-variant="standard"
+                                aria-pressed="{{ $productVariant === "standard" ? "true" : "false" }}"
+                                class="rounded-lg px-4 py-2 text-sm font-semibold transition {{ $productVariant === "standard" ? "bg-[#1a73e8] text-white shadow-sm" : "text-slate-600 hover:bg-slate-100" }}"
+                            >
+                                STANDARD
+                            </button>
+                            <button
+                                type="button"
+                                data-product-variant-button
+                                data-variant="clicker"
+                                aria-pressed="{{ $productVariant === "clicker" ? "true" : "false" }}"
+                                class="rounded-lg px-4 py-2 text-sm font-semibold transition {{ $productVariant === "clicker" ? "bg-[#1a73e8] text-white shadow-sm" : "text-slate-600 hover:bg-slate-100" }}"
+                            >
+                                CLICKER
+                            </button>
+                        </div>
+
+                        <div data-clicker-panel class="{{ $productVariant === "clicker" ? "" : "hidden" }} mt-5 space-y-5 border-t border-slate-200 pt-5">
+                            <div class="grid gap-5 lg:grid-cols-2">
+                                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-slate-900">Casing</h3>
+                                            <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Cut to 600px only.</p>
+                                        </div>
+                                        <span data-clicker-file-count="casing" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ collect($clickerImages->get("casing", collect()))->count() }} / 10</span>
+                                    </div>
+
+                                    <label class="mt-4 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
+                                        <span>
+                                            <span class="block text-sm font-semibold text-slate-800">Upload / Select image</span>
+                                            <span class="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP</span>
+                                        </span>
+                                        <input data-clicker-file-input="casing" type="file" name="clicker_casing_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
+                                    </label>
+
+                                    <p data-clicker-file-error="casing" class="mt-2 hidden text-sm font-medium text-red-600"></p>
+
+                                    <p class="mt-3 text-xs text-slate-500">Selected files</p>
+                                    <div data-clicker-file-list="casing" class="mt-2 flex min-h-11 flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                                        @if (collect($clickerImages->get("casing", collect()))->isNotEmpty())
+                                            <span>{{ collect($clickerImages->get("casing", collect()))->count() }} existing image(s). Select new files to replace.</span>
+                                        @else
+                                            <span>No images selected yet.</span>
+                                        @endif
+                                    </div>
+
+                                    @if (collect($clickerImages->get("casing", collect()))->isNotEmpty())
+                                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                                            @foreach (collect($clickerImages->get("casing", collect())) as $image)
+                                                @php
+                                                    $casingUrl = $resolveImageUrl($image->image_path ?? null);
+                                                @endphp
+                                                @if ($casingUrl)
+                                                    <a href="{{ $casingUrl }}" target="_blank" rel="noopener" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                                        <img src="{{ $casingUrl }}" alt="{{ $product->prd_name }} casing" class="h-full w-full object-cover">
+                                                    </a>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-slate-900">Huruf</h3>
+                                            <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Cut to 600px only.</p>
+                                        </div>
+                                        <span data-clicker-file-count="huruf" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ collect($clickerImages->get("huruf", collect()))->count() }} / 10</span>
+                                    </div>
+
+                                    <label class="mt-4 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
+                                        <span>
+                                            <span class="block text-sm font-semibold text-slate-800">Upload / Select image</span>
+                                            <span class="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP</span>
+                                        </span>
+                                        <input data-clicker-file-input="huruf" type="file" name="clicker_huruf_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
+                                    </label>
+
+                                    <p data-clicker-file-error="huruf" class="mt-2 hidden text-sm font-medium text-red-600"></p>
+
+                                    <p class="mt-3 text-xs text-slate-500">Selected files</p>
+                                    <div data-clicker-file-list="huruf" class="mt-2 flex min-h-11 flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                                        @if (collect($clickerImages->get("huruf", collect()))->isNotEmpty())
+                                            <span>{{ collect($clickerImages->get("huruf", collect()))->count() }} existing image(s). Select new files to replace.</span>
+                                        @else
+                                            <span>No images selected yet.</span>
+                                        @endif
+                                    </div>
+
+                                    @if (collect($clickerImages->get("huruf", collect()))->isNotEmpty())
+                                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                                            @foreach (collect($clickerImages->get("huruf", collect())) as $image)
+                                                @php
+                                                    $hurufUrl = $resolveImageUrl($image->image_path ?? null);
+                                                @endphp
+                                                @if ($hurufUrl)
+                                                    <a href="{{ $hurufUrl }}" target="_blank" rel="noopener" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                                        <img src="{{ $hurufUrl }}" alt="{{ $product->prd_name }} huruf" class="h-full w-full object-cover">
+                                                    </a>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
 
-                            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                @foreach (range(1, 8) as $characterCount)
-                                    <div class="rounded-xl border border-slate-200 bg-white p-3">
-                                        <div class="flex items-center gap-3">
-                                            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-sm font-semibold text-slate-700">{{ $characterCount }}</span>
+                            <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-900">Character Pricing</h3>
+                                    <p class="mt-1 text-xs text-slate-500">Setiap character ada harga masing masing.</p>
+                                </div>
 
-                                            <div class="min-w-0 flex-1">
-                                                <input
-                                                    type="number"
-                                                    name="clicker_character_prices[{{ $characterCount }}]"
-                                                    value="{{ old("clicker_character_prices.".$characterCount, $clickerCharacterPrices[$characterCount] ?? "") }}"
-                                                    placeholder="0.00"
-                                                    step="0.01"
-                                                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none transition placeholder:text-center placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100"
-                                                >
+                                <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                    @foreach (range(1, 8) as $characterCount)
+                                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                            <div class="flex items-center gap-3">
+                                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700">{{ $characterCount }}</span>
+
+                                                <div class="min-w-0 flex-1">
+                                                    <input
+                                                        type="number"
+                                                        name="clicker_character_prices[{{ $characterCount }}]"
+                                                        value="{{ old("clicker_character_prices.".$characterCount, $clickerCharacterPrices[$characterCount] ?? "") }}"
+                                                        placeholder="0.00"
+                                                        step="0.01"
+                                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none transition placeholder:text-center placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100"
+                                                    >
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                @endforeach
-                            </div>
+                                    @endforeach
+                                </div>
 
-                            @error("clicker_character_prices")
-                                <span class="mt-3 block text-sm text-red-600">{{ $message }}</span>
-                            @enderror
-                        </section>
-                    @endif
+                                @error("clicker_character_prices")
+                                    <span class="mt-3 block text-sm text-red-600">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+                    </section>
 
                     <div>
                         <label for="weight_g" class="mb-2 block text-sm font-medium text-slate-700">
@@ -415,5 +537,101 @@
                 </form>
             </div>
         </div>
+
+        <script>
+            (() => {
+                const initializeAdminProductClicker = () => {
+                    const container = document.querySelector("[data-clicker-product-builder]");
+
+                    if (!container) {
+                        return;
+                    }
+
+                    const variantInput = container.querySelector("[data-product-variant-input]");
+                    const productTypeInput = container.querySelector("[data-product-type-input]");
+                    const variantButtons = [...container.querySelectorAll("[data-product-variant-button]")];
+                    const clickerPanel = container.querySelector("[data-clicker-panel]");
+                    const clickerInputs = [...clickerPanel.querySelectorAll("input:not([type=hidden])")];
+                    const fileInputs = [...container.querySelectorAll("[data-clicker-file-input]")];
+
+                    const renderFileSelection = (input) => {
+                        const type = input.dataset.clickerFileInput;
+                        const count = container.querySelector("[data-clicker-file-count=\"" + type + "\"]");
+                        const list = container.querySelector("[data-clicker-file-list=\"" + type + "\"]");
+                        const error = container.querySelector("[data-clicker-file-error=\"" + type + "\"]");
+                        const files = [...input.files];
+
+                        if (files.length > 0) {
+                            count.textContent = files.length + " / 10";
+                            list.innerHTML = "";
+
+                            files.forEach((file) => {
+                                const item = document.createElement("span");
+                                item.className = "inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700";
+                                item.textContent = file.name;
+                                list.append(item);
+                            });
+
+                            error.textContent = "";
+                            error.classList.add("hidden");
+                        }
+                    };
+
+                    const syncVariantUi = () => {
+                        const isClicker = variantInput.value === "clicker";
+
+                        productTypeInput.value = variantInput.value;
+                        clickerPanel.classList.toggle("hidden", !isClicker);
+
+                        variantButtons.forEach((button) => {
+                            const active = button.dataset.variant === variantInput.value;
+
+                            button.setAttribute("aria-pressed", active ? "true" : "false");
+                            button.classList.toggle("bg-[#1a73e8]", active);
+                            button.classList.toggle("text-white", active);
+                            button.classList.toggle("shadow-sm", active);
+                            button.classList.toggle("text-slate-600", !active);
+                            button.classList.toggle("hover:bg-slate-100", !active);
+                        });
+
+                        clickerInputs.forEach((input) => {
+                            input.disabled = !isClicker;
+                        });
+                    };
+
+                    variantButtons.forEach((button) => {
+                        button.addEventListener("click", () => {
+                            variantInput.value = button.dataset.variant;
+                            syncVariantUi();
+                        });
+                    });
+
+                    fileInputs.forEach((input) => {
+                        input.addEventListener("change", () => {
+                            const type = input.dataset.clickerFileInput;
+                            const error = container.querySelector("[data-clicker-file-error=\"" + type + "\"]");
+
+                            if (input.files.length > 10) {
+                                input.value = "";
+                                error.textContent = "Maximum 10 images only.";
+                                error.classList.remove("hidden");
+
+                                return;
+                            }
+
+                            renderFileSelection(input);
+                        });
+                    });
+
+                    syncVariantUi();
+                };
+
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", initializeAdminProductClicker);
+                } else {
+                    initializeAdminProductClicker();
+                }
+            })();
+        </script>
     @endif
 @endsection

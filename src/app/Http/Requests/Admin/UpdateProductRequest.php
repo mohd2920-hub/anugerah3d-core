@@ -24,8 +24,10 @@ class UpdateProductRequest extends FormRequest
     public function rules(): array
     {
         $product = $this->route('product');
+        $requiresClickerPricing = $this->input('product_type') === 'clicker'
+            && (! $product instanceof Product || $product->product_type !== 'clicker' || $this->has('clicker_character_prices'));
 
-        return [
+        $rules = [
             'prd_code' => [
                 'required',
                 'string',
@@ -34,6 +36,7 @@ class UpdateProductRequest extends FormRequest
                     ->ignore($product instanceof Product ? $product->getKey() : null),
             ],
             'prd_name' => ['required', 'string', 'max:255'],
+            'product_type' => ['required', 'string', Rule::in(['standard', 'clicker'])],
             'weight_g' => ['required', 'numeric', 'min:0'],
             'width_mm' => ['required', 'numeric', 'min:0'],
             'height_mm' => ['required', 'numeric', 'min:0'],
@@ -53,8 +56,23 @@ class UpdateProductRequest extends FormRequest
                 Rule::exists((new ProductImage)->getTable(), 'id')
                     ->where(fn ($query) => $query->where('product_id', $product instanceof Product ? $product->getKey() : null)),
             ],
-            'main_image' => ['nullable', 'string', 'regex:/^(existing|new)-\\d+$/'],
+            'main_image' => ['nullable', 'string', "regex:/^(existing|new)-\d+$/"],
+            'clicker_character_prices' => ['nullable', 'array'],
+            'clicker_casing_images' => ['nullable', 'array', 'max:10'],
+            'clicker_casing_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'clicker_huruf_images' => ['nullable', 'array', 'max:10'],
+            'clicker_huruf_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
+
+        foreach (range(1, 8) as $characterCount) {
+            $rules["clicker_character_prices.$characterCount"] = [
+                Rule::requiredIf(fn (): bool => $requiresClickerPricing),
+                'numeric',
+                'min:0',
+            ];
+        }
+
+        return $rules;
     }
 
     /**
@@ -85,24 +103,30 @@ class UpdateProductRequest extends FormRequest
 
                 $mainImage = $this->string('main_image')->toString();
 
-                if ($mainImage === '') {
-                    return;
-                }
+                if ($mainImage !== '') {
+                    if (str($mainImage)->startsWith('existing-')) {
+                        $imageId = (int) str($mainImage)->after('existing-')->toString();
 
-                if (str($mainImage)->startsWith('existing-')) {
-                    $imageId = (int) str($mainImage)->after('existing-')->toString();
+                        if (! $remainingIds->contains($imageId)) {
+                            $validator->errors()->add('main_image', 'Choose a main picture that is not removed.');
+                        }
+                    } else {
+                        $index = (int) str($mainImage)->after('new-')->toString();
 
-                    if (! $remainingIds->contains($imageId)) {
-                        $validator->errors()->add('main_image', 'Choose a main picture that is not removed.');
+                        if (! isset($uploads[$index])) {
+                            $validator->errors()->add('main_image', 'Choose a valid main picture.');
+                        }
                     }
+                }
 
+                if ($this->input('product_type') !== 'clicker' || ! $this->has('clicker_character_prices')) {
                     return;
                 }
 
-                $index = (int) str($mainImage)->after('new-')->toString();
+                $prices = $this->input('clicker_character_prices', []);
 
-                if (! isset($uploads[$index])) {
-                    $validator->errors()->add('main_image', 'Choose a valid main picture.');
+                if (count($prices) < 8) {
+                    $validator->errors()->add('clicker_character_prices', 'Enter a price for each character count from 1 to 8.');
                 }
             },
         ];

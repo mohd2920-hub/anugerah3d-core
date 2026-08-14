@@ -95,10 +95,18 @@ class ProductController extends Controller
             ])
             ->all();
 
+        $clickerImages = DB::table('product_clicker_images')
+            ->where('product_id', $product->getKey())
+            ->orderBy('image_type')
+            ->orderBy('position')
+            ->get()
+            ->groupBy('image_type');
+
         return view('admin.products.edit', [
             'product' => $product,
             'materials' => $materials,
             'clickerCharacterPrices' => $clickerCharacterPrices,
+            'clickerImages' => $clickerImages,
         ]);
     }
 

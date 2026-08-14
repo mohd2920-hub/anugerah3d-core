@@ -17,15 +17,34 @@
                 <div class="hidden overflow-x-auto md:block">
                     <table class="w-full text-sm">
                         <thead class="bg-slate-50 text-xs text-slate-600"><tr><th class="px-5 py-3 text-left font-semibold">Product</th><th class="px-5 py-3 text-right font-semibold">Quantity</th><th class="px-5 py-3 text-right font-semibold">Unit price</th><th class="px-5 py-3 text-right font-semibold">Customer discount</th><th class="px-5 py-3 text-right font-semibold">Line total</th><th class="px-5 py-3 text-right font-semibold">Salesperson commission</th></tr></thead>
-                        <tbody class="divide-y divide-slate-200">@foreach ($sale->items as $item)@php($gross = (float) $item->unit_price * $item->quantity)@php($commission = $gross - (float) $item->agent_discount_amount - (float) $item->customer_discount_amount)<tr><td class="px-5 py-4"><p class="font-semibold text-slate-900">{{ $item->product_name }}</p><p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p></td><td class="px-5 py-4 text-right">{{ $item->quantity }}</td><td class="px-5 py-4 text-right">RM {{ number_format((float) $item->unit_price, 2) }}</td><td class="px-5 py-4 text-right"><p class="text-emerald-700">- RM {{ number_format((float) $item->customer_discount_amount, 2) }}</p><p class="mt-1 text-xs text-slate-500">Agent baseline {{ number_format((float) $item->agent_discount_percentage, 2) }}% · - RM {{ number_format((float) $item->agent_discount_amount, 2) }}</p></td><td class="px-5 py-4 text-right font-semibold">RM {{ number_format((float) $item->line_total, 2) }}</td><td class="px-5 py-4 text-right font-semibold text-[#1a73e8]">RM {{ number_format($commission, 2) }}</td></tr>@endforeach</tbody>
+                        <tbody class="divide-y divide-slate-200">
+                            @foreach ($sale->items as $item)
+                                <tr><td class="px-5 py-4"><p class="font-semibold text-slate-900">{{ $item->product_name }}</p><p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p></td><td class="px-5 py-4 text-right">{{ $item->quantity }}</td><td class="px-5 py-4 text-right">RM {{ number_format((float) $item->unit_price, 2) }}</td><td class="px-5 py-4 text-right"><p class="text-emerald-700">- RM {{ number_format((float) $item->customer_discount_amount, 2) }}</p><p class="mt-1 text-xs text-slate-500">Agent baseline {{ number_format((float) $item->agent_discount_percentage, 2) }}% · - RM {{ number_format((float) $item->agent_discount_amount, 2) }}</p></td><td class="px-5 py-4 text-right font-semibold">RM {{ number_format((float) $item->line_total, 2) }}</td><td class="px-5 py-4 text-right font-semibold text-[#1a73e8]">RM {{ number_format(((float) $item->unit_price * $item->quantity) - (float) $item->agent_discount_amount - (float) $item->customer_discount_amount, 2) }}</td></tr>
+                            @endforeach
+                        </tbody>
                     </table>
                 </div>
-                <div class="divide-y divide-slate-100 md:hidden">@foreach ($sale->items as $item)@php($gross = (float) $item->unit_price * $item->quantity)@php($commission = $gross - (float) $item->agent_discount_amount - (float) $item->customer_discount_amount)<div class="p-4"><div class="flex justify-between gap-3"><div><p class="font-semibold text-slate-900">{{ $item->product_name }}</p><p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p></div><p class="font-semibold text-slate-950">RM {{ number_format((float) $item->line_total, 2) }}</p></div><p class="mt-2 text-xs text-slate-500">{{ $item->quantity }} × RM {{ number_format((float) $item->unit_price, 2) }}</p><p class="mt-1 text-xs font-medium text-emerald-700">Customer discount · - RM {{ number_format((float) $item->customer_discount_amount, 2) }}</p><p class="mt-1 text-xs text-slate-500">Agent baseline {{ number_format((float) $item->agent_discount_percentage, 2) }}% · - RM {{ number_format((float) $item->agent_discount_amount, 2) }}</p><p class="mt-1 text-xs font-semibold text-[#1a73e8]">Salesperson commission · RM {{ number_format($commission, 2) }}</p></div>@endforeach</div>
+                <div class="divide-y divide-slate-100 md:hidden">
+                    @foreach ($sale->items as $item)
+                        <div class="p-4">
+                            <div class="flex justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-slate-900">{{ $item->product_name }}</p>
+                                    <p class="mt-1 font-mono text-xs text-slate-500">{{ $item->product_code }}</p>
+                                </div>
+                                <p class="font-semibold text-slate-950">RM {{ number_format((float) $item->line_total, 2) }}</p>
+                            </div>
+                            <p class="mt-2 text-xs text-slate-500">{{ $item->quantity }} × RM {{ number_format((float) $item->unit_price, 2) }}</p>
+                            <p class="mt-1 text-xs font-medium text-emerald-700">Customer discount · - RM {{ number_format((float) $item->customer_discount_amount, 2) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">Agent baseline {{ number_format((float) $item->agent_discount_percentage, 2) }}% · - RM {{ number_format((float) $item->agent_discount_amount, 2) }}</p>
+                            <p class="mt-1 text-xs font-semibold text-[#1a73e8]">Salesperson commission · RM {{ number_format(((float) $item->unit_price * $item->quantity) - (float) $item->agent_discount_amount - (float) $item->customer_discount_amount, 2) }}</p>
+                        </div>
+                    @endforeach
+                </div>
                 <div class="border-t border-slate-200 bg-slate-50 px-5 py-4">
                     <dl class="ml-auto max-w-sm space-y-2 text-sm"><div class="flex justify-between gap-4"><dt class="text-slate-500">Gross total</dt><dd class="font-medium text-slate-800">RM {{ number_format($itemSummary["gross_total"], 2) }}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Total customer discount</dt><dd class="font-medium text-emerald-700">- RM {{ number_format($itemSummary["discount_total"], 2) }}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Salesperson commission</dt><dd class="font-medium text-[#1a73e8]">RM {{ number_format($itemSummary["salesperson_commission_total"], 2) }}</dd></div><div class="flex justify-between gap-4 border-t border-slate-200 pt-2"><dt class="font-semibold text-slate-900">Sale total</dt><dd class="font-semibold text-slate-950">RM {{ number_format((float) $sale->total_amount, 2) }}</dd></div></dl>
                 </div>
             </section>
-
             <section class="grid gap-5 lg:grid-cols-2">
                 <div class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
                     <h3 class="font-semibold text-slate-950">Customer</h3>
@@ -37,19 +56,13 @@
                 </div>
             </section>
 
-            @php
-                $salePictures = $sale->salePicturePaths();
-                $paymentProofs = $sale->paymentProofPaths();
-                $salePictureUrls = $sale->salePictureUrls();
-                $paymentProofUrls = $sale->paymentProofUrls();
-            @endphp
-            @if (count($salePictures) > 0 || count($paymentProofs) > 0)
+            @if (count($sale->salePicturePaths()) > 0 || count($sale->paymentProofPaths()) > 0)
                 <section class="grid gap-5 sm:grid-cols-2">
-                    @if (count($salePictures) > 0)
+                    @if (count($sale->salePicturePaths()) > 0)
                         <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70">
                             <div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Sale picture</div>
                             <div class="grid grid-cols-2 gap-2 p-3">
-                                @foreach ($salePictureUrls as $url)
+                                @foreach ($sale->salePictureUrls() as $url)
                                     <a href="{{ $url }}" target="_blank" rel="noopener" class="block overflow-hidden rounded-lg border border-slate-200">
                                         <img src="{{ $url }}" alt="Sale evidence for {{ $sale->sale_number }}" class="h-32 w-full object-cover">
                                     </a>
@@ -57,11 +70,11 @@
                             </div>
                         </div>
                     @endif
-                    @if (count($paymentProofs) > 0)
+                    @if (count($sale->paymentProofPaths()) > 0)
                         <div class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70">
                             <div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Payment proof</div>
                             <div class="grid grid-cols-2 gap-2 p-3">
-                                @foreach ($paymentProofUrls as $url)
+                                @foreach ($sale->paymentProofUrls() as $url)
                                     <a href="{{ $url }}" target="_blank" rel="noopener" class="block overflow-hidden rounded-lg border border-slate-200">
                                         <img src="{{ $url }}" alt="Payment proof for {{ $sale->sale_number }}" class="h-32 w-full object-cover">
                                     </a>

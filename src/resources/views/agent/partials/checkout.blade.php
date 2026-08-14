@@ -61,7 +61,13 @@
             <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div class="flex items-center justify-between"><h3 class="text-sm font-extrabold text-[#17324d]">Order summary</h3><span data-checkout-units class="text-xs font-bold text-slate-500">0 units</span></div>
                 <div data-checkout-items class="mt-3 space-y-2"></div>
-                <div class="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm"><div class="flex justify-between text-slate-500"><span>Products</span><span data-checkout-subtotal class="font-bold text-slate-700">RM 0.00</span></div><div class="flex justify-between text-slate-500"><span>Delivery</span><span class="font-bold text-emerald-600">To be confirmed</span></div><div class="flex items-end justify-between pt-2"><span class="font-extrabold text-[#17324d]">Order total</span><span data-checkout-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div></div>
+                <div class="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                    <div class="flex justify-between text-slate-500"><span>Products</span><span data-checkout-subtotal class="font-bold text-slate-700">RM 0.00</span></div>
+                    <div class="flex justify-between text-slate-500"><span>Eligible discount</span><span data-checkout-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
+                    <p data-checkout-discount-note class="text-[10px] text-slate-400">No discount yet.</p>
+                    <div class="flex justify-between text-slate-500"><span>Delivery charge</span><span data-checkout-delivery class="font-bold text-emerald-600">RM 6.00</span></div>
+                    <div class="flex items-end justify-between pt-2"><span class="font-extrabold text-[#17324d]">Order total</span><span data-checkout-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div>
+                </div>
             </section>
         </div>
 

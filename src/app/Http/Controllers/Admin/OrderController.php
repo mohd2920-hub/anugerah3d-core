@@ -56,7 +56,7 @@ class OrderController extends Controller
                                 'referrer' => fn ($query) => $query->select($tier2UplineSelect),
                             ]),
                     ]),
-                'items:id,order_id,product_id,quantity,reserved_quantity,is_preorder',
+                'items:id,order_id,product_id,product_name,quantity,reserved_quantity,is_preorder',
                 'items.product:id,prd_balance,cost_rm',
             ])
             ->withCount('items')
@@ -138,16 +138,15 @@ class OrderController extends Controller
     {
         $data = $this->orderViewData($order);
 
-        return response($this->renderFullPrintDocument($data["order"], $data["stockShortages"]));
+        return response($this->renderFullPrintDocument($data['order'], $data['stockShortages']));
     }
 
     public function printOrder(Order $order): Response
     {
         $data = $this->orderViewData($order);
 
-        return response($this->renderCompactOrderPrintDocument($data["order"]));
+        return response($this->renderCompactOrderPrintDocument($data['order']));
     }
-
 
     /**
      * @return array{order: Order, stockShortages: Collection<int, array{product_name: string, required: int, available: int}>}
@@ -230,22 +229,22 @@ class OrderController extends Controller
 
     private function escape(?string $value): string
     {
-        return e((string) ($value ?? ""));
+        return e((string) ($value ?? ''));
     }
 
     private function formatMoney(float|int|string|null $value): string
     {
-        return "RM ".number_format((float) $value, 2);
+        return 'RM '.number_format((float) $value, 2);
     }
 
     private function agentAddress(Order $order): string
     {
         return collect([$order->agent->address, $order->agent->city, $order->agent->state])
             ->filter(fn (?string $value): bool => filled($value))
-            ->implode(", ") ?: "-";
+            ->implode(', ') ?: '-';
     }
 
-    private function renderPrintLayout(string $title, string $pageSize, string $body, string $pageClass = ""): string
+    private function renderPrintLayout(string $title, string $pageSize, string $body, string $pageClass = ''): string
     {
         return <<<HTML
 <!DOCTYPE html>
@@ -285,6 +284,11 @@ class OrderController extends Controller
         .align-right { text-align: right; }
         .item-name { font-weight: 700; }
         .item-subtle { margin-top: 4px; color: #64748b; font-size: 11px; }
+        .item-char-group { margin-top: 6px; }
+        .item-char-label { display: inline-block; border-radius: 999px; background: #e2e8f0; padding: 2px 8px; color: #334155; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle; }
+        .item-char-row { display: block; margin-top: 4px; white-space: nowrap; }
+        .item-char-chip { display: inline-block; width: 18px; height: 18px; line-height: 18px; border-radius: 6px; border: 1px solid #fdba74; background: linear-gradient(180deg, #fff7ed, #ffedd5); color: #c2410c; font-size: 10px; font-weight: 800; text-align: center; margin-right: 3px; }
+        .item-char-chip:last-child { margin-right: 0; }
         .note-box { margin-top: 18px; border-radius: 18px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 14px 16px; }
         .totals { margin-top: 18px; display: grid; gap: 8px; justify-content: end; }
         .totals-row { display: flex; justify-content: space-between; gap: 28px; min-width: 260px; }
@@ -327,23 +331,28 @@ HTML;
     private function renderCompactOrderPrintDocument(Order $order): string
     {
         $orderNumber = $this->escape((string) $order->order_number);
-        $placedAt = $this->escape($order->placed_at->format("d M Y, h:i A"));
+        $placedAt = $this->escape($order->placed_at->format('d M Y, h:i A'));
         $recipientName = $this->escape($order->recipient_name);
         $agentName = $this->escape($order->agent->agt_name);
-        $agentId = $this->escape($order->agent->login_id ?: "-");
-        $phone = $this->escape($order->phone_number ?: "-");
-        $address = $this->escape($order->delivery_address ?: "Anugerah3D pickup counter");
-        $notes = $this->escape($order->notes ?: "No notes provided.");
-        $logoUrl = $this->escape(asset("images/anugerah3d-logo.png"));
+        $agentId = $this->escape($order->agent->login_id ?: '-');
+        $phone = $this->escape($order->phone_number ?: '-');
+        $address = $this->escape($order->delivery_address ?: 'Anugerah3D pickup counter');
+        $notes = $this->escape($order->notes ?: 'No notes provided.');
+        $logoUrl = $this->escape(asset('images/anugerah3d-logo.png'));
+        $grossSubtotal = $this->formatMoney($order->grossSubtotalAmount());
+        $discountAmount = $this->formatMoney($order->discountAmount());
+        $discountPercentage = number_format($order->effectiveDiscountPercentage(), 1).'%';
         $subtotal = $this->formatMoney($order->subtotal);
+        $deliveryFee = $order->delivery_fee === null ? 'To be confirmed' : $this->formatMoney($order->delivery_fee);
         $total = $this->formatMoney($order->total_amount);
 
         $rows = $order->items->map(function ($item): string {
             $productName = $this->escape($item->product_name);
             $productCode = $this->escape($item->product_code);
+            $clickerLine = $this->renderClickerCharactersLine($item);
             $quantity = (string) $item->quantity;
             $price = $this->formatMoney($item->unit_selling_price);
-            $discount = number_format((float) $item->discount_percentage, 1)."%";
+            $discount = number_format((float) $item->discount_percentage, 1).'%';
             $unitPrice = $this->formatMoney($item->unit_price);
             $lineTotal = $this->formatMoney($item->line_total);
 
@@ -352,6 +361,7 @@ HTML;
                 <td>
                     <div class="item-name">{$productName}</div>
                     <div class="item-subtle">{$productCode}</div>
+                    {$clickerLine}
                 </td>
                 <td class="align-right">{$quantity}</td>
                 <td class="align-right">{$price}</td>
@@ -360,7 +370,7 @@ HTML;
                 <td class="align-right">{$lineTotal}</td>
             </tr>
             HTML;
-        })->implode("");
+        })->implode('');
 
         $body = <<<HTML
         <section class="brand-strip">
@@ -387,9 +397,9 @@ HTML;
                 <tr>
                     <th>Items</th>
                     <th class="align-right">Qty</th>
+                    <th class="align-right">Selling</th>
+                    <th class="align-right">Discount</th>
                     <th class="align-right">Price</th>
-                    <th class="align-right">Agent discount</th>
-                    <th class="align-right">Unit price</th>
                     <th class="align-right">Total price</th>
                 </tr>
             </thead>
@@ -399,7 +409,10 @@ HTML;
         </table>
 
         <div class="totals">
+            <div class="totals-row"><span>Gross subtotal</span><span>{$grossSubtotal}</span></div>
+            <div class="totals-row"><span>Eligible discount ({$discountPercentage})</span><span>- {$discountAmount}</span></div>
             <div class="totals-row"><span>Products subtotal</span><span>{$subtotal}</span></div>
+            <div class="totals-row"><span>Delivery fee</span><span>{$deliveryFee}</span></div>
             <div class="totals-row"><strong>Order total</strong><strong>{$total}</strong></div>
         </div>
 
@@ -409,57 +422,62 @@ HTML;
         </section>
         HTML;
 
-        return $this->renderPrintLayout("Print order {$order->order_number}", "A5 portrait", $body, "compact");
+        return $this->renderPrintLayout("Print order {$order->order_number}", 'A5 portrait', $body, 'compact');
     }
 
     private function renderFullPrintDocument(Order $order, Collection $stockShortages): string
     {
         $orderNumber = $this->escape((string) $order->order_number);
-        $placedAt = $this->escape($order->placed_at->format("d M Y, h:i A"));
+        $placedAt = $this->escape($order->placed_at->format('d M Y, h:i A'));
         $status = $this->escape($order->statusLabel());
         $paymentStatus = $this->escape($order->paymentStatusLabel());
         $paymentMethod = $this->escape($order->paymentMethodLabel());
         $recipientName = $this->escape($order->recipient_name);
-        $recipientPhone = $this->escape($order->phone_number ?: "-");
+        $recipientPhone = $this->escape($order->phone_number ?: '-');
         $fulfilmentMethod = $this->escape($order->fulfilmentLabel());
-        $deliveryAddress = $this->escape($order->delivery_address ?: "Anugerah3D pickup counter");
-        $notes = $this->escape($order->notes ?: "No notes provided.");
+        $deliveryAddress = $this->escape($order->delivery_address ?: 'Anugerah3D pickup counter');
+        $notes = $this->escape($order->notes ?: 'No notes provided.');
         $agentName = $this->escape($order->agent->agt_name);
-        $agentId = $this->escape($order->agent->login_id ?: "-");
-        $agentEmail = $this->escape($order->agent->email ?: "-");
-        $agentPhone = $this->escape($order->agent->phone_number ?: "-");
+        $agentId = $this->escape($order->agent->login_id ?: '-');
+        $agentEmail = $this->escape($order->agent->email ?: '-');
+        $agentPhone = $this->escape($order->agent->phone_number ?: '-');
         $agentAddress = $this->escape($this->agentAddress($order));
+        $grossSubtotal = $this->formatMoney($order->grossSubtotalAmount());
+        $discountAmount = $this->formatMoney($order->discountAmount());
+        $discountPercentage = number_format($order->effectiveDiscountPercentage(), 1).'%';
         $subtotal = $this->formatMoney($order->subtotal);
-        $deliveryFee = $order->delivery_fee === null ? "To be confirmed" : $this->formatMoney($order->delivery_fee);
+        $deliveryFee = $order->delivery_fee === null ? 'To be confirmed' : $this->formatMoney($order->delivery_fee);
         $orderTotal = $this->formatMoney($order->total_amount);
         $totalCost = $this->formatMoney($order->total_cost);
         $bonusTotal = $this->formatMoney($order->bonus_total);
         $profitAmount = $this->formatMoney($order->profit_amount);
         $stockMessage = $stockShortages->isEmpty()
-            ? "All items have enough stock for processing."
-            : "Stock shortages found for ".$stockShortages->count()." item(s).";
+            ? 'All items have enough stock for processing.'
+            : 'Stock shortages found for '.$stockShortages->count().' item(s).';
         $paymentProofMessage = count($order->paymentProofUrls()) > 0
-            ? count($order->paymentProofUrls())." payment proof file(s) uploaded."
-            : "No payment proof uploaded.";
+            ? count($order->paymentProofUrls()).' payment proof file(s) uploaded.'
+            : 'No payment proof uploaded.';
 
         $itemRows = $order->items->map(function ($item): string {
             $productName = $this->escape($item->product_name);
             $productCode = $this->escape($item->product_code);
+            $clickerLine = $this->renderClickerCharactersLine($item);
             $quantity = (string) $item->quantity;
             $price = $this->formatMoney($item->unit_selling_price);
-            $discount = number_format((float) $item->discount_percentage, 1)."%";
+            $discount = number_format((float) $item->discount_percentage, 1).'%';
             $unitPrice = $this->formatMoney($item->unit_price);
             $lineTotal = $this->formatMoney($item->line_total);
             $reserved = (string) $item->reserved_quantity;
             $balance = (string) max(0, (int) ($item->product?->prd_balance ?? 0));
             $missing = $item->missingReservationQuantity();
-            $readiness = $missing === 0 ? "Reserved" : ($missing > (int) $balance ? "Short" : "Pending");
+            $readiness = $missing === 0 ? 'Reserved' : ($missing > (int) $balance ? 'Short' : 'Pending');
 
             return <<<HTML
             <tr>
                 <td>
                     <div class="item-name">{$productName}</div>
                     <div class="item-subtle">{$productCode}</div>
+                    {$clickerLine}
                 </td>
                 <td class="align-right">{$quantity}</td>
                 <td class="align-right">{$price}</td>
@@ -471,31 +489,31 @@ HTML;
                 <td>{$readiness}</td>
             </tr>
             HTML;
-        })->implode("");
+        })->implode('');
 
         $shortageRows = $stockShortages->map(function (array $shortage): string {
-            $product = $this->escape($shortage["product_name"]);
-            $required = (string) $shortage["required"];
-            $available = (string) $shortage["available"];
+            $product = $this->escape($shortage['product_name']);
+            $required = (string) $shortage['required'];
+            $available = (string) $shortage['available'];
 
             return "<tr><td>{$product}</td><td class='align-right'>{$required}</td><td class='align-right'>{$available}</td></tr>";
-        })->implode("");
+        })->implode('');
 
         $timelineRows = collect([
-            ["Order placed", $order->placed_at],
-            ["Inventory reserved", $order->inventory_reserved_at],
-            ["Processing started", $order->processed_at],
-            ["Order completed", $order->completed_at],
-            ["Order cancelled", $order->cancelled_at],
+            ['Order placed', $order->placed_at],
+            ['Inventory reserved', $order->inventory_reserved_at],
+            ['Processing started', $order->processed_at],
+            ['Order completed', $order->completed_at],
+            ['Order cancelled', $order->cancelled_at],
         ])->filter(fn (array $entry): bool => $entry[1] !== null)
             ->map(function (array $entry): string {
                 $label = $this->escape($entry[0]);
-                $value = $this->escape($entry[1]->format("d M Y, h:i A"));
+                $value = $this->escape($entry[1]->format('d M Y, h:i A'));
 
                 return "<div class='timeline-row'><div class='item-name'>{$label}</div><div class='item-subtle'>{$value}</div></div>";
-            })->implode("");
+            })->implode('');
 
-        $shortageSection = $stockShortages->isEmpty() ? "" : <<<HTML
+        $shortageSection = $stockShortages->isEmpty() ? '' : <<<HTML
         <section class="card">
             <h2>Stock shortages</h2>
             <p class="muted" style="margin-top: 6px;">Items that still need additional stock before processing.</p>
@@ -548,7 +566,9 @@ HTML;
             <section class="card">
                 <h2>Financial summary</h2>
                 <div class="list-grid">
-                    <div><span class="label">Subtotal</span><span class="value">{$subtotal}</span></div>
+                    <div><span class="label">Gross subtotal</span><span class="value">{$grossSubtotal}</span></div>
+                    <div><span class="label">Eligible discount</span><span class="value">- {$discountAmount} ({$discountPercentage})</span></div>
+                    <div><span class="label">Products subtotal</span><span class="value">{$subtotal}</span></div>
                     <div><span class="label">Delivery fee</span><span class="value">{$deliveryFee}</span></div>
                     <div><span class="label">Total cost</span><span class="value">{$totalCost}</span></div>
                     <div><span class="label">Bonus total</span><span class="value">{$bonusTotal}</span></div>
@@ -566,9 +586,9 @@ HTML;
                         <tr>
                             <th>Item</th>
                             <th class="align-right">Qty</th>
+                            <th class="align-right">Selling</th>
+                            <th class="align-right">Discount</th>
                             <th class="align-right">Price</th>
-                            <th class="align-right">Agent discount</th>
-                            <th class="align-right">Unit price</th>
                             <th class="align-right">Total price</th>
                             <th class="align-right">Reserved</th>
                             <th class="align-right">Balance</th>
@@ -578,6 +598,8 @@ HTML;
                     <tbody>{$itemRows}</tbody>
                 </table>
                 <div class="totals">
+                    <div class="totals-row"><span>Gross subtotal</span><span>{$grossSubtotal}</span></div>
+                    <div class="totals-row"><span>Eligible discount ({$discountPercentage})</span><span>- {$discountAmount}</span></div>
                     <div class="totals-row"><span>Products subtotal</span><span>{$subtotal}</span></div>
                     <div class="totals-row"><span>Delivery fee</span><span>{$deliveryFee}</span></div>
                     <div class="totals-row"><strong>Order total</strong><strong>{$orderTotal}</strong></div>
@@ -597,7 +619,7 @@ HTML;
         </section>
         HTML;
 
-        return $this->renderPrintLayout("Print full {$order->order_number}", "A4 landscape", $body);
+        return $this->renderPrintLayout("Print full {$order->order_number}", 'A4 landscape', $body);
     }
 
     private function statuses(): array
@@ -666,5 +688,36 @@ HTML;
             'gross_profit_amount' => $grossProfit,
             'profit_amount' => $netProfit,
         ];
+    }
+
+    private function renderClickerCharactersLine(object $item): string
+    {
+        $clickerCount = (int) ($item->clicker_character_count ?? 0);
+        if ($clickerCount <= 0) {
+            return '';
+        }
+
+        $characters = collect($item->clicker_characters ?? [])
+            ->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+            ->filter()
+            ->values();
+
+        if ($characters->isEmpty()) {
+            $fromText = strtoupper((string) ($item->clickerCharactersText() ?? ''));
+            $characters = collect(mb_str_split($fromText))
+                ->map(fn (string $character): string => trim($character))
+                ->filter();
+        }
+
+        $chips = $characters
+            ->take($clickerCount)
+            ->map(fn (string $character): string => "<span class='item-char-chip'>{$this->escape($character)}</span>")
+            ->implode('');
+
+        if ($chips === '') {
+            $chips = "<span class='item-subtle'>-</span>";
+        }
+
+        return "<div class='item-char-group'><span class='item-char-label'>Characters ({$clickerCount})</span><span class='item-char-row'>{$chips}</span></div>";
     }
 }

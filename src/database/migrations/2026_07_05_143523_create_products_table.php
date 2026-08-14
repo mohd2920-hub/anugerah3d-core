@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('prd_code')->unique();
             $table->string('prd_name');
+            $table->string('product_type', 40)->default('standard');
             $table->decimal('weight_g', 10, 1);
             $table->decimal('width_mm', 10, 1);
             $table->decimal('height_mm', 10, 1);

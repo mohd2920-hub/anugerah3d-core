@@ -61,6 +61,9 @@
                     </svg>
                     <span>Add Agent</span>
                 </a>
+                <a href="{{ route('admin.agent-email-templates.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    <span>Email to Agen</span>
+                </a>
             </div>
 
             <form id="agent-search-form-mobile" method="GET" action="{{ route('admin.agents.index') }}" class="{{ request('search') || request('status') ? 'mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' : 'mt-3 hidden gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' }}">

@@ -38,8 +38,7 @@
                         $galleryImages->push(['src' => $legacyPicture, 'alt' => $product->prd_name]);
                     }
                     $picture = data_get($galleryImages->first(), 'src');
-                    $discount = (float) $agent->discount_percentage > 0 ? (float) $agent->discount_percentage : (float) $product->agent_discount_default;
-                    $agentPrice = (float) $product->price_selling * (1 - ($discount / 100));
+                    $price = (float) $product->price_selling;
                     $searchValue = Str::lower($product->prd_code.' '.$product->prd_name);
                     $isPreOrder = (int) $product->prd_balance <= 0;
                 @endphp
@@ -56,8 +55,8 @@
                     <div class="flex flex-1 flex-col p-3">
                         <p class="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $product->prd_code }}</p>
                         <h3 class="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#17324d]">{{ $product->prd_name }}</h3>
-                        <div class="mt-3 space-y-1"><div class="flex items-center justify-between gap-1 text-[9px]"><span class="text-slate-400">Selling</span><span class="font-bold text-slate-500 line-through">RM {{ number_format((float) $product->price_selling, 2) }}</span></div><div class="flex items-end justify-between gap-1"><span class="text-[9px] font-semibold text-slate-500">Agent price</span><span class="text-base font-black text-[#e7682b]">RM {{ number_format($agentPrice, 2) }}</span></div></div>
-                        <button type="button" data-add-product data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-images="{{ $galleryImages->toJson() }}" data-selling-price="{{ number_format((float) $product->price_selling, 2, '.', '') }}" data-agent-price="{{ number_format($agentPrice, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" data-material="{{ $product->materialType?->name ?? $product->material ?? '' }}" data-color="{{ $product->color }}" data-weight="{{ $product->weight_g }}" data-width="{{ $product->width_mm }}" data-height="{{ $product->height_mm }}" data-length="{{ $product->length_mm }}" @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
+                        <div class="mt-3 flex items-end justify-between gap-1"><span class="text-[9px] font-semibold text-slate-500">Price</span><span class="text-base font-black text-[#e7682b]">RM {{ number_format($price, 2) }}</span></div>
+                        <button type="button" data-add-product data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-images="{{ $galleryImages->toJson() }}" data-price="{{ number_format($price, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" data-material="{{ $product->materialType?->name ?? $product->material ?? '' }}" data-color="{{ $product->color }}" data-weight="{{ $product->weight_g }}" data-width="{{ $product->width_mm }}" data-height="{{ $product->height_mm }}" data-length="{{ $product->length_mm }}" data-product-type="{{ $product->product_type ?? 'standard' }}" data-clicker-prices='@json(data_get($clickerCharacterPricesByProduct, (string) $product->getKey(), []))' data-clicker-casing-images='@json(data_get($clickerImagesByProduct, $product->getKey().".casing", []))' data-clicker-huruf-images='@json(data_get($clickerImagesByProduct, $product->getKey().".huruf", []))' @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
                     </div>
                 </article>
             @endforeach
@@ -86,8 +85,34 @@
             <div data-product-gallery-dots class="mt-2 flex justify-center gap-1.5 sm:mt-3" aria-label="Choose product picture"></div>
             <div class="px-4 pb-4 pt-3 sm:px-5 sm:pt-4">
                 <div class="min-w-0"><p data-modal-code class="text-[9px] font-bold uppercase tracking-wider text-[#e7682b] sm:text-[10px]"></p><h2 id="product-detail-title" data-modal-name class="mt-0.5 text-lg font-extrabold leading-6 text-[#17324d] sm:mt-1 sm:text-xl"></h2></div>
-                <div class="mt-3 flex items-end justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3"><div><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Selling price</p><p data-modal-selling class="mt-0.5 text-xs font-bold text-slate-500 line-through sm:text-sm"></p></div><div class="text-right"><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Agent price</p><p data-modal-price class="mt-0.5 text-lg font-black text-[#e7682b]"></p></div></div>
+                <div data-clicker-image-groups class="mt-3 hidden space-y-3">
+                    <div data-clicker-casing-group class="hidden">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Casing</p>
+                        <div data-clicker-casing-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
+                    </div>
+                    <div data-clicker-huruf-group class="hidden">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Huruf</p>
+                        <div data-clicker-huruf-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3"><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Price</p><p data-modal-price class="mt-0.5 text-lg font-black text-[#e7682b]"></p></div>
                 <div data-modal-specs class="mt-3 hidden grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-100 py-3"></div>
+                <div data-clicker-config class="mt-3 hidden rounded-2xl border border-orange-100 bg-orange-50/40 p-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-[#e7682b]">Total characters</p>
+                        <p class="text-[10px] font-semibold text-slate-500">Pilih satu sahaja</p>
+                    </div>
+                    <div data-clicker-count-buttons class="mt-2 flex flex-wrap gap-2">
+                        @foreach (range(1, 8) as $characterCount)
+                            <button type="button" data-clicker-count="{{ $characterCount }}" class="grid h-9 min-w-9 place-items-center rounded-lg border border-slate-200 bg-slate-100 px-2 text-xs font-extrabold text-slate-600 transition focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-[#e7682b]">{{ $characterCount }}</button>
+                        @endforeach
+                    </div>
+                    <p data-clicker-hint class="mt-2 text-[11px] text-slate-500">Pilih total characters untuk tetapkan harga seunit.</p>
+                    <div class="mt-2 rounded-xl border border-orange-100 bg-white/80 p-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Input characters</p>
+                        <div data-clicker-inputs class="mt-2 flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
                 <div class="mt-3 flex items-center justify-between gap-3 sm:mt-4"><div class="min-w-0"><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-0.5 truncate text-[11px] text-slate-400 sm:text-xs"></p></div><div class="flex flex-none items-center rounded-xl border border-slate-200 p-0.5 shadow-sm"><button type="button" data-quantity-minus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-9 w-12 border-0 text-center text-base font-black outline-none sm:w-14"><button type="button" data-quantity-plus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">+</button></div></div>
             </div>
         </div>
@@ -102,36 +127,245 @@
     <div class="flex max-h-[88vh] w-full max-w-md flex-col rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]" style="padding-bottom: env(safe-area-inset-bottom);">
         <div class="flex items-center justify-between border-b border-slate-100 p-5"><div><p class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7682b]">Order preview</p><h2 class="mt-1 text-xl font-extrabold text-[#17324d]">Your cart</h2></div><button type="button" data-close-cart class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500" aria-label="Close"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
         <div data-cart-items class="min-h-24 flex-1 space-y-3 overflow-y-auto p-5"></div>
-        <div class="border-t border-slate-100 p-5"><div class="flex justify-between text-sm"><span class="font-semibold text-slate-500">Total units</span><span data-review-units class="font-extrabold">0</span></div><div class="mt-2 flex items-end justify-between"><span class="font-semibold text-slate-500">Total amount</span><span data-review-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div><button type="button" data-ui-checkout class="mt-5 h-13 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">Proceed to checkout</button><p class="mt-2 text-center text-[10px] text-slate-400">Review your selected items before checkout.</p></div>
+        <div class="border-t border-slate-100 p-5">
+            <div class="flex justify-between text-sm"><span class="font-semibold text-slate-500">Total units</span><span data-review-units class="font-extrabold">0</span></div>
+            <div class="mt-2 flex justify-between text-sm"><span class="font-semibold text-slate-500">Total amount</span><span data-review-subtotal class="font-bold text-slate-700">RM 0.00</span></div>
+            <div class="mt-2 flex justify-between text-sm"><span class="font-semibold text-slate-500">Eligible discount</span><span data-review-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
+            <p data-review-discount-note class="mt-1 text-[10px] text-slate-400">No discount yet.</p>
+            <div class="mt-2 flex items-end justify-between"><span class="font-semibold text-slate-500">Order total</span><span data-review-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div>
+            <button type="button" data-ui-checkout class="mt-5 h-13 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">Proceed to checkout</button>
+            <p class="mt-2 text-center text-[10px] text-slate-400">Review your selected items before checkout.</p>
+        </div>
     </div>
 </div>
+
+<div data-clicker-preview-modal class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Clicker image preview">
+    <div class="relative w-full max-w-2xl rounded-2xl bg-white p-3 shadow-2xl">
+        <button type="button" data-close-clicker-preview class="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600" aria-label="Close image preview"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <img data-clicker-preview-image src="" alt="" class="mx-auto block max-h-[75vh] w-auto rounded-xl object-contain">
+    </div>
+</div>
+
 @include('agent.partials.checkout')
+
+<style>
+    [data-clicker-inputs] .clicker-character-input {
+        color: #c94f16 !important;
+        font-weight: 800 !important;
+    }
+
+    [data-clicker-inputs] .clicker-character-input::placeholder {
+        color: #cbd5e1 !important;
+        font-weight: 400 !important;
+        opacity: 1;
+    }
+</style>
 
 @push('scripts')
 <script>
 (() => {
     const cartKey = 'a3d-agent-cart-{{ $agent->getKey() }}';
     const currency = new Intl.NumberFormat('en-MY', {style: 'currency', currency: 'MYR'});
+    const clickerCharacterPricesByProduct = @json($clickerCharacterPricesByProduct);
+    const discountRules = @json(\App\Support\AgentOrderDiscount::frontendConfig((float) $agent->discount_percentage));
     const searchInput = document.querySelector('[data-product-search]');
     const quantityModal = document.querySelector('[data-quantity-modal]');
     const cartModal = document.querySelector('[data-cart-modal]');
     const checkoutModal = document.querySelector('[data-checkout-modal]');
     const successModal = document.querySelector('[data-checkout-success]');
     const quantityInput = document.querySelector('[data-quantity-input]');
+    const clickerConfig = document.querySelector('[data-clicker-config]');
+    const clickerHint = document.querySelector('[data-clicker-hint]');
+    const clickerInputsContainer = document.querySelector('[data-clicker-inputs]');
+    const clickerImagesByProduct = @json($clickerImagesByProduct);
+    const clickerImageGroups = document.querySelector('[data-clicker-image-groups]');
+    const clickerCasingGroup = document.querySelector('[data-clicker-casing-group]');
+    const clickerHurufGroup = document.querySelector('[data-clicker-huruf-group]');
+    const clickerCasingThumbs = document.querySelector('[data-clicker-casing-thumbs]');
+    const clickerHurufThumbs = document.querySelector('[data-clicker-huruf-thumbs]');
+    const clickerPreviewModal = document.querySelector('[data-clicker-preview-modal]');
+    const clickerPreviewImage = document.querySelector('[data-clicker-preview-image]');
+    const clickerDefaultPlaceholder = 'MUHAMMAD';
     let selectedProduct = null;
     let cart = {};
     try { cart = JSON.parse(localStorage.getItem(cartKey)) || {}; } catch (error) { cart = {}; }
 
     const values = () => Object.values(cart);
     const units = () => values().reduce((sum, item) => sum + Number(item.quantity), 0);
-    const amount = () => values().reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+    const priceCents = (amount) => Math.round(Number(amount) * 100);
+    const formatCents = (cents) => currency.format(cents / 100);
+    const normalizeImageList = (images) => {
+        if (!Array.isArray(images)) return [];
+
+        return images
+            .map((image) => {
+                if (!image || typeof image !== 'object') return null;
+
+                const src = String(image.src || '').trim();
+                if (src === '') return null;
+
+                return {
+                    src,
+                    alt: String(image.alt || '').trim(),
+                };
+            })
+            .filter(Boolean);
+    };
+    const normalizeClickerPrices = (prices) => {
+        if (!prices || typeof prices !== 'object') return {};
+
+        const normalized = {};
+        Object.entries(prices).forEach(([key, value]) => {
+            const count = Number(key);
+            const amount = Number(value);
+            if (Number.isInteger(count) && count >= 1 && count <= 8 && Number.isFinite(amount) && amount >= 0) {
+                normalized[count] = amount;
+            }
+        });
+
+        return normalized;
+    };
+    const sanitizeCharacter = (value) => {
+        const text = String(value || '').trim().toUpperCase();
+        if (text === '') return '';
+
+        return Array.from(text)[0] || '';
+    };
+    const getClickerCharacters = (product) => {
+        if (!product || !Array.isArray(product.clickerCharacters)) return [];
+
+        return product.clickerCharacters.map((character) => sanitizeCharacter(character));
+    };
+    const resolveSelectedUnitPrice = (product) => {
+        if (!product) return 0;
+
+        if (product.productType !== 'clicker') {
+            return Number(product.basePrice || product.price || 0);
+        }
+
+        const count = Number(product.clickerCharacterCount || 0);
+        const mapped = Number(product.clickerPrices?.[count]);
+        if (count >= 1 && Number.isFinite(mapped) && mapped >= 0) {
+            return mapped;
+        }
+
+        return Number(product.basePrice || product.price || 0);
+    };
+    const clickerCharactersComplete = (product) => {
+        if (!product || product.productType !== 'clicker') return true;
+
+        const count = Number(product.clickerCharacterCount || 0);
+        if (count < 1 || count > 8) return false;
+
+        const characters = getClickerCharacters(product).slice(0, count).filter((character) => character.length === 1);
+
+        return characters.length === count;
+    };
+    const clickerCharactersLabel = (item) => {
+        if (item?.productType !== 'clicker') return null;
+
+        const count = Number(item.clickerCharacterCount || 0);
+        if (count < 1 || count > 8) return null;
+
+        const text = getClickerCharacters(item).slice(0, count).join('');
+
+        return text === '' ? `${count} characters` : `${count} characters: ${text}`;
+    };
+    const selectedFulfilmentMethod = () => document.querySelector('[data-checkout-form]')?.elements?.fulfilment_method?.value || 'delivery';
+    const deliveryFeeCents = (fulfilmentMethod = selectedFulfilmentMethod()) => fulfilmentMethod === 'delivery' ? Number(discountRules.deliveryFeeCents) : 0;
+    const subtotalCents = () => values().reduce((sum, item) => sum + (priceCents(item.price) * Number(item.quantity)), 0);
+    const resolveDiscountPercentage = (grossSubtotalCents) => {
+        if (grossSubtotalCents <= 0) return 0;
+        if (grossSubtotalCents < discountRules.belowRm20ThresholdCents) return Number(discountRules.belowRm20Percentage);
+        if (grossSubtotalCents < discountRules.belowRm100ThresholdCents) return Number(discountRules.belowRm100Percentage);
+        return Number(discountRules.aboveRm100Percentage);
+    };
+    const discountedUnitCents = (item, discountPercentage) => {
+        const discountTenths = Math.round(Number(discountPercentage) * 10);
+        return Math.round(priceCents(item.price) * (1000 - discountTenths) / 1000);
+    };
+    const orderSummary = (fulfilmentMethod = selectedFulfilmentMethod()) => {
+        const grossSubtotal = subtotalCents();
+        const discountPercentage = resolveDiscountPercentage(grossSubtotal);
+        const netSubtotal = values().reduce((sum, item) => {
+            return sum + (discountedUnitCents(item, discountPercentage) * Number(item.quantity));
+        }, 0);
+        const deliveryCharge = deliveryFeeCents(fulfilmentMethod);
+
+        return {
+            grossSubtotal,
+            discountPercentage,
+            discountAmount: Math.max(0, grossSubtotal - netSubtotal),
+            netSubtotal,
+            deliveryCharge,
+            orderTotal: netSubtotal + deliveryCharge,
+        };
+    };
     const close = (modal) => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+
+        if (modal === clickerPreviewModal && clickerPreviewImage) {
+            clickerPreviewImage.src = '';
+            clickerPreviewImage.alt = '';
+        }
+
         if (modal === quantityModal) {
             document.body.classList.remove('overflow-hidden');
             window.dispatchEvent(new CustomEvent('product-gallery:close'));
+            if (clickerPreviewModal && !clickerPreviewModal.classList.contains('hidden')) {
+                close(clickerPreviewModal);
+            }
         }
+    };
+
+    const openClickerPreview = (image) => {
+        if (!clickerPreviewModal || !clickerPreviewImage || !image?.src) {
+            return;
+        }
+
+        clickerPreviewImage.src = image.src;
+        clickerPreviewImage.alt = image.alt || selectedProduct?.name || 'Clicker image';
+        clickerPreviewModal.classList.remove('hidden');
+        clickerPreviewModal.classList.add('flex');
+    };
+
+    const renderClickerThumbs = (container, images) => {
+        if (!container) return;
+
+        container.innerHTML = '';
+        images.forEach((image, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-orange-200 bg-white shadow-sm transition active:scale-[0.98]';
+            button.setAttribute('aria-label', `Preview image ${index + 1}`);
+
+            const thumb = document.createElement('img');
+            thumb.src = image.src;
+            thumb.alt = image.alt || selectedProduct?.name || 'Clicker image';
+            thumb.className = 'h-full w-full object-cover';
+
+            button.appendChild(thumb);
+            button.addEventListener('click', () => openClickerPreview(image));
+            container.appendChild(button);
+        });
+    };
+
+    const renderClickerImageGroups = () => {
+        if (!clickerImageGroups || !clickerCasingGroup || !clickerHurufGroup || !selectedProduct) {
+            return;
+        }
+
+        const isClicker = selectedProduct.productType === 'clicker';
+        const casingImages = isClicker ? normalizeImageList(selectedProduct.clickerCasingImages) : [];
+        const hurufImages = isClicker ? normalizeImageList(selectedProduct.clickerHurufImages) : [];
+
+        renderClickerThumbs(clickerCasingThumbs, casingImages);
+        renderClickerThumbs(clickerHurufThumbs, hurufImages);
+
+        clickerCasingGroup.classList.toggle('hidden', casingImages.length === 0);
+        clickerHurufGroup.classList.toggle('hidden', hurufImages.length === 0);
+        clickerImageGroups.classList.toggle('hidden', !isClicker || (casingImages.length === 0 && hurufImages.length === 0));
     };
 
     const filterProducts = () => {
@@ -152,18 +386,137 @@
         if (!selectedProduct) return;
         const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
         quantityInput.value = quantity;
-        document.querySelector('[data-modal-total]').textContent = currency.format(quantity * selectedProduct.price);
+        const selectedUnitPrice = resolveSelectedUnitPrice(selectedProduct);
+        selectedProduct.price = selectedUnitPrice;
+        document.querySelector('[data-modal-price]').textContent = currency.format(selectedUnitPrice);
+        document.querySelector('[data-modal-total]').textContent = currency.format(quantity * selectedUnitPrice);
+        const addButton = document.querySelector('[data-confirm-add]');
+        addButton.disabled = !clickerCharactersComplete(selectedProduct);
+        addButton.classList.toggle('opacity-50', addButton.disabled);
+        addButton.classList.toggle('cursor-not-allowed', addButton.disabled);
+    };
+
+    const updateClickerCountButtonState = () => {
+        document.querySelectorAll('[data-clicker-count]').forEach((button) => {
+            const active = Number(button.dataset.clickerCount) === Number(selectedProduct?.clickerCharacterCount || 0);
+            button.classList.toggle('bg-[#e7682b]', active);
+            button.classList.toggle('text-white', active);
+            button.classList.toggle('border-[#e7682b]', active);
+            button.classList.toggle('bg-slate-100', !active);
+            button.classList.toggle('text-slate-600', !active);
+            button.classList.toggle('border-slate-200', !active);
+        });
+    };
+
+    const renderClickerInputs = () => {
+        if (!selectedProduct || selectedProduct.productType !== 'clicker') {
+            clickerInputsContainer.innerHTML = '';
+            return;
+        }
+
+        const count = Number(selectedProduct.clickerCharacterCount || 0);
+        const characters = getClickerCharacters(selectedProduct);
+
+        clickerInputsContainer.innerHTML = '';
+        if (count < 1 || count > 8) {
+            clickerHint.textContent = 'Pilih satu total characters (1 hingga 8).';
+            return;
+        }
+
+        const selectedUnitPrice = resolveSelectedUnitPrice(selectedProduct);
+        clickerHint.textContent = `Harga seunit: ${currency.format(selectedUnitPrice)} untuk ${count} characters.`;
+
+        const updateCharacterInputState = (input) => {
+            const filled = String(input.value || '').trim() !== '';
+            input.classList.toggle('bg-emerald-50', filled);
+            input.classList.toggle('border-emerald-300', filled);
+            input.classList.toggle('bg-white', !filled);
+            input.classList.toggle('border-orange-200', !filled);
+        };
+
+        for (let index = 0; index < count; index += 1) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.maxLength = 1;
+            input.inputMode = 'text';
+            input.autocomplete = 'off';
+            input.spellcheck = false;
+            input.placeholder = clickerDefaultPlaceholder[index] || '';
+            input.value = characters[index] || '';
+            input.className = 'clicker-character-input h-10 w-10 shrink-0 rounded-lg border border-orange-200 bg-white text-center text-base font-extrabold uppercase text-[#c94f16] caret-[#c94f16] outline-none transition focus:border-[#e7682b] focus:ring-2 focus:ring-orange-200';
+            updateCharacterInputState(input);
+            input.addEventListener('input', () => {
+                const value = sanitizeCharacter(input.value);
+                input.value = value;
+                selectedProduct.clickerCharacters[index] = value;
+                updateCharacterInputState(input);
+                updateModalTotal();
+
+                if (value !== '') {
+                    const nextInput = clickerInputsContainer.querySelectorAll('input')[index + 1];
+                    nextInput?.focus();
+                }
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key !== 'Backspace') {
+                    return;
+                }
+
+                if (input.value !== '') {
+                    return;
+                }
+
+                const previousInput = clickerInputsContainer.querySelectorAll('input')[index - 1];
+                if (!previousInput) {
+                    return;
+                }
+
+                event.preventDefault();
+                previousInput.focus();
+                previousInput.select();
+            });
+
+            clickerInputsContainer.append(input);
+        }
+    };
+
+    const renderClickerConfig = () => {
+        const isClicker = selectedProduct?.productType === 'clicker';
+        clickerConfig.classList.toggle('hidden', !isClicker);
+        if (!isClicker) {
+            return;
+        }
+
+        updateClickerCountButtonState();
+        renderClickerInputs();
     };
 
     const openProductDetails = (button) => {
+        const productId = String(button.dataset.id);
+        const restoredItem = cart[productId] || null;
+        const fallbackClickerPrices = clickerCharacterPricesByProduct[productId] || clickerCharacterPricesByProduct[Number(productId)] || {};
+        const fallbackClickerImages = clickerImagesByProduct[productId] || clickerImagesByProduct[Number(productId)] || {};
         selectedProduct = {
-            id: button.dataset.id, code: button.dataset.code, name: button.dataset.name,
-            images: JSON.parse(button.dataset.images || '[]'), sellingPrice: Number(button.dataset.sellingPrice),
-            price: Number(button.dataset.agentPrice), max: Number(button.dataset.max),
-            preorder: button.dataset.preorder === '1', material: button.dataset.material,
-            color: button.dataset.color, weight: button.dataset.weight, width: button.dataset.width,
-            height: button.dataset.height, length: button.dataset.length,
+            id: productId, code: button.dataset.code, name: button.dataset.name,
+            images: JSON.parse(button.dataset.images || '[]'), basePrice: Number(button.dataset.price),
+            price: Number(button.dataset.price),
+            max: Number(button.dataset.max), preorder: button.dataset.preorder === '1',
+            material: button.dataset.material, color: button.dataset.color, weight: button.dataset.weight,
+            width: button.dataset.width, height: button.dataset.height, length: button.dataset.length,
+            productType: button.dataset.productType === 'clicker' ? 'clicker' : 'standard',
+            clickerPrices: normalizeClickerPrices(JSON.parse(button.dataset.clickerPrices || JSON.stringify(fallbackClickerPrices || {}))),
+            clickerCasingImages: normalizeImageList(JSON.parse(button.dataset.clickerCasingImages || JSON.stringify(fallbackClickerImages.casing || []))),
+            clickerHurufImages: normalizeImageList(JSON.parse(button.dataset.clickerHurufImages || JSON.stringify(fallbackClickerImages.huruf || []))),
+            clickerCharacterCount: Number(restoredItem?.clickerCharacterCount || 0),
+            clickerCharacters: getClickerCharacters(restoredItem),
         };
+
+        if (selectedProduct.productType === 'clicker' && (selectedProduct.clickerCharacterCount < 1 || selectedProduct.clickerCharacterCount > 8)) {
+            selectedProduct.clickerCharacterCount = 1;
+        }
+
+        selectedProduct.price = resolveSelectedUnitPrice(selectedProduct);
 
         window.dispatchEvent(new CustomEvent('product-gallery:open', {
             detail: {
@@ -177,7 +530,7 @@
         status.className = `absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase shadow-sm sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-[10px] ${selectedProduct.preorder ? 'bg-orange-50 text-[#e7682b]' : 'bg-emerald-50 text-emerald-700'}`;
         document.querySelector('[data-modal-code]').textContent = selectedProduct.code;
         document.querySelector('[data-modal-name]').textContent = selectedProduct.name;
-        document.querySelector('[data-modal-selling]').textContent = currency.format(selectedProduct.sellingPrice);
+        renderClickerImageGroups();
         document.querySelector('[data-modal-price]').textContent = currency.format(selectedProduct.price);
         document.querySelector('[data-modal-stock]').textContent = selectedProduct.preorder ? 'Pre-order item · choose required quantity' : `${selectedProduct.max} units available`;
 
@@ -199,8 +552,10 @@
         specsContainer.classList.toggle('hidden', specs.length === 0);
         specsContainer.classList.toggle('grid', specs.length > 0);
 
+        renderClickerConfig();
+
         quantityInput.max = selectedProduct.max;
-        quantityInput.value = cart[selectedProduct.id]?.quantity || 1;
+        quantityInput.value = restoredItem?.quantity || 1;
         document.querySelector('[data-confirm-add]').textContent = cart[selectedProduct.id] ? 'Update cart' : (selectedProduct.preorder ? 'Add pre-order to cart' : 'Add to cart');
         updateModalTotal();
         quantityModal.classList.remove('hidden');
@@ -215,13 +570,29 @@
             const row = document.createElement('article'); row.className = 'flex items-center gap-3 rounded-2xl bg-slate-50 p-3';
             const detail = document.createElement('div'); detail.className = 'min-w-0 flex-1';
             const name = document.createElement('p'); name.className = 'truncate text-sm font-extrabold text-[#17324d]'; name.textContent = item.name;
+            const clickerLabel = clickerCharactersLabel(item);
+            if (clickerLabel) {
+                const clickerInfo = document.createElement('p');
+                clickerInfo.className = 'mt-0.5 text-[11px] font-semibold text-slate-500';
+                clickerInfo.textContent = clickerLabel;
+                detail.append(name, clickerInfo);
+            } else {
+                detail.append(name);
+            }
             const price = document.createElement('p'); price.className = 'mt-1 text-xs font-bold text-[#e7682b]'; price.textContent = `${item.preorder ? 'Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)} = ${currency.format(item.quantity * item.price)}`;
-            detail.append(name, price);
+            detail.append(price);
             const remove = document.createElement('button'); remove.type = 'button'; remove.dataset.removeCartItem = item.id; remove.className = 'grid h-9 w-9 place-items-center rounded-full bg-white text-red-500 shadow-sm'; remove.innerHTML = '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg>';
             row.append(detail, remove); container.append(row);
         });
+
+        const summary = orderSummary();
         document.querySelector('[data-review-units]').textContent = units();
-        document.querySelector('[data-review-total]').textContent = currency.format(amount());
+        document.querySelector('[data-review-subtotal]').textContent = formatCents(summary.grossSubtotal);
+        document.querySelector('[data-review-discount]').textContent = `- ${formatCents(summary.discountAmount)}`;
+        document.querySelector('[data-review-discount-note]').textContent = summary.discountPercentage > 0
+            ? `${summary.discountPercentage.toFixed(1)}% discount applied based on cart total.`
+            : 'No discount yet.';
+        document.querySelector('[data-review-total]').textContent = formatCents(summary.netSubtotal);
     };
 
     const renderCheckout = () => {
@@ -232,22 +603,40 @@
             const detail = document.createElement('div'); detail.className = 'min-w-0 flex-1';
             const name = document.createElement('p'); name.className = 'truncate text-xs font-extrabold text-[#17324d]'; name.textContent = item.name;
             const caption = document.createElement('p'); caption.className = 'mt-1 text-[10px] text-slate-500'; caption.textContent = `${item.preorder ? 'Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)}`;
+            const clickerLabel = clickerCharactersLabel(item);
+            if (clickerLabel) {
+                const clickerInfo = document.createElement('p');
+                clickerInfo.className = 'mt-0.5 text-[10px] font-semibold text-slate-500';
+                clickerInfo.textContent = clickerLabel;
+                detail.append(name, caption, clickerInfo);
+            } else {
+                detail.append(name, caption);
+            }
             const total = document.createElement('p'); total.className = 'flex-none text-xs font-black text-[#e7682b]'; total.textContent = currency.format(item.quantity * item.price);
-            detail.append(name, caption); row.append(detail, total); container.append(row);
+            row.append(detail, total); container.append(row);
         });
-        const formattedTotal = currency.format(amount());
+
+        const summary = orderSummary();
         document.querySelector('[data-checkout-units]').textContent = `${units()} units`;
-        document.querySelector('[data-checkout-subtotal]').textContent = formattedTotal;
-        document.querySelector('[data-checkout-total]').textContent = formattedTotal;
-        document.querySelector('[data-confirm-total]').textContent = formattedTotal;
-        document.querySelector('[data-success-total]').textContent = formattedTotal;
+        document.querySelector('[data-checkout-subtotal]').textContent = formatCents(summary.grossSubtotal);
+        document.querySelector('[data-checkout-discount]').textContent = `- ${formatCents(summary.discountAmount)}`;
+        document.querySelector('[data-checkout-discount-note]').textContent = summary.discountPercentage > 0
+            ? `${summary.discountPercentage.toFixed(1)}% discount applied based on total amount.`
+            : 'No discount yet.';
+        document.querySelector('[data-checkout-delivery]').textContent = summary.deliveryCharge > 0
+            ? formatCents(summary.deliveryCharge)
+            : 'No delivery charge';
+        document.querySelector('[data-checkout-total]').textContent = formatCents(summary.orderTotal);
+        document.querySelector('[data-confirm-total]').textContent = formatCents(summary.orderTotal);
+        document.querySelector('[data-success-total]').textContent = formatCents(summary.orderTotal);
     };
 
     const renderCart = () => {
         const quantity = units();
+        const summary = orderSummary();
         document.querySelectorAll('[data-cart-visible]').forEach((element) => { element.classList.toggle('hidden', quantity === 0); element.classList.toggle('flex', quantity > 0); });
         document.querySelectorAll('[data-cart-units]').forEach((element) => element.textContent = quantity);
-        document.querySelectorAll('[data-cart-total]').forEach((element) => element.textContent = currency.format(amount()));
+        document.querySelectorAll('[data-cart-total]').forEach((element) => element.textContent = formatCents(summary.grossSubtotal));
         document.querySelectorAll('[data-product-card]').forEach((card) => {
             const item = cart[card.dataset.productId]; const badge = card.querySelector('[data-card-cart-badge]');
             badge.classList.toggle('hidden', !item); badge.classList.toggle('flex', Boolean(item));
@@ -270,9 +659,67 @@
         button.addEventListener('click', (event) => { event.stopPropagation(); openProductDetails(button); });
     });
     document.querySelector('[data-close-quantity]').addEventListener('click', () => close(quantityModal)); document.querySelector('[data-close-cart]').addEventListener('click', () => close(cartModal));
+    document.querySelectorAll('[data-close-clicker-preview]').forEach((button) => {
+        button.addEventListener('click', () => close(clickerPreviewModal));
+    });
+    if (clickerPreviewModal) {
+        clickerPreviewModal.addEventListener('click', (event) => {
+            if (event.target === clickerPreviewModal) {
+                close(clickerPreviewModal);
+            }
+        });
+    }
+    document.querySelectorAll('[data-clicker-count]').forEach((button) => {
+        button.addEventListener('click', () => {
+            if (!selectedProduct || selectedProduct.productType !== 'clicker') return;
+
+            const nextCount = Number(button.dataset.clickerCount || 0);
+            if (!Number.isInteger(nextCount) || nextCount < 1 || nextCount > 8) return;
+
+            selectedProduct.clickerCharacterCount = nextCount;
+            selectedProduct.clickerCharacters = getClickerCharacters(selectedProduct).slice(0, nextCount);
+            renderClickerConfig();
+            updateModalTotal();
+        });
+    });
     document.querySelector('[data-quantity-minus]').addEventListener('click', () => { quantityInput.value = Math.max(1, Number(quantityInput.value) - 1); updateModalTotal(); });
     document.querySelector('[data-quantity-plus]').addEventListener('click', () => { quantityInput.value = Math.min(Number(quantityInput.max), Number(quantityInput.value) + 1); updateModalTotal(); }); quantityInput.addEventListener('input', updateModalTotal);
-    document.querySelector('[data-confirm-add]').addEventListener('click', () => { cart[selectedProduct.id] = {...selectedProduct, quantity: Number(quantityInput.value)}; save(); close(quantityModal); });
+    document.querySelector('[data-confirm-add]').addEventListener('click', () => {
+        if (!selectedProduct) return;
+        if (!clickerCharactersComplete(selectedProduct)) return;
+
+        const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
+        const clickerCharacterCount = selectedProduct.productType === 'clicker'
+            ? Number(selectedProduct.clickerCharacterCount || 0)
+            : null;
+        const clickerCharacters = selectedProduct.productType === 'clicker'
+            ? getClickerCharacters(selectedProduct).slice(0, clickerCharacterCount || 0)
+            : [];
+
+        cart[selectedProduct.id] = {
+            id: selectedProduct.id,
+            code: selectedProduct.code,
+            name: selectedProduct.name,
+            images: selectedProduct.images,
+            basePrice: Number(selectedProduct.basePrice || 0),
+            price: resolveSelectedUnitPrice(selectedProduct),
+            max: selectedProduct.max,
+            preorder: selectedProduct.preorder,
+            material: selectedProduct.material,
+            color: selectedProduct.color,
+            weight: selectedProduct.weight,
+            width: selectedProduct.width,
+            height: selectedProduct.height,
+            length: selectedProduct.length,
+            productType: selectedProduct.productType,
+            clickerPrices: selectedProduct.clickerPrices,
+            clickerCharacterCount,
+            clickerCharacters,
+            quantity,
+        };
+        save();
+        close(quantityModal);
+    });
     document.querySelectorAll('[data-open-cart]').forEach((button) => button.addEventListener('click', () => { renderReview(); cartModal.classList.remove('hidden'); cartModal.classList.add('flex'); }));
     document.querySelector('[data-cart-items]').addEventListener('click', (event) => { const button = event.target.closest('[data-remove-cart-item]'); if (!button) return; delete cart[button.dataset.removeCartItem]; save(); if (!units()) close(cartModal); });
     document.querySelector('[data-ui-checkout]').addEventListener('click', () => {
