@@ -57,6 +57,18 @@ class PlaceAgentOrder
                         ])
                         ->all());
 
+                $clickerImageIds = $items
+                    ->flatMap(fn (mixed $item): array => [
+                        data_get($item, 'clicker_casing_image_id'),
+                        data_get($item, 'clicker_huruf_image_id'),
+                    ])
+                    ->filter(fn (mixed $id): bool => is_numeric($id) && (int) $id > 0);
+                $clickerImagesById = DB::table('product_clicker_images')
+                    ->whereIn('id', $clickerImageIds)
+                    ->lockForUpdate()
+                    ->get(['id', 'product_id', 'image_type', 'image_path'])
+                    ->keyBy('id');
+
                 $this->ensureEveryProductExists($items, $products);
 
                 $grossSubtotalCents = 0;
@@ -80,8 +92,27 @@ class PlaceAgentOrder
 
                     $clickerCharacterCount = null;
                     $clickerCharacters = [];
+                    $clickerImagePaths = [];
 
                     if ($isClicker) {
+                        foreach (['casing', 'huruf'] as $imageType) {
+                            $field = "clicker_{$imageType}_image_id";
+                            $imageId = (int) ($item[$field] ?? 0);
+                            $image = $clickerImagesById->get($imageId);
+
+                            if (
+                                ! $image
+                                || (int) $image->product_id !== $product->getKey()
+                                || $image->image_type !== $imageType
+                            ) {
+                                throw ValidationException::withMessages([
+                                    "items.{$index}.{$field}" => "Choose a valid {$imageType} image for {$product->prd_name}.",
+                                ]);
+                            }
+
+                            $clickerImagePaths[$imageType] = (string) $image->image_path;
+                        }
+
                         $clickerCharacterCount = (int) ($item['clicker_character_count'] ?? 0);
                         $clickerCharacters = collect($item['clicker_characters'] ?? [])
                             ->map(fn (mixed $character): string => trim((string) $character))
@@ -116,6 +147,8 @@ class PlaceAgentOrder
                         'is_clicker' => $isClicker,
                         'clicker_character_count' => $clickerCharacterCount,
                         'clicker_characters' => $clickerCharacters,
+                        'clicker_casing_image_path' => $clickerImagePaths['casing'] ?? null,
+                        'clicker_huruf_image_path' => $clickerImagePaths['huruf'] ?? null,
                     ];
                 }
 
@@ -153,6 +186,8 @@ class PlaceAgentOrder
                     if ((bool) ($pendingItem['is_clicker'] ?? false)) {
                         $orderItem['clicker_character_count'] = (int) ($pendingItem['clicker_character_count'] ?? 0);
                         $orderItem['clicker_characters'] = $pendingItem['clicker_characters'] ?? [];
+                        $orderItem['clicker_casing_image_path'] = $pendingItem['clicker_casing_image_path'] ?? null;
+                        $orderItem['clicker_huruf_image_path'] = $pendingItem['clicker_huruf_image_path'] ?? null;
                     }
 
                     $orderItems[] = $orderItem;

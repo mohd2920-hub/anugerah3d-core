@@ -87,16 +87,21 @@
                 <div class="min-w-0"><p data-modal-code class="text-[9px] font-bold uppercase tracking-wider text-[#e7682b] sm:text-[10px]"></p><h2 id="product-detail-title" data-modal-name class="mt-0.5 text-lg font-extrabold leading-6 text-[#17324d] sm:mt-1 sm:text-xl"></h2></div>
                 <div data-clicker-image-groups class="mt-3 hidden space-y-3">
                     <div data-clicker-casing-group class="hidden">
-                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Casing</p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Casing <span class="text-red-500">*</span></p>
+                            <button type="button" data-open-clicker-gallery="casing" class="text-[10px] font-bold text-[#e7682b] underline decoration-orange-200 underline-offset-2">Open bigger image</button>
+                        </div>
                         <div data-clicker-casing-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
                     </div>
                     <div data-clicker-huruf-group class="hidden">
-                        <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Huruf</p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Huruf <span class="text-red-500">*</span></p>
+                            <button type="button" data-open-clicker-gallery="huruf" class="text-[10px] font-bold text-[#e7682b] underline decoration-orange-200 underline-offset-2">Open bigger image</button>
+                        </div>
                         <div data-clicker-huruf-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
                     </div>
+                    <p data-clicker-image-hint class="text-[11px] font-semibold text-amber-700">Select one casing and one huruf.</p>
                 </div>
-                <div class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3"><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Price</p><p data-modal-price class="mt-0.5 text-lg font-black text-[#e7682b]"></p></div>
-                <div data-modal-specs class="mt-3 hidden grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-100 py-3"></div>
                 <div data-clicker-config class="mt-3 hidden rounded-2xl border border-orange-100 bg-orange-50/40 p-3">
                     <div class="flex items-start justify-between gap-3">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-[#e7682b]">Total characters</p>
@@ -113,6 +118,8 @@
                         <div data-clicker-inputs class="mt-2 flex flex-wrap gap-2"></div>
                     </div>
                 </div>
+                <div class="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 sm:mt-4 sm:px-4 sm:py-3"><p class="text-[9px] font-bold uppercase text-slate-400 sm:text-[10px]">Price</p><p data-modal-price class="mt-0.5 text-lg font-black text-[#e7682b]"></p></div>
+                <div data-modal-specs class="mt-3 hidden grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-100 py-3"></div>
                 <div class="mt-3 flex items-center justify-between gap-3 sm:mt-4"><div class="min-w-0"><p class="text-sm font-extrabold text-[#17324d]">Quantity</p><p data-modal-stock class="mt-0.5 truncate text-[11px] text-slate-400 sm:text-xs"></p></div><div class="flex flex-none items-center rounded-xl border border-slate-200 p-0.5 shadow-sm"><button type="button" data-quantity-minus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">−</button><input data-quantity-input type="number" min="1" value="1" inputmode="numeric" class="h-9 w-12 border-0 text-center text-base font-black outline-none sm:w-14"><button type="button" data-quantity-plus class="grid h-9 w-9 place-items-center rounded-lg text-lg font-bold">+</button></div></div>
             </div>
         </div>
@@ -139,10 +146,24 @@
     </div>
 </div>
 
-<div data-clicker-preview-modal class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Clicker image preview">
-    <div class="relative w-full max-w-2xl rounded-2xl bg-white p-3 shadow-2xl">
-        <button type="button" data-close-clicker-preview class="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-600" aria-label="Close image preview"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-        <img data-clicker-preview-image src="" alt="" class="mx-auto block max-h-[75vh] w-auto rounded-xl object-contain">
+<div data-clicker-preview-modal class="fixed inset-0 z-[70] hidden items-end justify-center bg-slate-950/70 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="clicker-gallery-title">
+    <div class="w-full max-w-2xl overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]">
+        <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5">
+            <div>
+                <p class="text-[9px] font-bold uppercase tracking-[0.14em] text-[#e7682b]">Choose design</p>
+                <h3 id="clicker-gallery-title" data-clicker-preview-title class="mt-0.5 text-base font-extrabold text-[#17324d]">Casing pictures</h3>
+            </div>
+            <button type="button" data-close-clicker-preview class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600" aria-label="Close image preview"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        </div>
+        <div class="p-4 sm:p-5">
+            <div class="relative grid h-[min(58vh,34rem)] place-items-center overflow-hidden rounded-2xl bg-slate-100">
+                <img data-clicker-preview-image src="" alt="" class="max-h-full w-full object-contain">
+                <button type="button" data-clicker-preview-previous class="absolute left-2 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md" aria-label="Previous image"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                <button type="button" data-clicker-preview-next class="absolute right-2 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md" aria-label="Next image"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
+                <span data-clicker-preview-counter class="absolute bottom-3 right-3 rounded-full bg-slate-950/70 px-3 py-1 text-[10px] font-extrabold text-white backdrop-blur"></span>
+            </div>
+            <button type="button" data-select-clicker-preview class="mt-4 h-12 w-full rounded-xl bg-[#e7682b] text-sm font-extrabold text-white shadow-lg shadow-orange-600/20">Select this</button>
+        </div>
     </div>
 </div>
 
@@ -183,10 +204,19 @@
     const clickerHurufGroup = document.querySelector('[data-clicker-huruf-group]');
     const clickerCasingThumbs = document.querySelector('[data-clicker-casing-thumbs]');
     const clickerHurufThumbs = document.querySelector('[data-clicker-huruf-thumbs]');
+    const clickerImageHint = document.querySelector('[data-clicker-image-hint]');
     const clickerPreviewModal = document.querySelector('[data-clicker-preview-modal]');
     const clickerPreviewImage = document.querySelector('[data-clicker-preview-image]');
+    const clickerPreviewTitle = document.querySelector('[data-clicker-preview-title]');
+    const clickerPreviewCounter = document.querySelector('[data-clicker-preview-counter]');
+    const clickerPreviewPrevious = document.querySelector('[data-clicker-preview-previous]');
+    const clickerPreviewNext = document.querySelector('[data-clicker-preview-next]');
+    const selectClickerPreviewButton = document.querySelector('[data-select-clicker-preview]');
     const clickerDefaultPlaceholder = 'MUHAMMAD';
     let selectedProduct = null;
+    let clickerPreviewType = null;
+    let clickerPreviewImages = [];
+    let clickerPreviewIndex = 0;
     let cart = {};
     try { cart = JSON.parse(localStorage.getItem(cartKey)) || {}; } catch (error) { cart = {}; }
 
@@ -205,6 +235,7 @@
                 if (src === '') return null;
 
                 return {
+                    id: Number(image.id || 0),
                     src,
                     alt: String(image.alt || '').trim(),
                 };
@@ -261,6 +292,17 @@
 
         return characters.length === count;
     };
+    const clickerImagesComplete = (product) => {
+        if (!product || product.productType !== 'clicker') return true;
+
+        return Boolean(
+            Number(product.clickerCasingSelection?.id || 0) > 0
+            && Number(product.clickerHurufSelection?.id || 0) > 0
+        );
+    };
+    const clickerConfigurationComplete = (product) => (
+        clickerCharactersComplete(product) && clickerImagesComplete(product)
+    );
     const clickerCharactersLabel = (item) => {
         if (item?.productType !== 'clicker') return null;
 
@@ -308,6 +350,9 @@
         if (modal === clickerPreviewModal && clickerPreviewImage) {
             clickerPreviewImage.src = '';
             clickerPreviewImage.alt = '';
+            clickerPreviewType = null;
+            clickerPreviewImages = [];
+            clickerPreviewIndex = 0;
         }
 
         if (modal === quantityModal) {
@@ -319,26 +364,69 @@
         }
     };
 
-    const openClickerPreview = (image) => {
-        if (!clickerPreviewModal || !clickerPreviewImage || !image?.src) {
-            return;
+    const selectedClickerImage = (type) => type === 'casing'
+        ? selectedProduct?.clickerCasingSelection
+        : selectedProduct?.clickerHurufSelection;
+
+    const setSelectedClickerImage = (type, image) => {
+        if (!selectedProduct || !image?.src) return;
+
+        if (type === 'casing') {
+            selectedProduct.clickerCasingSelection = image;
+        } else {
+            selectedProduct.clickerHurufSelection = image;
         }
+
+        renderClickerImageGroups();
+        updateModalTotal();
+    };
+
+    const renderClickerPreview = () => {
+        const image = clickerPreviewImages[clickerPreviewIndex];
+        if (!image || !clickerPreviewImage) return;
 
         clickerPreviewImage.src = image.src;
         clickerPreviewImage.alt = image.alt || selectedProduct?.name || 'Clicker image';
+        clickerPreviewTitle.textContent = `${clickerPreviewType === 'casing' ? 'Casing' : 'Huruf'} pictures`;
+        clickerPreviewCounter.textContent = `${clickerPreviewIndex + 1} / ${clickerPreviewImages.length}`;
+        clickerPreviewPrevious.classList.toggle('hidden', clickerPreviewImages.length < 2);
+        clickerPreviewNext.classList.toggle('hidden', clickerPreviewImages.length < 2);
+
+        const isSelected = selectedClickerImage(clickerPreviewType)?.src === image.src;
+        selectClickerPreviewButton.textContent = isSelected ? 'Selected' : 'Select this';
+        selectClickerPreviewButton.classList.toggle('bg-emerald-600', isSelected);
+        selectClickerPreviewButton.classList.toggle('bg-[#e7682b]', !isSelected);
+    };
+
+    const openClickerPreview = (type) => {
+        const images = type === 'casing'
+            ? normalizeImageList(selectedProduct?.clickerCasingImages)
+            : normalizeImageList(selectedProduct?.clickerHurufImages);
+        if (!clickerPreviewModal || images.length === 0) {
+            return;
+        }
+
+        clickerPreviewType = type;
+        clickerPreviewImages = images;
+        const selectedSrc = selectedClickerImage(type)?.src;
+        const selectedIndex = images.findIndex((image) => image.src === selectedSrc);
+        clickerPreviewIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        renderClickerPreview();
         clickerPreviewModal.classList.remove('hidden');
         clickerPreviewModal.classList.add('flex');
     };
 
-    const renderClickerThumbs = (container, images) => {
+    const renderClickerThumbs = (container, images, type) => {
         if (!container) return;
 
         container.innerHTML = '';
         images.forEach((image, index) => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = 'h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-orange-200 bg-white shadow-sm transition active:scale-[0.98]';
-            button.setAttribute('aria-label', `Preview image ${index + 1}`);
+            const isSelected = selectedClickerImage(type)?.src === image.src;
+            button.className = `relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white shadow-sm transition active:scale-[0.98] ${isSelected ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'}`;
+            button.setAttribute('aria-label', `Select ${type} image ${index + 1}`);
+            button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
 
             const thumb = document.createElement('img');
             thumb.src = image.src;
@@ -346,7 +434,13 @@
             thumb.className = 'h-full w-full object-cover';
 
             button.appendChild(thumb);
-            button.addEventListener('click', () => openClickerPreview(image));
+            if (isSelected) {
+                const selectedIcon = document.createElement('span');
+                selectedIcon.className = 'absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-emerald-600 px-1 py-1 text-[7px] font-black uppercase tracking-wide text-white';
+                selectedIcon.innerHTML = '<svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 4 4L19 6"/></svg>Selected';
+                button.appendChild(selectedIcon);
+            }
+            button.addEventListener('click', () => setSelectedClickerImage(type, image));
             container.appendChild(button);
         });
     };
@@ -360,12 +454,18 @@
         const casingImages = isClicker ? normalizeImageList(selectedProduct.clickerCasingImages) : [];
         const hurufImages = isClicker ? normalizeImageList(selectedProduct.clickerHurufImages) : [];
 
-        renderClickerThumbs(clickerCasingThumbs, casingImages);
-        renderClickerThumbs(clickerHurufThumbs, hurufImages);
+        renderClickerThumbs(clickerCasingThumbs, casingImages, 'casing');
+        renderClickerThumbs(clickerHurufThumbs, hurufImages, 'huruf');
 
         clickerCasingGroup.classList.toggle('hidden', casingImages.length === 0);
         clickerHurufGroup.classList.toggle('hidden', hurufImages.length === 0);
         clickerImageGroups.classList.toggle('hidden', !isClicker || (casingImages.length === 0 && hurufImages.length === 0));
+        if (isClicker && clickerImageHint) {
+            const complete = clickerImagesComplete(selectedProduct);
+            clickerImageHint.textContent = complete ? 'Casing and huruf selected.' : 'Select one casing and one huruf.';
+            clickerImageHint.classList.toggle('text-emerald-600', complete);
+            clickerImageHint.classList.toggle('text-amber-700', !complete);
+        }
     };
 
     const filterProducts = () => {
@@ -391,7 +491,7 @@
         document.querySelector('[data-modal-price]').textContent = currency.format(selectedUnitPrice);
         document.querySelector('[data-modal-total]').textContent = currency.format(quantity * selectedUnitPrice);
         const addButton = document.querySelector('[data-confirm-add]');
-        addButton.disabled = !clickerCharactersComplete(selectedProduct);
+        addButton.disabled = !clickerConfigurationComplete(selectedProduct);
         addButton.classList.toggle('opacity-50', addButton.disabled);
         addButton.classList.toggle('cursor-not-allowed', addButton.disabled);
     };
@@ -508,6 +608,8 @@
             clickerPrices: normalizeClickerPrices(JSON.parse(button.dataset.clickerPrices || JSON.stringify(fallbackClickerPrices || {}))),
             clickerCasingImages: normalizeImageList(JSON.parse(button.dataset.clickerCasingImages || JSON.stringify(fallbackClickerImages.casing || []))),
             clickerHurufImages: normalizeImageList(JSON.parse(button.dataset.clickerHurufImages || JSON.stringify(fallbackClickerImages.huruf || []))),
+            clickerCasingSelection: restoredItem?.clickerCasingSelection || null,
+            clickerHurufSelection: restoredItem?.clickerHurufSelection || null,
             clickerCharacterCount: Number(restoredItem?.clickerCharacterCount || 0),
             clickerCharacters: getClickerCharacters(restoredItem),
         };
@@ -669,6 +771,26 @@
             }
         });
     }
+    document.querySelectorAll('[data-open-clicker-gallery]').forEach((button) => {
+        button.addEventListener('click', () => openClickerPreview(button.dataset.openClickerGallery));
+    });
+    clickerPreviewPrevious?.addEventListener('click', () => {
+        if (clickerPreviewImages.length < 2) return;
+        clickerPreviewIndex = (clickerPreviewIndex - 1 + clickerPreviewImages.length) % clickerPreviewImages.length;
+        renderClickerPreview();
+    });
+    clickerPreviewNext?.addEventListener('click', () => {
+        if (clickerPreviewImages.length < 2) return;
+        clickerPreviewIndex = (clickerPreviewIndex + 1) % clickerPreviewImages.length;
+        renderClickerPreview();
+    });
+    selectClickerPreviewButton?.addEventListener('click', () => {
+        const image = clickerPreviewImages[clickerPreviewIndex];
+        if (!clickerPreviewType || !image) return;
+
+        setSelectedClickerImage(clickerPreviewType, image);
+        close(clickerPreviewModal);
+    });
     document.querySelectorAll('[data-clicker-count]').forEach((button) => {
         button.addEventListener('click', () => {
             if (!selectedProduct || selectedProduct.productType !== 'clicker') return;
@@ -686,7 +808,7 @@
     document.querySelector('[data-quantity-plus]').addEventListener('click', () => { quantityInput.value = Math.min(Number(quantityInput.max), Number(quantityInput.value) + 1); updateModalTotal(); }); quantityInput.addEventListener('input', updateModalTotal);
     document.querySelector('[data-confirm-add]').addEventListener('click', () => {
         if (!selectedProduct) return;
-        if (!clickerCharactersComplete(selectedProduct)) return;
+        if (!clickerConfigurationComplete(selectedProduct)) return;
 
         const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
         const clickerCharacterCount = selectedProduct.productType === 'clicker'
@@ -714,6 +836,8 @@
             productType: selectedProduct.productType,
             clickerPrices: selectedProduct.clickerPrices,
             clickerCharacterCount,
+            clickerCasingSelection: selectedProduct.clickerCasingSelection,
+            clickerHurufSelection: selectedProduct.clickerHurufSelection,
             clickerCharacters,
             quantity,
         };

@@ -10,11 +10,11 @@ class AgentOrderDiscount
 
     public const BELOW_RM20_PERCENTAGE = 10.0;
 
-    public const BELOW_RM100_PERCENTAGE = 20.0;
+    public const BELOW_RM100_PERCENTAGE = 25.0;
 
     public const AT_LEAST_RM100_PERCENTAGE = 25.0;
 
-    public const DELIVERY_FEE_CENTS = 600;
+    public const DELIVERY_FEE_CENTS = 300;
 
     public static function resolvePercentage(int $subtotalCents, ?float $agentDiscountPercentage = null): float
     {

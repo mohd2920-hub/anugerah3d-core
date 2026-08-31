@@ -116,6 +116,38 @@
                                 <td class="px-3 py-3">
                                     <a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-xs font-semibold text-[#1a73e8] hover:underline">{{ $order->order_number }}</a>
                                     <p class="mt-1 text-slate-500">{{ $order->total_units }} units / {{ $order->items_count }} products</p>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach ($order->items->take(1) as $item)
+                                            @php
+                                                $picturePath = $item->product?->prd_picture;
+                                                $pictureUrl = $picturePath
+                                                    ? (filter_var($picturePath, FILTER_VALIDATE_URL) ? $picturePath : asset(ltrim((string) $picturePath, "/")))
+                                                    : null;
+                                                $characters = collect($item->clicker_characters ?? [])
+                                                    ->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+                                                    ->filter()
+                                                    ->values();
+                                            @endphp
+                                            <div class="flex flex-col items-start gap-1.5">
+                                                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                                    @if ($pictureUrl)
+                                                        <img src="{{ $pictureUrl }}" alt="{{ $item->product_name }}" loading="lazy" class="h-full w-full object-cover">
+                                                    @else
+                                                        <div class="grid h-full w-full place-items-center text-slate-300">
+                                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                @if ($characters->isNotEmpty())
+                                                    <div class="flex max-w-24 flex-wrap gap-0.5" aria-label="Characters">
+                                                        @foreach ($characters as $character)
+                                                            <span class="inline-flex h-4 w-4 items-center justify-center rounded border border-orange-200 bg-orange-50 text-[8px] font-black text-orange-700">{{ $character }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </td>
                                 <td class="px-3 py-3">
                                     <p class="font-semibold text-slate-900">{{ $order->agent->agt_name }}</p>
@@ -209,6 +241,39 @@
                     <div class="mt-4">
                         <p class="font-semibold text-slate-900">{{ $order->agent->agt_name }}</p>
                         <p class="mt-1 text-sm text-slate-600">{{ $order->recipient_name }} � {{ $order->phone_number }}</p>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @foreach ($order->items->take(1) as $item)
+                            @php
+                                $picturePath = $item->product?->prd_picture;
+                                $pictureUrl = $picturePath
+                                    ? (filter_var($picturePath, FILTER_VALIDATE_URL) ? $picturePath : asset(ltrim((string) $picturePath, "/")))
+                                    : null;
+                                $characters = collect($item->clicker_characters ?? [])
+                                    ->map(fn (mixed $character): string => strtoupper(trim((string) $character)))
+                                    ->filter()
+                                    ->values();
+                            @endphp
+                            <div class="flex flex-col items-start gap-1.5">
+                                <div class="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    @if ($pictureUrl)
+                                        <img src="{{ $pictureUrl }}" alt="{{ $item->product_name }}" loading="lazy" class="h-full w-full object-cover">
+                                    @else
+                                        <div class="grid h-full w-full place-items-center text-slate-300">
+                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                        </div>
+                                    @endif
+                                </div>
+                                @if ($characters->isNotEmpty())
+                                    <div class="flex max-w-24 flex-wrap gap-0.5" aria-label="Characters">
+                                        @foreach ($characters as $character)
+                                            <span class="inline-flex h-4 w-4 items-center justify-center rounded border border-orange-200 bg-orange-50 text-[8px] font-black text-orange-700">{{ $character }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
 
                     <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">

@@ -136,7 +136,9 @@
                                             <div class="flex items-start gap-3">
                                                 <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                                     @if ($pictureUrl)
-                                                        <img src="{{ $pictureUrl }}" alt="{{ $item->product_name }}" loading="lazy" class="h-full w-full object-cover">
+                                                        <button type="button" data-image-preview-src="{{ $pictureUrl }}" data-image-preview-alt="{{ $item->product_name }}" class="block h-full w-full cursor-zoom-in" aria-label="Open {{ $item->product_name }} image">
+                                                            <img src="{{ $pictureUrl }}" alt="{{ $item->product_name }}" loading="lazy" class="h-full w-full object-cover">
+                                                        </button>
                                                     @else
                                                         <div class="grid h-full w-full place-items-center text-slate-300">
                                                             <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 4-4 4 4 3-3 5 5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
@@ -165,6 +167,16 @@
                                                                 <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] text-slate-500">-</span>
                                                             @endforelse
                                                         </div>
+                                                    </div>
+                                                    <div class="mt-2 flex gap-2">
+                                                        @foreach (['Casing' => $item->clickerCasingImageUrl(), 'Huruf' => $item->clickerHurufImageUrl()] as $label => $imageUrl)
+                                                            @if ($imageUrl)
+                                                                <button type="button" data-image-preview-src="{{ $imageUrl }}" data-image-preview-alt="{{ $label }} selected" class="block cursor-zoom-in text-left" aria-label="Open selected {{ strtolower($label) }} image">
+                                                                    <span class="mb-1 block text-[0.62rem] font-semibold uppercase text-slate-500">{{ $label }}</span>
+                                                                    <img src="{{ $imageUrl }}" alt="{{ $label }} selected" loading="lazy" class="h-16 w-16 rounded-lg border border-slate-200 object-cover">
+                                                                </button>
+                                                            @endif
+                                                        @endforeach
                                                     </div>
                                                 @endif
                                                 <div class="flex flex-wrap gap-1.5">
@@ -365,4 +377,64 @@
             </aside>
         </div>
     </div>
+    <div data-image-preview-modal class="fixed inset-0 z-[80] hidden items-center justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="image-preview-title">
+        <button type="button" data-close-image-preview class="absolute inset-0 bg-slate-950/75 backdrop-blur-sm" aria-label="Close image preview"></button>
+        <div class="relative z-10 flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 sm:px-5">
+                <h2 id="image-preview-title" data-image-preview-title class="truncate text-sm font-semibold text-slate-900">Image preview</h2>
+                <button type="button" data-close-image-preview data-image-preview-close-button class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200" aria-label="Close image preview">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+            </div>
+            <div class="grid min-h-0 flex-1 place-items-center bg-slate-100 p-3 sm:p-5">
+                <img data-image-preview-image src="" alt="" class="max-h-[calc(100vh-9rem)] max-w-full rounded-lg object-contain">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const modal = document.querySelector("[data-image-preview-modal]");
+            const image = modal?.querySelector("[data-image-preview-image]");
+            const title = modal?.querySelector("[data-image-preview-title]");
+            const closeButton = modal?.querySelector("[data-image-preview-close-button]");
+            let activeTrigger = null;
+
+            const closePreview = () => {
+                if (!modal || modal.classList.contains("hidden")) return;
+
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+                modal.setAttribute("aria-hidden", "true");
+                document.body.classList.remove("overflow-hidden");
+                image.removeAttribute("src");
+                activeTrigger?.focus();
+                activeTrigger = null;
+            };
+
+            document.addEventListener("click", (event) => {
+                const trigger = event.target.closest("[data-image-preview-src]");
+                if (trigger && modal && image && title) {
+                    activeTrigger = trigger;
+                    image.src = trigger.dataset.imagePreviewSrc;
+                    image.alt = trigger.dataset.imagePreviewAlt || "Image preview";
+                    title.textContent = trigger.dataset.imagePreviewAlt || "Image preview";
+                    modal.classList.remove("hidden");
+                    modal.classList.add("flex");
+                    modal.setAttribute("aria-hidden", "false");
+                    document.body.classList.add("overflow-hidden");
+                    closeButton?.focus();
+                    return;
+                }
+
+                if (event.target.closest("[data-close-image-preview]")) {
+                    closePreview();
+                }
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") closePreview();
+            });
+        })();
+    </script>
 @endsection

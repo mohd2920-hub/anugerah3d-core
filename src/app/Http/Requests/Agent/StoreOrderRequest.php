@@ -4,7 +4,7 @@ namespace App\Http\Requests\Agent;
 
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -32,6 +32,8 @@ class StoreOrderRequest extends FormRequest
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
             'items.*.clicker_character_count' => ['nullable', 'integer', 'min:1', 'max:8'],
             'items.*.clicker_characters' => ['nullable', 'array', 'max:8'],
+            'items.*.clicker_casing_image_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.clicker_huruf_image_id' => ['nullable', 'integer', 'min:1'],
             'items.*.clicker_characters.*' => ['nullable', 'string', 'max:1'],
         ];
     }
@@ -56,6 +58,18 @@ class StoreOrderRequest extends FormRequest
                     ->get(['id', 'product_type'])
                     ->keyBy('id');
 
+                $clickerImageIds = $items
+                    ->flatMap(fn (mixed $item): array => [
+                        data_get($item, 'clicker_casing_image_id'),
+                        data_get($item, 'clicker_huruf_image_id'),
+                    ])
+                    ->filter(fn (mixed $id): bool => is_numeric($id) && (int) $id > 0)
+                    ->map(fn (mixed $id): int => (int) $id);
+                $clickerImages = DB::table('product_clicker_images')
+                    ->whereIn('id', $clickerImageIds)
+                    ->get(['id', 'product_id', 'image_type'])
+                    ->keyBy('id');
+
                 foreach ($items as $index => $item) {
                     $product = $products->get((int) ($item['product_id'] ?? 0));
 
@@ -71,10 +85,28 @@ class StoreOrderRequest extends FormRequest
                         continue;
                     }
 
+                    foreach (['casing', 'huruf'] as $imageType) {
+                        $field = "clicker_{$imageType}_image_id";
+                        $imageId = (int) ($item[$field] ?? 0);
+                        $image = $clickerImages->get($imageId);
+
+                        if (
+                            ! $image
+                            || (int) $image->product_id !== $product->getKey()
+                            || $image->image_type !== $imageType
+                        ) {
+                            $validator->errors()->add(
+                                "items.{$index}.{$field}",
+                                "Choose a valid {$imageType} image for this clicker.",
+                            );
+                        }
+                    }
+
                     $characterCount = (int) ($item['clicker_character_count'] ?? 0);
 
                     if ($characterCount < 1 || $characterCount > 8) {
                         $validator->errors()->add("items.{$index}.clicker_character_count", 'Choose between 1 and 8 characters for this clicker.');
+
                         continue;
                     }
 
@@ -85,6 +117,7 @@ class StoreOrderRequest extends FormRequest
 
                     if ($characters->count() !== $characterCount) {
                         $validator->errors()->add("items.{$index}.clicker_characters", "Enter exactly {$characterCount} characters for this clicker.");
+
                         continue;
                     }
 

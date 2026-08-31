@@ -187,6 +187,8 @@
                     : [];
 
                 payload.append(`items[${index}][clicker_character_count]`, String(characterCount));
+                payload.append(`items[${index}][clicker_casing_image_id]`, String(Number(item.clickerCasingSelection?.id || 0)));
+                payload.append(`items[${index}][clicker_huruf_image_id]`, String(Number(item.clickerHurufSelection?.id || 0)));
                 characters.slice(0, characterCount).forEach((character) => {
                     payload.append(`items[${index}][clicker_characters][]`, character);
                 });

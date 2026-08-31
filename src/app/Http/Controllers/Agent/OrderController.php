@@ -44,13 +44,14 @@ class OrderController extends Controller
             ->whereIn('product_id', $products->modelKeys())
             ->orderBy('image_type')
             ->orderBy('position')
-            ->get(['product_id', 'image_type', 'image_path', 'alt_text'])
+            ->get(['id', 'product_id', 'image_type', 'image_path', 'alt_text'])
             ->groupBy('product_id')
             ->map(function ($rows): array {
                 $mapImages = fn (string $type): array => collect($rows)
                     ->where('image_type', $type)
                     ->values()
                     ->map(fn ($row): array => [
+                        'id' => (int) $row->id,
                         'src' => filter_var($row->image_path, FILTER_VALIDATE_URL)
                             ? $row->image_path
                             : asset(ltrim((string) $row->image_path, '/')),

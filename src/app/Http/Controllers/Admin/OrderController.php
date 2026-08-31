@@ -56,8 +56,8 @@ class OrderController extends Controller
                                 'referrer' => fn ($query) => $query->select($tier2UplineSelect),
                             ]),
                     ]),
-                'items:id,order_id,product_id,product_name,quantity,reserved_quantity,is_preorder',
-                'items.product:id,prd_balance,cost_rm',
+                'items:id,order_id,product_id,product_name,quantity,clicker_character_count,clicker_characters,reserved_quantity,is_preorder',
+                'items.product:id,prd_balance,cost_rm,prd_picture',
             ])
             ->withCount('items')
             ->when($filters['search'] !== '', fn (Builder $query): Builder => $query->search($filters['search']))
@@ -284,6 +284,10 @@ class OrderController extends Controller
         .align-right { text-align: right; }
         .item-name { font-weight: 700; }
         .item-subtle { margin-top: 4px; color: #64748b; font-size: 11px; }
+        .item-image-group { display: flex; gap: 7px; margin-top: 7px; }
+        .item-image-card { display: grid; gap: 3px; color: #64748b; font-size: 8px; font-weight: 700; text-align: center; text-transform: uppercase; }
+        .item-image-card img { display: block; width: 44px; height: 44px; border: 1px solid #cbd5e1; border-radius: 7px; background: #f8fafc; object-fit: cover; }
+        .item-image-card span { display: block; }
         .item-char-group { margin-top: 6px; }
         .item-char-label { display: inline-block; border-radius: 999px; background: #e2e8f0; padding: 2px 8px; color: #334155; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle; }
         .item-char-row { display: block; margin-top: 4px; white-space: nowrap; }
@@ -692,9 +696,10 @@ HTML;
 
     private function renderClickerCharactersLine(object $item): string
     {
+        $clickerImages = $this->renderClickerImagesLine($item);
         $clickerCount = (int) ($item->clicker_character_count ?? 0);
         if ($clickerCount <= 0) {
-            return '';
+            return $clickerImages;
         }
 
         $characters = collect($item->clicker_characters ?? [])
@@ -718,6 +723,29 @@ HTML;
             $chips = "<span class='item-subtle'>-</span>";
         }
 
-        return "<div class='item-char-group'><span class='item-char-label'>Characters ({$clickerCount})</span><span class='item-char-row'>{$chips}</span></div>";
+        return $clickerImages."<div class='item-char-group'><span class='item-char-label'>Characters ({$clickerCount})</span><span class='item-char-row'>{$chips}</span></div>";
+    }
+
+    private function renderClickerImagesLine(object $item): string
+    {
+        $images = collect([
+            'Casing' => $item->clickerCasingImageUrl(),
+            'Huruf' => $item->clickerHurufImageUrl(),
+        ])->filter();
+
+        if ($images->isEmpty()) {
+            return '';
+        }
+
+        $cards = $images
+            ->map(function (string $imageUrl, string $label): string {
+                $escapedUrl = $this->escape($imageUrl);
+                $escapedLabel = $this->escape($label);
+
+                return "<span class='item-image-card'><img src='{$escapedUrl}' alt='{$escapedLabel} selected'><span>{$escapedLabel}</span></span>";
+            })
+            ->implode('');
+
+        return "<div class='item-image-group'>{$cards}</div>";
     }
 }

@@ -143,7 +143,20 @@ There is a new update for your order.
 						: collect();
 				@endphp
 				<tr>
-					<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#111827;font-weight:700;">{{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }}</td>
+					<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#111827;font-weight:700;">
+						<div>{{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }}</div>
+						@if ($item->isClicker())
+							<div style="margin-top:8px;white-space:nowrap;">
+								@foreach (['Casing' => $item->clickerCasingImageUrl(), 'Huruf' => $item->clickerHurufImageUrl()] as $label => $imageUrl)
+									@if ($imageUrl)
+										<span style="display:inline-block;margin-right:8px;text-align:center;font-size:9px;color:#64748b;text-transform:uppercase;">
+											<img src="{{ $imageUrl }}" alt="{{ $label }} selected" width="56" height="56" style="display:block;width:56px;height:56px;border:1px solid #e2e8f0;border-radius:8px;object-fit:cover;margin-bottom:3px;">{{ $label }}
+										</span>
+									@endif
+								@endforeach
+							</div>
+						@endif
+					</td>
 					<td style="padding:10px;border-bottom:1px solid #f1f5f9;">
 						@if ($characters->isNotEmpty())
 							<div style="margin-bottom:5px;"><span style="display:inline-block;border-radius:999px;background:#e2e8f0;padding:2px 8px;color:#334155;font-size:10px;font-weight:700;text-transform:uppercase;">Characters ({{ (int) ($item->clicker_character_count ?? $characters->count()) }})</span></div>

@@ -38,7 +38,7 @@ class OrderUpdateMail extends Mailable
         $order = Order::query()
             ->with([
                 'agent:id,agt_name,email',
-                'items:id,order_id,product_code,product_name,quantity,clicker_character_count,clicker_characters,unit_price,line_total,is_preorder',
+                'items:id,order_id,product_code,product_name,quantity,clicker_character_count,clicker_characters,clicker_casing_image_path,clicker_huruf_image_path,unit_price,line_total,is_preorder',
             ])
             ->findOrFail($this->orderId);
 

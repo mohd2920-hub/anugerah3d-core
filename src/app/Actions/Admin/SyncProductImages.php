@@ -8,11 +8,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class SyncProductImages
 {
+    public function __construct(private StoreResizedProductImage $storeResizedProductImage) {}
+
     /**
      * @param  array<int, UploadedFile>  $uploads
      * @param  array<int, int|string>  $removeImageIds
@@ -98,28 +99,12 @@ class SyncProductImages
 
     private function store(UploadedFile $upload, Product $product): string
     {
-        $directory = public_path('images/products');
-        File::ensureDirectoryExists($directory);
-
-        if (! is_dir($directory) || ! is_writable($directory)) {
-            throw ValidationException::withMessages([
-                'product_images' => 'Unable to save product pictures. Please contact support.',
-            ]);
-        }
-
-        $extension = match ($upload->getMimeType()) {
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            default => throw ValidationException::withMessages([
-                'product_images' => 'Only JPG, PNG, and WebP pictures are supported.',
-            ]),
-        };
-
-        $filename = 'product-'.$product->getKey().'-'.Str::uuid().'.'.$extension;
-        $upload->move($directory, $filename);
-
-        return 'images/products/'.$filename;
+        return $this->storeResizedProductImage->handle(
+            $upload,
+            'images/products',
+            'product-'.$product->getKey().'-',
+            'product_images',
+        );
     }
 
     /**

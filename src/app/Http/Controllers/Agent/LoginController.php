@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Agent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Agent\LoginRequest;
 use App\Models\Agent;
-use App\Support\AgentLoginCaptcha;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,11 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
-    public function __construct(private AgentLoginCaptcha $captcha) {}
-
     public function __invoke(Request $request): View
     {
-        return view('agent.auth.login', ['captchaChallenge' => $this->captcha->challenge($request)]);
+        return view('agent.auth.login');
     }
 
     public function store(LoginRequest $request): RedirectResponse
@@ -40,15 +37,12 @@ class LoginController extends Controller
         }
 
         if (! $authenticated) {
-            $this->captcha->registerFailure($request);
-
             throw ValidationException::withMessages([
                 'login_id' => 'The login ID / phone number or password is incorrect, or this account is not active.',
             ])->redirectTo(route('agent.login'));
         }
 
         $request->session()->regenerate();
-        $this->captcha->clear($request);
 
         /** @var Agent|null $agent */
         $agent = Auth::guard('agent')->user();

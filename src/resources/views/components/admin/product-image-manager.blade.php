@@ -10,14 +10,14 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="text-sm font-semibold text-slate-900">Product pictures</h2>
-            <p class="mt-1 text-xs text-slate-500">Upload up to 5 JPG, PNG, or WebP pictures. Choose one as the main picture.</p>
+            <p class="mt-1 text-xs text-slate-500">Upload up to 5 JPG, PNG, or WebP pictures with a maximum width of 500px. Choose one as the main picture.</p>
         </div>
         <span data-image-count class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">{{ $images->count() }} of 5</span>
     </div>
 
     <label class="mt-4 flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white px-5 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
         <svg class="h-6 w-6 text-[#1a73e8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
-        <span><span class="block text-sm font-semibold text-slate-800">Choose product pictures</span><span class="mt-1 block text-xs text-slate-500">You can select several pictures together · 5 MB each</span></span>
+        <span><span class="block text-sm font-semibold text-slate-800">Choose product pictures</span><span class="mt-1 block text-xs text-slate-500">You can select several pictures together · 5 MB each · max width 500px</span></span>
         <input data-product-image-input type="file" name="product_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
     </label>
 

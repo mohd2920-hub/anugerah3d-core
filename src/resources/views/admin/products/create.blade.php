@@ -74,7 +74,7 @@
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <h3 class="text-sm font-semibold text-slate-900">Casing</h3>
-                                        <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Cut to 600px only.</p>
+                                        <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Maximum width 500px.</p>
                                     </div>
                                     <span data-clicker-file-count="casing" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">0 / 10</span>
                                 </div>
@@ -99,7 +99,7 @@
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <h3 class="text-sm font-semibold text-slate-900">Huruf</h3>
-                                        <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Cut to 600px only.</p>
+                                        <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Maximum width 500px.</p>
                                     </div>
                                     <span data-clicker-file-count="huruf" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">0 / 10</span>
                                 </div>

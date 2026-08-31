@@ -45,19 +45,6 @@
                     @error('password')<span class="mt-2 block text-xs font-semibold text-red-600">{{ $message }}</span>@enderror
                 </label>
 
-                <fieldset>
-                    <legend class="mb-2 text-sm font-bold text-slate-700">Security check</legend>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="relative flex h-13 items-center justify-center overflow-hidden rounded-2xl bg-[#17324d] text-white">
-                            <span class="absolute inset-0 opacity-15" style="background-image: repeating-linear-gradient(25deg, transparent 0 8px, white 9px 10px);"></span>
-                            <span data-captcha-challenge class="relative text-xl font-black tracking-[0.2em]">{{ $captchaChallenge }}</span>
-                        </div>
-                        <input name="captcha" type="number" inputmode="numeric" autocomplete="off" placeholder="Answer" required class="h-13 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-center text-base font-bold outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#e7682b] focus:bg-white focus:ring-4 focus:ring-orange-100">
-                    </div>
-                    @error('captcha')<span class="mt-2 block text-xs font-semibold text-red-600">{{ $message }}</span>@enderror
-                    @if (session('captcha_regenerated'))<span class="mt-2 block text-xs font-semibold text-emerald-700">A new captcha was generated after 3 failed attempts.</span>@endif
-                </fieldset>
-
                 <label class="flex min-h-10 items-center gap-3 text-sm font-medium text-slate-600">
                     <input name="remember" value="1" type="checkbox" @checked(old('remember')) class="h-5 w-5 rounded-md border-slate-300 text-[#e7682b] focus:ring-[#e7682b]">
                     Keep me signed in on this device

@@ -57,6 +57,8 @@ class HistoryController extends Controller
                 'preorder' => $item->is_preorder,
                 'clicker_character_count' => (int) ($item->clicker_character_count ?? 0),
                 'clicker_characters' => $item->clickerCharactersText(),
+                'clicker_casing_image_url' => $item->clickerCasingImageUrl(),
+                'clicker_huruf_image_url' => $item->clickerHurufImageUrl(),
             ])->all(),
             'timeline' => $this->timeline($order),
         ];

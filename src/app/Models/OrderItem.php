@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'quantity',
     'clicker_character_count',
     'clicker_characters',
+    'clicker_casing_image_path',
+    'clicker_huruf_image_path',
     'reserved_quantity',
     'unit_selling_price',
     'discount_percentage',
@@ -58,6 +60,25 @@ class OrderItem extends Model
         }
 
         return $characters->implode('');
+    }
+
+    public function clickerCasingImageUrl(): ?string
+    {
+        return $this->clickerImageUrl($this->clicker_casing_image_path);
+    }
+
+    public function clickerHurufImageUrl(): ?string
+    {
+        return $this->clickerImageUrl($this->clicker_huruf_image_path);
+    }
+
+    private function clickerImageUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return filter_var($path, FILTER_VALIDATE_URL) ? $path : asset(ltrim($path, '/'));
     }
 
     protected function casts(): array

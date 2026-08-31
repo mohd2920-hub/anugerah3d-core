@@ -2,12 +2,9 @@
 
 namespace App\Http\Requests\Agent;
 
-use App\Support\AgentLoginCaptcha;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 
 class LoginRequest extends FormRequest
 {
@@ -22,20 +19,7 @@ class LoginRequest extends FormRequest
         return [
             'login_id' => ['required', 'string', 'max:100'],
             'password' => ['required', 'string'],
-            'captcha' => ['required', 'integer', Rule::in([(int) $this->session()->get('agent_login_captcha_answer', -1)])],
             'remember' => ['sometimes', 'accepted'],
-        ];
-    }
-
-    /** @return array<int, callable> */
-    public function after(): array
-    {
-        return [
-            function (Validator $validator): void {
-                if ($validator->errors()->has('captcha') && $this->filled(['login_id', 'password', 'captcha'])) {
-                    app(AgentLoginCaptcha::class)->registerFailure($this);
-                }
-            },
         ];
     }
 
@@ -75,12 +59,6 @@ class LoginRequest extends FormRequest
     public function remember(): bool
     {
         return $this->boolean('remember');
-    }
-
-    /** @return array<string, string> */
-    public function messages(): array
-    {
-        return ['captcha.in' => 'The security answer is incorrect. The challenge refreshes after three failed attempts.'];
     }
 
     protected function prepareForValidation(): void

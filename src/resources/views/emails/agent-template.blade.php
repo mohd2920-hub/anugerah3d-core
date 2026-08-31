@@ -1,6 +1,13 @@
 @php
     $logoPath = public_path("images/anugerah3d-logo.png");
     $logoUrl = isset($message) && file_exists($logoPath) ? $message->embed($logoPath) : asset("images/anugerah3d-logo.png");
+    $mailMessage = $message ?? null;
+    $templateImageUrls = collect($template->imagePaths())
+        ->filter(static fn (string $path): bool => file_exists(public_path($path)))
+        ->map(static fn (string $path): string => $mailMessage
+            ? $mailMessage->embed(public_path($path))
+            : asset($path))
+        ->all();
 @endphp
 <!doctype html>
 <html lang="en">
@@ -24,9 +31,19 @@
         <tr>
             <td style="padding:28px 30px;">
                 <div style="font-size:16px;font-weight:700;color:#17324d;">Hi {{ $recipient->agt_name }},</div>
+                @if ($template->image_position === \App\Models\AgentEmailTemplate::ImagePositionTop)
+                    <div style="margin-top:18px;">
+                        <x-mail.agent-template-images :image-urls="$templateImageUrls" />
+                    </div>
+                @endif
                 <div style="margin-top:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:20px;font-size:15px;line-height:1.8;color:#334155;">
                     {!! nl2br(e($template->body)) !!}
                 </div>
+                @if ($template->image_position === \App\Models\AgentEmailTemplate::ImagePositionBottom)
+                    <div style="margin-top:18px;">
+                        <x-mail.agent-template-images :image-urls="$templateImageUrls" />
+                    </div>
+                @endif
                 <p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#64748b;">If you need help, please reply to the official Anugerah3D support or contact your admin team.</p>
             </td>
         </tr>

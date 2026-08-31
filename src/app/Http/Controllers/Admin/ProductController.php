@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Admin\StoreResizedProductImage;
 use App\Actions\Admin\SyncProductImages;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductRequest;
@@ -19,11 +20,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
-    public function __construct(private SyncProductImages $syncProductImages) {}
+    public function __construct(
+        private SyncProductImages $syncProductImages,
+        private StoreResizedProductImage $storeResizedProductImage,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -112,49 +115,49 @@ class ProductController extends Controller
 
     public function show(Product $product): View
     {
-        $product->load(["images", "materialType"]);
+        $product->load(['images', 'materialType']);
 
-        $clickerCharacterPrices = DB::table("product_clicker_prices")
-            ->where("product_id", $product->getKey())
-            ->pluck("price_rm", "character_count")
+        $clickerCharacterPrices = DB::table('product_clicker_prices')
+            ->where('product_id', $product->getKey())
+            ->pluck('price_rm', 'character_count')
             ->mapWithKeys(fn (mixed $price, mixed $characterCount): array => [
-                (int) $characterCount => number_format((float) $price, 2, ".", ""),
+                (int) $characterCount => number_format((float) $price, 2, '.', ''),
             ])
             ->all();
 
-        $clickerImages = DB::table("product_clicker_images")
-            ->where("product_id", $product->getKey())
-            ->orderBy("image_type")
-            ->orderBy("position")
+        $clickerImages = DB::table('product_clicker_images')
+            ->where('product_id', $product->getKey())
+            ->orderBy('image_type')
+            ->orderBy('position')
             ->get()
-            ->groupBy("image_type");
+            ->groupBy('image_type');
 
         $orderSales = $product->orderItems()
-            ->selectRaw("COALESCE(SUM(quantity), 0) as total_quantity, COALESCE(SUM(line_total), 0) as total_amount")
+            ->selectRaw('COALESCE(SUM(quantity), 0) as total_quantity, COALESCE(SUM(line_total), 0) as total_amount')
             ->first();
 
         $posSales = $product->posSaleItems()
-            ->selectRaw("COALESCE(SUM(quantity), 0) as total_quantity, COALESCE(SUM(line_total), 0) as total_amount")
+            ->selectRaw('COALESCE(SUM(quantity), 0) as total_quantity, COALESCE(SUM(line_total), 0) as total_amount')
             ->first();
 
         $summary = [
-            "total_sold_quantity" => (int) ($orderSales->total_quantity ?? 0) + (int) ($posSales->total_quantity ?? 0),
-            "total_sales_amount" => (float) ($orderSales->total_amount ?? 0) + (float) ($posSales->total_amount ?? 0),
-            "stock_balance" => (int) $product->prd_balance,
-            "gallery_count" => $product->images->count() + $clickerImages->flatten(1)->count(),
-            "order_sold_quantity" => (int) ($orderSales->total_quantity ?? 0),
-            "order_sales_amount" => (float) ($orderSales->total_amount ?? 0),
-            "pos_sold_quantity" => (int) ($posSales->total_quantity ?? 0),
-            "pos_sales_amount" => (float) ($posSales->total_amount ?? 0),
+            'total_sold_quantity' => (int) ($orderSales->total_quantity ?? 0) + (int) ($posSales->total_quantity ?? 0),
+            'total_sales_amount' => (float) ($orderSales->total_amount ?? 0) + (float) ($posSales->total_amount ?? 0),
+            'stock_balance' => (int) $product->prd_balance,
+            'gallery_count' => $product->images->count() + $clickerImages->flatten(1)->count(),
+            'order_sold_quantity' => (int) ($orderSales->total_quantity ?? 0),
+            'order_sales_amount' => (float) ($orderSales->total_amount ?? 0),
+            'pos_sold_quantity' => (int) ($posSales->total_quantity ?? 0),
+            'pos_sales_amount' => (float) ($posSales->total_amount ?? 0),
         ];
 
-        return view("admin.products.edit", [
-            "product" => $product,
-            "materials" => collect(),
-            "clickerCharacterPrices" => $clickerCharacterPrices,
-            "clickerImages" => $clickerImages,
-            "summary" => $summary,
-            "isReadOnly" => true,
+        return view('admin.products.edit', [
+            'product' => $product,
+            'materials' => collect(),
+            'clickerCharacterPrices' => $clickerCharacterPrices,
+            'clickerImages' => $clickerImages,
+            'summary' => $summary,
+            'isReadOnly' => true,
         ]);
     }
 
@@ -271,7 +274,7 @@ class ProductController extends Controller
                     'image_path' => $path,
                     'alt_text' => $product->prd_name.' '.$type.' '.($index + 1),
                     'position' => $index + 1,
-                    'crop_width_px' => 600,
+                    'crop_width_px' => StoreResizedProductImage::MAX_WIDTH,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -293,28 +296,12 @@ class ProductController extends Controller
 
     private function storeClickerImage(Product $product, string $type, UploadedFile $upload): string
     {
-        $directory = public_path("images/products/{$product->getKey()}/clicker/{$type}");
-        File::ensureDirectoryExists($directory);
-
-        if (! is_dir($directory) || ! is_writable($directory)) {
-            throw ValidationException::withMessages([
-                "clicker_{$type}_images" => 'Unable to save clicker images. Please contact support.',
-            ]);
-        }
-
-        $extension = match ($upload->getMimeType()) {
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            default => throw ValidationException::withMessages([
-                "clicker_{$type}_images" => 'Only JPG, PNG, and WebP pictures are supported.',
-            ]),
-        };
-
-        $filename = "product-clicker-{$type}-{$product->getKey()}-".Str::uuid().'.'.$extension;
-        $upload->move($directory, $filename);
-
-        return "images/products/{$product->getKey()}/clicker/{$type}/{$filename}";
+        return $this->storeResizedProductImage->handle(
+            $upload,
+            "images/products/{$product->getKey()}/clicker/{$type}",
+            "product-clicker-{$type}-{$product->getKey()}-",
+            "clicker_{$type}_images",
+        );
     }
 
     /**
@@ -323,6 +310,15 @@ class ProductController extends Controller
     private function deleteManagedClickerFiles(iterable $paths): void
     {
         foreach ($paths as $path) {
+            $isUsedByOrder = DB::table('order_items')
+                ->where('clicker_casing_image_path', $path)
+                ->orWhere('clicker_huruf_image_path', $path)
+                ->exists();
+
+            if ($isUsedByOrder) {
+                continue;
+            }
+
             if (Str::startsWith($path, 'images/products/')) {
                 File::delete(public_path($path));
             }
