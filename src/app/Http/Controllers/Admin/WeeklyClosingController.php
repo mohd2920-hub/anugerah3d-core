@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\WeeklyClosing\BuildWeeklyPayoutReport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\IndexWeeklyClosingsRequest;
 use App\Http\Requests\Admin\UpdateWeeklyClosingPaymentRequest;
 use App\Mail\Agent\WeeklyClosingPaymentMadeMail;
 use App\Models\WeeklyClosing;
@@ -19,9 +21,19 @@ use Illuminate\Support\Str;
 
 class WeeklyClosingController extends Controller
 {
-    public function index(Request $request): View
+    public function __construct(
+        private BuildWeeklyPayoutReport $buildWeeklyPayoutReport,
+    ) {}
+
+    public function index(IndexWeeklyClosingsRequest $request): View
     {
-        $search = $request->string('search')->trim()->toString();
+        $validated = $request->validated();
+        $search = trim((string) ($validated['search'] ?? ''));
+        $reportFilters = [
+            'report_period' => (string) ($validated['report_period'] ?? 'month'),
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+        ];
 
         $closings = WeeklyClosing::query()
             ->when($search !== '', fn (Builder $query): Builder => $query->where('week_key', 'like', "%{$search}%"))
@@ -37,6 +49,7 @@ class WeeklyClosingController extends Controller
         return view('admin.weekly-closings.index', [
             'closings' => $closings,
             'search' => $search,
+            'payoutReport' => $this->buildWeeklyPayoutReport->handle($reportFilters),
         ]);
     }
 
