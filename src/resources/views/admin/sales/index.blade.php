@@ -36,11 +36,17 @@
                 <p class="mt-2 text-2xl font-semibold text-blue-950">RM {{ number_format((float) $summary['total_amount'], 2) }}</p>
                 <p class="mt-1 text-xs text-blue-700">Gross list value: RM {{ number_format((float) $summary['gross_amount'], 2) }}</p>
             </div>
-            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Discounts</p>
+            <a href="{{ route('admin.sales.index', array_merge(request()->except(['page', 'discount_page', 'show_discounts']), $discountDetails ? [] : ['show_discounts' => 1])).($discountDetails ? '' : '#discount-breakdown') }}" class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm transition hover:border-amber-400 hover:bg-amber-100">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Discounts</p>
+                    <span class="text-xs font-semibold text-amber-800">{{ $discountDetails ? 'Hide breakdown' : 'View breakdown' }} ></span>
+                </div>
                 <p class="mt-2 text-2xl font-semibold text-amber-950">RM {{ number_format((float) $summary['discount_amount'], 2) }}</p>
-                <p class="mt-1 text-xs text-amber-700">Agent and customer discounts</p>
-            </div>
+                <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-amber-800">
+                    <span>Agent: RM {{ number_format((float) $summary['agent_discount_amount'], 2) }}</span>
+                    <span>Customer: RM {{ number_format((float) $summary['customer_discount_amount'], 2) }}</span>
+                </div>
+            </a>
             <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Cost</p>
                 <p class="mt-2 text-2xl font-semibold text-rose-950">RM {{ number_format((float) $summary['total_cost'], 2) }}</p>
@@ -53,6 +59,63 @@
             </div>
         </div>
     </section>
+
+    @if ($discountDetails)
+        <section id="discount-breakdown" class="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-amber-200" aria-label="Discount breakdown">
+            <div class="flex flex-wrap items-start justify-between gap-3 border-b border-amber-100 bg-amber-50 p-5">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Discount breakdown by transaction</p>
+                    <p class="mt-1 text-sm text-amber-900">{{ $periodLabel }} - {{ number_format($discountDetails->total()) }} discounted product lines</p>
+                </div>
+                <a href="{{ route('admin.sales.index', request()->except(['page', 'discount_page', 'show_discounts'])) }}" class="inline-flex min-h-9 items-center rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-800">Close</a>
+            </div>
+            <div class="grid gap-3 border-b border-slate-200 p-5 sm:grid-cols-3">
+                <div class="rounded-lg bg-slate-50 p-4"><p class="text-xs font-semibold uppercase text-slate-500">Agent discount</p><p class="mt-2 text-xl font-semibold text-slate-950">RM {{ number_format((float) $summary['agent_discount_amount'], 2) }}</p></div>
+                <div class="rounded-lg bg-slate-50 p-4"><p class="text-xs font-semibold uppercase text-slate-500">Customer discount</p><p class="mt-2 text-xl font-semibold text-slate-950">RM {{ number_format((float) $summary['customer_discount_amount'], 2) }}</p></div>
+                <div class="rounded-lg bg-amber-50 p-4"><p class="text-xs font-semibold uppercase text-amber-700">Combined discount</p><p class="mt-2 text-xl font-semibold text-amber-950">RM {{ number_format((float) $summary['discount_amount'], 2) }}</p></div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="admin-data-table w-full min-w-[960px] text-xs">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Sale</th>
+                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Agent / Customer</th>
+                            <th class="px-4 py-3 text-left font-semibold text-slate-700">Product</th>
+                            <th class="px-4 py-3 text-right font-semibold text-slate-700">Agent discount</th>
+                            <th class="px-4 py-3 text-right font-semibold text-slate-700">Customer discount</th>
+                            <th class="px-4 py-3 text-right font-semibold text-slate-700">Total discount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse ($discountDetails as $item)
+                            <tr class="align-top hover:bg-slate-50">
+                                <td class="px-4 py-4">
+                                    <a href="{{ route('admin.sales.show', $item->posSale) }}" class="font-mono font-semibold text-[#1a73e8] hover:underline">{{ $item->posSale->sale_number }}</a>
+                                    <p class="mt-1 text-slate-500">{{ $item->posSale->sold_at->format('d M Y, h:i A') }}</p>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <p class="font-semibold text-slate-900">{{ $item->posSale->salesAgent->agt_name }}</p>
+                                    <p class="mt-1 text-slate-500">{{ $item->posSale->customer_name ?: 'Walk-in customer' }}</p>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <p class="font-semibold text-slate-900">{{ $item->product_name }}</p>
+                                    <p class="mt-1 font-mono text-slate-500">{{ $item->product_code }} - {{ number_format($item->quantity) }} units</p>
+                                </td>
+                                <td class="px-4 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $item->agent_discount_amount, 2) }}</td>
+                                <td class="px-4 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $item->customer_discount_amount, 2) }}</td>
+                                <td class="px-4 py-4 text-right font-semibold text-amber-800">RM {{ number_format((float) $item->agent_discount_amount + (float) $item->customer_discount_amount, 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No discounted sales match the selected filters.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if ($discountDetails->hasPages())
+                <div class="border-t border-slate-200 p-4">{{ $discountDetails->links() }}</div>
+            @endif
+        </section>
+    @endif
 
     <section class="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]" aria-label="Sales performance">
         <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

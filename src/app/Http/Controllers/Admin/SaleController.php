@@ -45,6 +45,9 @@ class SaleController extends Controller
             ->first();
         $itemTotals = $this->salesItemTotals($filters);
         $totalCost = (float) $itemTotals->total_cost;
+        $discountDetails = (bool) ($validated['show_discounts'] ?? false)
+            ? $this->discountDetails($filters)
+            : null;
 
         return view('admin.sales.index', [
             'sales' => $sales,
@@ -59,12 +62,15 @@ class SaleController extends Controller
                 'total_units' => (int) $itemTotals->total_units,
                 'gross_amount' => (float) $itemTotals->gross_amount,
                 'discount_amount' => (float) $itemTotals->discount_amount,
+                'agent_discount_amount' => (float) $itemTotals->agent_discount_amount,
+                'customer_discount_amount' => (float) $itemTotals->customer_discount_amount,
                 'total_cost' => $totalCost,
                 'profit_amount' => round((float) $totals->total_amount - $totalCost, 2),
                 'by_site' => $this->salesByBusinessSite($filters),
                 'top_product' => $this->topProduct($filters),
                 'top_agent' => $this->topAgent($filters),
             ],
+            'discountDetails' => $discountDetails,
         ]);
     }
 
@@ -176,8 +182,39 @@ class SaleController extends Controller
             ->selectRaw("COALESCE(SUM({$itemsTable}.quantity), 0) as total_units")
             ->selectRaw("COALESCE(SUM({$itemsTable}.unit_price * {$itemsTable}.quantity), 0) as gross_amount")
             ->selectRaw("COALESCE(SUM({$itemsTable}.agent_discount_amount + {$itemsTable}.customer_discount_amount), 0) as discount_amount")
+            ->selectRaw("COALESCE(SUM({$itemsTable}.agent_discount_amount), 0) as agent_discount_amount")
+            ->selectRaw("COALESCE(SUM({$itemsTable}.customer_discount_amount), 0) as customer_discount_amount")
             ->selectRaw("COALESCE(SUM(COALESCE({$productsTable}.cost_rm, 0) * {$itemsTable}.quantity), 0) as total_cost")
             ->first();
+    }
+
+    private function discountDetails(array $filters): object
+    {
+        $matchingSales = $this->filteredSalesQuery($filters)
+            ->select((new PosSale)->qualifyColumn('id'));
+
+        return PosSaleItem::query()
+            ->whereIn('pos_sale_id', $matchingSales)
+            ->where(function (Builder $query): void {
+                $query->where('agent_discount_amount', '>', 0)
+                    ->orWhere('customer_discount_amount', '>', 0);
+            })
+            ->with([
+                'posSale:id,sale_number,sold_at,sales_agent_id,customer_name',
+                'posSale.salesAgent:id,agt_name,login_id',
+            ])
+            ->latest('id')
+            ->paginate(20, [
+                'id',
+                'pos_sale_id',
+                'product_code',
+                'product_name',
+                'quantity',
+                'agent_discount_amount',
+                'customer_discount_amount',
+            ], 'discount_page')
+            ->withQueryString()
+            ->fragment('discount-breakdown');
     }
 
     /** @return array{0: CarbonInterface, 1: CarbonInterface} */

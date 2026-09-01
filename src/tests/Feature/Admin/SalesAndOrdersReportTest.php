@@ -65,8 +65,27 @@ class SalesAndOrdersReportTest extends TestCase
         $this->assertSame(80.0, $summary['total_amount']);
         $this->assertSame(100.0, $summary['gross_amount']);
         $this->assertSame(20.0, $summary['discount_amount']);
+        $this->assertSame(10.0, $summary['agent_discount_amount']);
+        $this->assertSame(10.0, $summary['customer_discount_amount']);
         $this->assertSame(20.0, $summary['total_cost']);
         $this->assertSame(60.0, $summary['profit_amount']);
+        $this->assertNull($response->viewData('discountDetails'));
+
+        $breakdownResponse = $this->get(route('admin.sales.index', [
+            'start_date' => '2026-08-10',
+            'end_date' => '2026-08-10',
+            'show_discounts' => 1,
+        ]));
+        $discountDetails = $breakdownResponse->viewData('discountDetails');
+
+        $breakdownResponse->assertOk()
+            ->assertSeeText('Discount breakdown by transaction')
+            ->assertSeeText('Agent discount')
+            ->assertSeeText('Customer discount')
+            ->assertSeeText($includedSale->sale_number)
+            ->assertDontSeeText('POS-OUT-RANGE');
+        $this->assertSame(1, $discountDetails->total());
+        $this->assertSame($includedSale->getKey(), $discountDetails->first()->pos_sale_id);
     }
 
     public function test_orders_report_applies_date_range_to_rows_and_financial_summary(): void

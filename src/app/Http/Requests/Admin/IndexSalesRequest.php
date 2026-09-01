@@ -31,6 +31,7 @@ class IndexSalesRequest extends FormRequest
             'period' => ['nullable', 'string', Rule::in(['today', 'yesterday', 'week', 'month', '30_days'])],
             'start_date' => ['nullable', 'required_with:end_date', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'required_with:start_date', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'show_discounts' => ['nullable', 'boolean'],
         ];
     }
 }
