@@ -30,62 +30,111 @@
             </div>
         @endif
 
-        <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Order summary">
-            <a href="{{ route('admin.orders.index') }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">All orders</p>
-                <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['total']) }}</p>
-            </a>
-            <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm transition hover:border-amber-400">
-                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Pending action</p>
-                <p class="mt-2 text-2xl font-semibold text-amber-900">{{ number_format($summary['pending']) }}</p>
-            </a>
-            <a href="{{ route('admin.orders.index', ['status' => 'processing']) }}" class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm transition hover:border-blue-400">
-                <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Processing</p>
-                <p class="mt-2 text-2xl font-semibold text-blue-900">{{ number_format($summary['processing']) }}</p>
-            </a>
-            <a href="{{ route('admin.orders.index', ['status' => 'completed']) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:border-emerald-400">
-                <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Completed</p>
-                <p class="mt-2 text-2xl font-semibold text-emerald-900">{{ number_format($summary['completed']) }}</p>
-                <p class="mt-1 text-xs text-emerald-800">Sales: RM {{ number_format((float) $summary['completed_sales_amount'], 2) }}</p>
-            </a>
-            <div class="rounded-lg border border-teal-200 bg-teal-50 p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">Total profit</p>
-                <p class="mt-2 text-2xl font-semibold text-teal-900">RM {{ number_format((float) $summary['total_profit'], 2) }}</p>
-                <p class="mt-1 text-xs text-teal-800">Net (after bonus)</p>
+        <section aria-label="Order summary">
+            <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Advanced order summary</p>
+                    <p class="mt-1 text-sm font-medium text-slate-700">{{ $dateLabel }}</p>
+                </div>
+                <p class="text-xs text-slate-500">Financial values exclude cancelled orders and follow the active filters.</p>
             </div>
-            <div class="rounded-lg border border-violet-200 bg-violet-50 p-4 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Bonus</p>
-                <a href="{{ route('admin.orders.index', ['payment_status' => 'paid']) }}" class="mt-2 block rounded-md px-2 py-1 text-sm font-semibold text-violet-900 hover:bg-violet-100">Paid: RM {{ number_format((float) $summary['bonus_paid'], 2) }}</a>
-                <a href="{{ route('admin.orders.index', ['payment_status' => 'unpaid']) }}" class="mt-1 block rounded-md px-2 py-1 text-sm font-semibold text-violet-900 hover:bg-violet-100">Pending: RM {{ number_format((float) $summary['bonus_pending'], 2) }}</a>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <a href="{{ route('admin.orders.index', request()->except(['page', 'status'])) }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Orders</p>
+                    <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['total']) }}</p>
+                    <p class="mt-1 text-xs text-slate-500">{{ number_format($summary['total_units']) }} units</p>
+                </a>
+                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'pending'])) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Pending</p>
+                    <p class="mt-2 text-2xl font-semibold text-amber-900">{{ number_format($summary['pending']) }}</p>
+                </a>
+                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'processing'])) }}" class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Processing</p>
+                    <p class="mt-2 text-2xl font-semibold text-blue-900">{{ number_format($summary['processing']) }}</p>
+                </a>
+                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'completed'])) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Completed</p>
+                    <p class="mt-2 text-2xl font-semibold text-emerald-900">{{ number_format($summary['completed']) }}</p>
+                    <p class="mt-1 text-xs text-emerald-700">RM {{ number_format((float) $summary['completed_sales_amount'], 2) }}</p>
+                </a>
+                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'cancelled'])) }}" class="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-red-700">Cancelled</p>
+                    <p class="mt-2 text-2xl font-semibold text-red-900">{{ number_format($summary['cancelled']) }}</p>
+                </a>
+            </div>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Order value</p>
+                    <p class="mt-2 text-2xl font-semibold text-blue-950">RM {{ number_format((float) $summary['sales_amount'], 2) }}</p>
+                    <p class="mt-1 text-xs text-blue-700">Subtotal RM {{ number_format((float) $summary['subtotal_amount'], 2) }} + delivery RM {{ number_format((float) $summary['delivery_amount'], 2) }}</p>
+                </div>
+                <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Product cost</p>
+                    <p class="mt-2 text-2xl font-semibold text-rose-950">RM {{ number_format((float) $summary['cost_amount'], 2) }}</p>
+                </div>
+                <div class="rounded-lg border border-cyan-200 bg-cyan-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Gross profit</p>
+                    <p class="mt-2 text-2xl font-semibold text-cyan-950">RM {{ number_format((float) $summary['gross_profit'], 2) }}</p>
+                    <p class="mt-1 text-xs text-cyan-700">Before upline bonus</p>
+                </div>
+                <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Net profit</p>
+                    <p class="mt-2 text-2xl font-semibold text-emerald-950">RM {{ number_format((float) $summary['total_profit'], 2) }}</p>
+                    <p class="mt-1 text-xs text-emerald-700">After upline bonus</p>
+                </div>
+                <div class="rounded-lg border border-violet-200 bg-violet-50 p-4 shadow-sm sm:col-span-2 xl:col-span-4">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Upline bonus breakdown</p>
+                    <div class="mt-2 flex flex-wrap gap-x-8 gap-y-2 text-sm font-semibold text-violet-950">
+                        <span>Paid: RM {{ number_format((float) $summary['bonus_paid'], 2) }}</span>
+                        <span>Pending: RM {{ number_format((float) $summary['bonus_pending'], 2) }}</span>
+                        <span>Total: RM {{ number_format((float) $summary['bonus_paid'] + (float) $summary['bonus_pending'], 2) }}</span>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-            <form method="GET" action="{{ route('admin.orders.index') }}" class="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_170px_170px_170px_auto]">
-                <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Order no., agent, recipient or product..." class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-
-                <select name="status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                    <option value="">All statuses</option>
-                    @foreach ($statuses as $status)
-                        <option value="{{ $status }}" @selected($filters['status'] === $status)>{{ Str::headline($status) }}</option>
-                    @endforeach
-                </select>
-
-                <select name="payment_status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                    <option value="">All payments</option>
-                    @foreach ($paymentStatuses as $paymentStatus)
-                        <option value="{{ $paymentStatus }}" @selected($filters['payment_status'] === $paymentStatus)>{{ Str::headline($paymentStatus) }}</option>
-                    @endforeach
-                </select>
-
-                <select name="fulfilment_method" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                    <option value="">All fulfilment</option>
-                    <option value="delivery" @selected($filters['fulfilment_method'] === 'delivery')>Delivery</option>
-                    <option value="pickup" @selected($filters['fulfilment_method'] === 'pickup')>Self pickup</option>
-                </select>
-
-                <div class="flex gap-2">
-                    <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">Filter</button>
+            <form method="GET" action="{{ route('admin.orders.index') }}" class="grid gap-3 lg:grid-cols-7">
+                <label class="lg:col-span-2">
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">Search</span>
+                    <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Order no., agent, recipient or product..." class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                </label>
+                <label>
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">Start date</span>
+                    <input name="start_date" type="date" value="{{ $filters['start_date'] }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                </label>
+                <label>
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">End date</span>
+                    <input name="end_date" type="date" value="{{ $filters['end_date'] }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                </label>
+                <label>
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">Status</span>
+                    <select name="status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                        <option value="">All statuses</option>
+                        @foreach ($statuses as $status)
+                            <option value="{{ $status }}" @selected($filters['status'] === $status)>{{ Str::headline($status) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">Payment</span>
+                    <select name="payment_status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                        <option value="">All payments</option>
+                        @foreach ($paymentStatuses as $paymentStatus)
+                            <option value="{{ $paymentStatus }}" @selected($filters['payment_status'] === $paymentStatus)>{{ Str::headline($paymentStatus) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    <span class="mb-1 block text-xs font-semibold text-slate-600">Fulfilment</span>
+                    <select name="fulfilment_method" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                        <option value="">All fulfilment</option>
+                        <option value="delivery" @selected($filters['fulfilment_method'] === 'delivery')>Delivery</option>
+                        <option value="pickup" @selected($filters['fulfilment_method'] === 'pickup')>Self pickup</option>
+                    </select>
+                </label>
+                <div class="flex gap-2 lg:col-span-7 lg:justify-end">
+                    <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-5 text-sm font-semibold text-white transition hover:bg-[#1558b0]">Apply filters</button>
                     @if (collect($filters)->filter()->isNotEmpty())
                         <a href="{{ route('admin.orders.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
                     @endif

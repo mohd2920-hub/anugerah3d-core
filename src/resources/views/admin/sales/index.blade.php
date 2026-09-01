@@ -8,7 +8,7 @@
     <section class="overflow-x-auto rounded-lg bg-white p-2 shadow-sm ring-1 ring-slate-200/70" aria-label="Sales period">
         <div class="flex min-w-max gap-2">
             @foreach ($periodOptions as $value => $label)
-                <a href="{{ route('admin.sales.index', array_merge(request()->except(['period', 'page']), ['period' => $value])) }}" @class([
+                <a href="{{ route('admin.sales.index', array_merge(request()->except(['period', 'page', 'start_date', 'end_date']), ['period' => $value])) }}" @class([
                     'rounded-lg px-4 py-2.5 text-sm font-semibold transition',
                     'bg-[#1a73e8] text-white shadow-sm' => $filters['period'] === $value,
                     'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' => $filters['period'] !== $value,
@@ -17,14 +17,40 @@
         </div>
     </section>
 
-    <section class="grid gap-3 sm:grid-cols-2" aria-label="Sales summary">
-        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $periodLabel }} transactions</p>
-            <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['transaction_count']) }}</p>
+    <section aria-label="Sales summary">
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Advanced sales summary</p>
+                <p class="mt-1 text-sm font-medium text-slate-700">{{ $periodLabel }}</p>
+            </div>
+            <p class="text-xs text-slate-500">All values follow the active filters below.</p>
         </div>
-        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">{{ $periodLabel }} sales</p>
-            <p class="mt-2 text-2xl font-semibold text-blue-950">RM {{ number_format((float) $summary['total_amount'], 2) }}</p>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Transactions</p>
+                <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['transaction_count']) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ number_format($summary['total_units']) }} units sold</p>
+            </div>
+            <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Sales collected</p>
+                <p class="mt-2 text-2xl font-semibold text-blue-950">RM {{ number_format((float) $summary['total_amount'], 2) }}</p>
+                <p class="mt-1 text-xs text-blue-700">Gross list value: RM {{ number_format((float) $summary['gross_amount'], 2) }}</p>
+            </div>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Discounts</p>
+                <p class="mt-2 text-2xl font-semibold text-amber-950">RM {{ number_format((float) $summary['discount_amount'], 2) }}</p>
+                <p class="mt-1 text-xs text-amber-700">Agent and customer discounts</p>
+            </div>
+            <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Cost</p>
+                <p class="mt-2 text-2xl font-semibold text-rose-950">RM {{ number_format((float) $summary['total_cost'], 2) }}</p>
+                <p class="mt-1 text-xs text-rose-700">Current product cost x units</p>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:col-span-2 xl:col-span-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Estimated profit</p>
+                <p class="mt-2 text-3xl font-semibold text-emerald-950">RM {{ number_format((float) $summary['profit_amount'], 2) }}</p>
+                <p class="mt-1 text-xs text-emerald-700">Sales collected minus current product cost</p>
+            </div>
         </div>
     </section>
 
@@ -70,24 +96,44 @@
     </section>
 
     <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-        <form method="GET" action="{{ route('admin.sales.index') }}" class="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_220px_160px_auto]">
+        @if ($errors->any())
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div>
+        @endif
+        <form method="GET" action="{{ route('admin.sales.index') }}" class="grid gap-3 lg:grid-cols-6">
             <input type="hidden" name="period" value="{{ $filters['period'] }}">
-            <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Sale no., customer, agent or site..." class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-            <select name="business_site_id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                <option value="">All business sites</option>
-                @foreach ($businessSites as $site)
-                    <option value="{{ $site->id }}" @selected($filters['business_site_id'] === $site->id)>{{ $site->site_name }} · {{ $site->city }}</option>
-                @endforeach
-            </select>
-            <select name="payment_method" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
-                <option value="">All payments</option>
-                @foreach ($paymentMethods as $value => $label)
-                    <option value="{{ $value }}" @selected($filters['payment_method'] === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-            <div class="flex gap-2">
-                <button class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white">Filter</button>
-                @if ($filters['search'] !== '' || $filters['business_site_id'] > 0 || $filters['payment_method'] !== '')
+            <label class="lg:col-span-2">
+                <span class="mb-1 block text-xs font-semibold text-slate-600">Search</span>
+                <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Sale no., customer, agent or site..." class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+            </label>
+            <label>
+                <span class="mb-1 block text-xs font-semibold text-slate-600">Start date</span>
+                <input name="start_date" type="date" value="{{ $filters['start_date'] }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+            </label>
+            <label>
+                <span class="mb-1 block text-xs font-semibold text-slate-600">End date</span>
+                <input name="end_date" type="date" value="{{ $filters['end_date'] }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+            </label>
+            <label>
+                <span class="mb-1 block text-xs font-semibold text-slate-600">Business site</span>
+                <select name="business_site_id" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                    <option value="">All business sites</option>
+                    @foreach ($businessSites as $site)
+                        <option value="{{ $site->id }}" @selected($filters['business_site_id'] === $site->id)>{{ $site->site_name }} - {{ $site->city }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>
+                <span class="mb-1 block text-xs font-semibold text-slate-600">Payment</span>
+                <select name="payment_method" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
+                    <option value="">All payments</option>
+                    @foreach ($paymentMethods as $value => $label)
+                        <option value="{{ $value }}" @selected($filters['payment_method'] === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <div class="flex gap-2 lg:col-span-6 lg:justify-end">
+                <button class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-5 text-sm font-semibold text-white">Apply filters</button>
+                @if (collect($filters)->except('period')->filter()->isNotEmpty())
                     <a href="{{ route('admin.sales.index', ['period' => $filters['period']]) }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700">Clear</a>
                 @endif
             </div>

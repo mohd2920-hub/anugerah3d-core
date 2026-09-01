@@ -3,26 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\IndexSalesRequest;
 use App\Models\BusinessSite;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
+use App\Models\Product;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
-    public function index(Request $request): View
+    public function index(IndexSalesRequest $request): View
     {
+        $validated = $request->validated();
         $filters = [
-            'search' => $request->string('search')->trim()->toString(),
-            'business_site_id' => $request->integer('business_site_id'),
-            'payment_method' => $request->string('payment_method')->trim()->toString(),
-            'period' => array_key_exists($request->string('period')->toString(), $this->periodOptions())
-                ? $request->string('period')->toString()
-                : 'today',
+            'search' => trim((string) ($validated['search'] ?? '')),
+            'business_site_id' => (int) ($validated['business_site_id'] ?? 0),
+            'payment_method' => trim((string) ($validated['payment_method'] ?? '')),
+            'period' => (string) ($validated['period'] ?? 'today'),
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
         ];
 
         $sales = $this->filteredSalesQuery($filters)
@@ -41,6 +43,8 @@ class SaleController extends Controller
             ->toBase()
             ->selectRaw('COUNT(*) as transaction_count, COALESCE(SUM(total_amount), 0) as total_amount')
             ->first();
+        $itemTotals = $this->salesItemTotals($filters);
+        $totalCost = (float) $itemTotals->total_cost;
 
         return view('admin.sales.index', [
             'sales' => $sales,
@@ -48,10 +52,15 @@ class SaleController extends Controller
             'businessSites' => BusinessSite::query()->orderBy('site_name')->get(['id', 'site_name', 'city']),
             'paymentMethods' => PosSale::paymentMethods(),
             'periodOptions' => $this->periodOptions(),
-            'periodLabel' => $this->periodOptions()[$filters['period']],
+            'periodLabel' => $this->periodLabel($filters),
             'summary' => [
                 'transaction_count' => (int) $totals->transaction_count,
                 'total_amount' => (float) $totals->total_amount,
+                'total_units' => (int) $itemTotals->total_units,
+                'gross_amount' => (float) $itemTotals->gross_amount,
+                'discount_amount' => (float) $itemTotals->discount_amount,
+                'total_cost' => $totalCost,
+                'profit_amount' => round((float) $totals->total_amount - $totalCost, 2),
                 'by_site' => $this->salesByBusinessSite($filters),
                 'top_product' => $this->topProduct($filters),
                 'top_agent' => $this->topAgent($filters),
@@ -134,7 +143,7 @@ class SaleController extends Controller
 
     private function applyFilters(Builder $query, array $filters): Builder
     {
-        [$periodStart, $periodEnd] = $this->periodRange($filters['period']);
+        [$periodStart, $periodEnd] = $this->dateRange($filters);
 
         return $query
             ->whereBetween('sold_at', [$periodStart, $periodEnd])
@@ -151,6 +160,49 @@ class SaleController extends Controller
             })
             ->when($filters['business_site_id'] > 0, fn (Builder $query): Builder => $query->where('business_site_id', $filters['business_site_id']))
             ->when(array_key_exists($filters['payment_method'], PosSale::paymentMethods()), fn (Builder $query): Builder => $query->where('payment_method', $filters['payment_method']));
+    }
+
+    private function salesItemTotals(array $filters): object
+    {
+        $itemsTable = (new PosSaleItem)->getTable();
+        $productsTable = (new Product)->getTable();
+        $matchingSales = $this->filteredSalesQuery($filters)
+            ->select((new PosSale)->qualifyColumn('id'));
+
+        return PosSaleItem::query()
+            ->leftJoin($productsTable, "{$productsTable}.id", '=', "{$itemsTable}.product_id")
+            ->whereIn("{$itemsTable}.pos_sale_id", $matchingSales)
+            ->toBase()
+            ->selectRaw("COALESCE(SUM({$itemsTable}.quantity), 0) as total_units")
+            ->selectRaw("COALESCE(SUM({$itemsTable}.unit_price * {$itemsTable}.quantity), 0) as gross_amount")
+            ->selectRaw("COALESCE(SUM({$itemsTable}.agent_discount_amount + {$itemsTable}.customer_discount_amount), 0) as discount_amount")
+            ->selectRaw("COALESCE(SUM(COALESCE({$productsTable}.cost_rm, 0) * {$itemsTable}.quantity), 0) as total_cost")
+            ->first();
+    }
+
+    /** @return array{0: CarbonInterface, 1: CarbonInterface} */
+    private function dateRange(array $filters): array
+    {
+        if ($filters['start_date'] !== null && $filters['end_date'] !== null) {
+            return [
+                now()->createFromFormat('Y-m-d', $filters['start_date'])->startOfDay(),
+                now()->createFromFormat('Y-m-d', $filters['end_date'])->endOfDay(),
+            ];
+        }
+
+        return $this->periodRange($filters['period']);
+    }
+
+    private function periodLabel(array $filters): string
+    {
+        if ($filters['start_date'] !== null && $filters['end_date'] !== null) {
+            $start = now()->createFromFormat('Y-m-d', $filters['start_date'])->format('d M Y');
+            $end = now()->createFromFormat('Y-m-d', $filters['end_date'])->format('d M Y');
+
+            return $start === $end ? $start : "{$start} - {$end}";
+        }
+
+        return $this->periodOptions()[$filters['period']];
     }
 
     /** @return array{0: CarbonInterface, 1: CarbonInterface} */

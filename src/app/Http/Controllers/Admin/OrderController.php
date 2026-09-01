@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Orders\ManageAdminOrder;
 use App\Actions\Orders\SendAgentOrderEmail;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\IndexOrdersRequest;
 use App\Http\Requests\Admin\ManageOrderRequest;
 use App\Http\Requests\Admin\UpdateOrderPaymentRequest;
 use App\Models\Order;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -23,7 +23,7 @@ class OrderController extends Controller
         private SendAgentOrderEmail $sendAgentOrderEmail,
     ) {}
 
-    public function index(Request $request): View
+    public function index(IndexOrdersRequest $request): View
     {
         $hasTier1Column = Schema::hasColumn('usr_agent', 'tier1_percentage');
         $hasTier2Column = Schema::hasColumn('usr_agent', 'tier2_percentage');
@@ -38,14 +38,17 @@ class OrderController extends Controller
             $tier2UplineSelect[] = 'tier2_percentage';
         }
 
+        $validated = $request->validated();
         $filters = [
-            'search' => $request->string('search')->trim()->toString(),
-            'status' => $request->string('status')->trim()->toString(),
-            'payment_status' => $request->string('payment_status')->trim()->toString(),
-            'fulfilment_method' => $request->string('fulfilment_method')->trim()->toString(),
+            'search' => trim((string) ($validated['search'] ?? '')),
+            'status' => (string) ($validated['status'] ?? ''),
+            'payment_status' => (string) ($validated['payment_status'] ?? ''),
+            'fulfilment_method' => (string) ($validated['fulfilment_method'] ?? ''),
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
         ];
 
-        $orders = Order::query()
+        $orders = $this->filteredOrdersQuery($filters)
             ->with([
                 'agent' => fn ($query) => $query
                     ->select($agentSelect)
@@ -60,10 +63,6 @@ class OrderController extends Controller
                 'items.product:id,prd_balance,cost_rm,prd_picture',
             ])
             ->withCount('items')
-            ->when($filters['search'] !== '', fn (Builder $query): Builder => $query->search($filters['search']))
-            ->when(in_array($filters['status'], $this->statuses(), true), fn (Builder $query): Builder => $query->where('status', $filters['status']))
-            ->when(in_array($filters['payment_status'], $this->paymentStatuses(), true), fn (Builder $query): Builder => $query->where('payment_status', $filters['payment_status']))
-            ->when(in_array($filters['fulfilment_method'], ['delivery', 'pickup'], true), fn (Builder $query): Builder => $query->where('fulfilment_method', $filters['fulfilment_method']))
             ->latest('placed_at')
             ->paginate(20)
             ->withQueryString();
@@ -73,7 +72,17 @@ class OrderController extends Controller
             $this->decorateOrderFinancials($order, $hasTier1Column, $hasTier2Column);
         });
 
-        $summaryOrders = Order::query()
+        $counts = $this->filteredOrdersQuery($filters)
+            ->toBase()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending")
+            ->selectRaw("SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->selectRaw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled")
+            ->selectRaw("COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as completed_sales_amount")
+            ->first();
+
+        $summaryOrders = $this->filteredOrdersQuery($filters)
             ->whereIn('status', [Order::StatusPending, Order::StatusProcessing, Order::StatusCompleted])
             ->with([
                 'agent' => fn ($query) => $query
@@ -88,22 +97,36 @@ class OrderController extends Controller
                 'items:id,order_id,product_id,quantity',
                 'items.product:id,cost_rm',
             ])
-            ->get(['id', 'agent_id', 'status', 'payment_status', 'subtotal']);
+            ->get(['id', 'agent_id', 'status', 'payment_status', 'subtotal', 'delivery_fee', 'total_amount', 'total_units']);
 
-        $totalProfit = 0.0;
-        $bonusPaid = 0.0;
-        $bonusPending = 0.0;
+        $financials = [
+            'sales_amount' => 0.0,
+            'subtotal_amount' => 0.0,
+            'delivery_amount' => 0.0,
+            'cost_amount' => 0.0,
+            'gross_profit' => 0.0,
+            'net_profit' => 0.0,
+            'bonus_paid' => 0.0,
+            'bonus_pending' => 0.0,
+            'total_units' => 0,
+        ];
 
         foreach ($summaryOrders as $summaryOrder) {
             $numbers = $this->computeOrderFinancials($summaryOrder, $hasTier1Column, $hasTier2Column);
-            $totalProfit += $numbers['profit_amount'];
+            $financials['sales_amount'] += (float) $summaryOrder->total_amount;
+            $financials['subtotal_amount'] += (float) $summaryOrder->subtotal;
+            $financials['delivery_amount'] += (float) ($summaryOrder->delivery_fee ?? 0);
+            $financials['cost_amount'] += $numbers['total_cost'];
+            $financials['gross_profit'] += $numbers['gross_profit_amount'];
+            $financials['net_profit'] += $numbers['profit_amount'];
+            $financials['total_units'] += (int) $summaryOrder->total_units;
 
             if ($summaryOrder->payment_status === Order::PaymentStatusPaid) {
-                $bonusPaid += $numbers['bonus_total'];
+                $financials['bonus_paid'] += $numbers['bonus_total'];
             }
 
             if ($summaryOrder->payment_status === Order::PaymentStatusUnpaid) {
-                $bonusPending += $numbers['bonus_total'];
+                $financials['bonus_pending'] += $numbers['bonus_total'];
             }
         }
 
@@ -112,17 +135,52 @@ class OrderController extends Controller
             'filters' => $filters,
             'statuses' => $this->statuses(),
             'paymentStatuses' => $this->paymentStatuses(),
+            'dateLabel' => $this->dateLabel($filters),
             'summary' => [
-                'total' => Order::query()->count(),
-                'pending' => Order::query()->where('status', Order::StatusPending)->count(),
-                'processing' => Order::query()->where('status', Order::StatusProcessing)->count(),
-                'completed' => Order::query()->where('status', Order::StatusCompleted)->count(),
-                'completed_sales_amount' => (float) Order::query()->where('status', Order::StatusCompleted)->sum('total_amount'),
-                'total_profit' => round($totalProfit, 2),
-                'bonus_paid' => round($bonusPaid, 2),
-                'bonus_pending' => round($bonusPending, 2),
+                'total' => (int) $counts->total,
+                'pending' => (int) $counts->pending,
+                'processing' => (int) $counts->processing,
+                'completed' => (int) $counts->completed,
+                'cancelled' => (int) $counts->cancelled,
+                'completed_sales_amount' => (float) $counts->completed_sales_amount,
+                'sales_amount' => round($financials['sales_amount'], 2),
+                'subtotal_amount' => round($financials['subtotal_amount'], 2),
+                'delivery_amount' => round($financials['delivery_amount'], 2),
+                'cost_amount' => round($financials['cost_amount'], 2),
+                'gross_profit' => round($financials['gross_profit'], 2),
+                'total_profit' => round($financials['net_profit'], 2),
+                'bonus_paid' => round($financials['bonus_paid'], 2),
+                'bonus_pending' => round($financials['bonus_pending'], 2),
+                'total_units' => $financials['total_units'],
             ],
         ]);
+    }
+
+    private function filteredOrdersQuery(array $filters): Builder
+    {
+        return Order::query()
+            ->when($filters['start_date'] !== null && $filters['end_date'] !== null, function (Builder $query) use ($filters): void {
+                $query->whereBetween('placed_at', [
+                    now()->createFromFormat('Y-m-d', $filters['start_date'])->startOfDay(),
+                    now()->createFromFormat('Y-m-d', $filters['end_date'])->endOfDay(),
+                ]);
+            })
+            ->when($filters['search'] !== '', fn (Builder $query): Builder => $query->search($filters['search']))
+            ->when($filters['status'] !== '', fn (Builder $query): Builder => $query->where('status', $filters['status']))
+            ->when($filters['payment_status'] !== '', fn (Builder $query): Builder => $query->where('payment_status', $filters['payment_status']))
+            ->when($filters['fulfilment_method'] !== '', fn (Builder $query): Builder => $query->where('fulfilment_method', $filters['fulfilment_method']));
+    }
+
+    private function dateLabel(array $filters): string
+    {
+        if ($filters['start_date'] === null || $filters['end_date'] === null) {
+            return 'All dates';
+        }
+
+        $start = now()->createFromFormat('Y-m-d', $filters['start_date'])->format('d M Y');
+        $end = now()->createFromFormat('Y-m-d', $filters['end_date'])->format('d M Y');
+
+        return $start === $end ? $start : "{$start} - {$end}";
     }
 
     public function show(Order $order): View
