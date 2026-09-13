@@ -25,13 +25,17 @@
 
     <div class="space-y-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <a href="{{ route('admin.agents.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            @adminRoute('admin.agents.index')
+<a href="{{ route('admin.agents.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                 Back to Agents
             </a>
+@endadminRoute
 
-            <a href="{{ route('admin.agents.edit', $agent) }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">
+            @adminRoute('admin.agents.edit')
+<a href="{{ route('admin.agents.edit', $agent) }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">
                 Edit Agent
             </a>
+@endadminRoute
         </div>
 
         @if (in_array($agent->agt_status, [\App\Models\Agent::StatusPending, \App\Models\Agent::StatusNew], true))
@@ -41,7 +45,8 @@
                     <h2 class="mt-1 text-xl font-semibold text-blue-950">Review and approve this applicant</h2>
                     <p class="mt-2 text-sm text-blue-800">@if ($agent->agt_status === \App\Models\Agent::StatusPending) The applicant already received an 8-character password by email. Set the commission and approve access. @else Set the commission and create the agent's initial password. @endif</p>
                 </div>
-                <form method="POST" action="{{ route('admin.agents.approve', $agent) }}" class="mt-5 grid gap-3 md:grid-cols-3">
+                @adminRoute('admin.agents.approve')
+<form method="POST" action="{{ route('admin.agents.approve', $agent) }}" class="mt-5 grid gap-3 md:grid-cols-3">
                     @csrf
                     @method('PATCH')
                     <label>
@@ -60,6 +65,7 @@
                     @endif
                     <button type="submit" class="inline-flex h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-5 text-sm font-semibold text-white hover:bg-[#1558b0] md:col-span-3 md:justify-self-end">{{ $agent->agt_status === \App\Models\Agent::StatusPending ? 'Approve agent' : 'Approve and create login' }}</button>
                 </form>
+@endadminRoute
                 @error('commission_percentage')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                 @error('password')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                 @error('approval')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
@@ -89,7 +95,9 @@
                             <span class="text-sm text-slate-500">
                                 Referrer:
                                 @if ($agent->referrer)
-                                    <a href="{{ route('admin.agents.show', $agent->referrer) }}" class="font-semibold text-[#1a73e8] hover:underline">{{ $agent->referrer->agt_name }}</a>
+                                    @adminRoute('admin.agents.show')
+<a href="{{ route('admin.agents.show', $agent->referrer) }}" class="font-semibold text-[#1a73e8] hover:underline">{{ $agent->referrer->agt_name }}</a>
+@endadminRoute
                                 @else
                                     -
                                 @endif
@@ -229,7 +237,8 @@
                         <div class="mt-3 space-y-4">
                             @foreach ($tier1Agents as $tier1Agent)
                                 <div class="space-y-2">
-                                    <a href="{{ route('admin.agents.show', $tier1Agent) }}" class="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:border-[#1a73e8] hover:bg-blue-50">
+                                    @adminRoute('admin.agents.show')
+<a href="{{ route('admin.agents.show', $tier1Agent) }}" class="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:border-[#1a73e8] hover:bg-blue-50">
                                         <div class="min-w-0">
                                             <p class="truncate text-sm font-semibold text-slate-900">{{ $tier1Agent->agt_name }}</p>
                                             <p class="truncate text-xs text-slate-500">{{ $tier1Agent->login_id }}</p>
@@ -239,12 +248,14 @@
                                             <p class="text-emerald-700">{{ $formatMoney((float) ($tier1Agent->completed_orders_total ?? 0)) }}</p>
                                         </div>
                                     </a>
+@endadminRoute
 
                                     @php($tier2MembersByTier1 = $tier2ByReferrer->get($tier1Agent->id, collect()))
                                     @if ($tier2MembersByTier1->isNotEmpty())
                                         <div class="space-y-2 border-l-2 border-amber-200 pl-4 ml-3">
                                             @foreach ($tier2MembersByTier1 as $tier2Agent)
-                                                <a href="{{ route('admin.agents.show', $tier2Agent) }}" class="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 transition hover:border-[#1a73e8] hover:bg-blue-50">
+                                                @adminRoute('admin.agents.show')
+<a href="{{ route('admin.agents.show', $tier2Agent) }}" class="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 transition hover:border-[#1a73e8] hover:bg-blue-50">
                                                     <div class="min-w-0">
                                                         <p class="truncate text-sm font-semibold text-slate-900">{{ $tier2Agent->agt_name }}</p>
                                                         <p class="truncate text-xs text-slate-500">{{ $tier2Agent->login_id }}</p>
@@ -254,6 +265,7 @@
                                                         <p class="text-emerald-700">{{ $formatMoney((float) ($tier2Agent->completed_orders_total ?? 0)) }}</p>
                                                     </div>
                                                 </a>
+@endadminRoute
                                             @endforeach
                                         </div>
                                     @endif

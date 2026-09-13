@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Agent\StoreOrderRequest;
 use App\Models\Agent;
 use App\Models\Product;
+use App\Support\CasingStock;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,14 @@ class OrderController extends Controller
     {
         /** @var Agent $agent */
         $agent = $request->user('agent');
+
+        return view('agent.orders.create', ['agent' => $agent, ...$this->catalogueData()]);
+    }
+
+    public function catalogueData(): array
+    {
         $products = Product::query()
+            ->visibleToAgents()
             ->with([
                 'materialType',
                 'images:id,product_id,image_path,alt_text,position',
@@ -40,13 +48,14 @@ class OrderController extends Controller
                 ->all())
             ->all();
 
+        $casingStocks = app(CasingStock::class)->quantities(DB::table('product_clicker_images')->whereIn('product_id', $products->modelKeys())->where('image_type', 'casing')->pluck('id')->all());
         $clickerImagesByProduct = DB::table('product_clicker_images')
             ->whereIn('product_id', $products->modelKeys())
             ->orderBy('image_type')
             ->orderBy('position')
-            ->get(['id', 'product_id', 'image_type', 'image_path', 'alt_text'])
+            ->get()
             ->groupBy('product_id')
-            ->map(function ($rows): array {
+            ->map(function ($rows) use ($products, $casingStocks): array {
                 $mapImages = fn (string $type): array => collect($rows)
                     ->where('image_type', $type)
                     ->values()
@@ -56,6 +65,7 @@ class OrderController extends Controller
                             ? $row->image_path
                             : asset(ltrim((string) $row->image_path, '/')),
                         'alt' => $row->alt_text,
+                        'stock' => $type === 'casing' && CasingStock::enabled($products->firstWhere('id', $row->product_id)) ? ($casingStocks[$row->id] ?? array_fill(1, 8, 0)) : null,
                     ])
                     ->all();
 
@@ -66,12 +76,28 @@ class OrderController extends Controller
             })
             ->all();
 
-        return view('agent.orders.create', [
-            'agent' => $agent,
+        $clickerResultsByProduct = DB::table('product_clicker_results')
+            ->whereIn('product_id', $products->modelKeys())
+            ->orderBy('name')
+            ->get(['id', 'product_id', 'casing_image_id', 'huruf_image_id', 'name', 'image_path'])
+            ->groupBy('product_id')
+            ->map(fn ($rows): array => collect($rows)->map(fn ($row): array => [
+                'id' => (int) $row->id,
+                'casingImageId' => (int) $row->casing_image_id,
+                'hurufImageId' => (int) $row->huruf_image_id,
+                'name' => (string) ($row->name ?? ''),
+                'src' => filter_var($row->image_path, FILTER_VALIDATE_URL)
+                    ? $row->image_path
+                    : asset(ltrim((string) $row->image_path, '/')),
+            ])->values()->all())
+            ->all();
+
+        return [
             'products' => $products,
             'clickerCharacterPricesByProduct' => $clickerCharacterPricesByProduct,
             'clickerImagesByProduct' => $clickerImagesByProduct,
-        ]);
+            'clickerResultsByProduct' => $clickerResultsByProduct,
+        ];
     }
 
     public function store(

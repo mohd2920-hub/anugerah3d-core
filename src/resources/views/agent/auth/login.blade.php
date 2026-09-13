@@ -10,7 +10,7 @@
     <section class="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-950/30">
         <div class="bg-[linear-gradient(135deg,#17324d_0%,#214866_100%)] px-6 pb-12 pt-7 text-white">
             <div class="flex items-center gap-3">
-                <span class="grid h-12 w-12 place-items-center rounded-2xl bg-white text-xs font-black tracking-tight text-[#17324d] shadow-lg">A3D</span>
+                <x-brand-logo />
                 <div>
                     <p class="font-bold tracking-tight">Anugerah3D</p>
                     <p class="text-xs text-slate-300">Agent mobile workspace</p>

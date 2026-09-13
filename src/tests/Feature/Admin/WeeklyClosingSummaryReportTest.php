@@ -24,7 +24,7 @@ class WeeklyClosingSummaryReportTest extends TestCase
     public function test_admin_can_view_custom_tier_breakdown_without_changing_payment_status(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-02 10:00:00', 'Asia/Kuala_Lumpur'));
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $paid = $this->summary('2026-W31', '2026-08-03', 70, 30, 'paid');
         $pending = $this->summary('2026-W32', '2026-08-10', 14, 6, 'pending');
         $this->summary('2026-W36', '2026-09-07', 700, 300, 'pending');
@@ -50,7 +50,7 @@ class WeeklyClosingSummaryReportTest extends TestCase
     public function test_current_week_projection_matches_tier_rates_and_creates_no_closing(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-02 10:00:00', 'Asia/Kuala_Lumpur'));
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $tier2Payee = Agent::factory()->create(['tier2_percentage' => 3]);
         $tier1Payee = Agent::factory()->create(['referrer_id' => $tier2Payee->id, 'tier1_percentage' => 7]);
         $buyer = Agent::factory()->create(['referrer_id' => $tier1Payee->id]);
@@ -75,7 +75,7 @@ class WeeklyClosingSummaryReportTest extends TestCase
 
     public function test_custom_report_rejects_reversed_dates(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->actingAs($admin, 'admin')->get(route('admin.weekly-closings.index', [
             'report_period' => 'custom',

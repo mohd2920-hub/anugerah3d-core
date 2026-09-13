@@ -25,12 +25,16 @@
                     <p class="mt-1 text-sm text-slate-500">Create and save email templates first. No email will be sent until you press <strong>Send</strong>.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route("admin.agents.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                    @adminRoute('admin.agents.index')
+<a href="{{ route("admin.agents.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                         Agents
                     </a>
-                    <a href="{{ route("admin.agent-email-templates.create") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">
+@endadminRoute
+                    @adminRoute('admin.agent-email-templates.create')
+<a href="{{ route("admin.agent-email-templates.create") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">
                         Create Template
                     </a>
+@endadminRoute
                 </div>
             </div>
         </div>
@@ -68,15 +72,19 @@
                             </td>
                             <td class="px-4 py-4">
                                 <div class="flex justify-end gap-2">
-                                    <a href="{{ route("admin.agent-email-templates.edit", $template) }}" class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                                    @adminRoute('admin.agent-email-templates.edit')
+<a href="{{ route("admin.agent-email-templates.edit", $template) }}" class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                                         Edit
                                     </a>
-                                    <form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" onsubmit="return confirm(&quot;Send this email template now?&quot;)">
+@endadminRoute
+                                    @adminRoute('admin.agent-email-templates.send')
+<form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" onsubmit="return confirm(&quot;Send this email template now?&quot;)">
                                         @csrf
                                         <button type="submit" class="inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
                                             Send
                                         </button>
                                     </form>
+@endadminRoute
                                 </div>
                             </td>
                         </tr>
@@ -106,15 +114,19 @@
                     </div>
 
                     <div class="mt-4 flex gap-2">
-                        <a href="{{ route("admin.agent-email-templates.edit", $template) }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        @adminRoute('admin.agent-email-templates.edit')
+<a href="{{ route("admin.agent-email-templates.edit", $template) }}" class="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             Edit
                         </a>
-                        <form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" class="flex-1" onsubmit="return confirm(&quot;Send this email template now?&quot;)">
+@endadminRoute
+                        @adminRoute('admin.agent-email-templates.send')
+<form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" class="flex-1" onsubmit="return confirm(&quot;Send this email template now?&quot;)">
                             @csrf
                             <button type="submit" class="inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700">
                                 Send
                             </button>
                         </form>
+@endadminRoute
                     </div>
                 </article>
             @empty

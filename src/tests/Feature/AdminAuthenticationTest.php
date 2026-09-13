@@ -31,7 +31,7 @@ class AdminAuthenticationTest extends TestCase
 
     public function test_active_admin_can_sign_in(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->post($this->adminUrl('/login'), [
             'email' => $admin->email,
@@ -49,7 +49,7 @@ class AdminAuthenticationTest extends TestCase
 
     public function test_authenticated_admin_is_redirected_away_from_login(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->actingAs($admin, 'admin')
             ->get($this->adminUrl('/login'))
@@ -58,7 +58,7 @@ class AdminAuthenticationTest extends TestCase
 
     public function test_admin_cannot_sign_in_with_wrong_password(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->post($this->adminUrl('/login'), [
             'email' => $admin->email,
@@ -74,7 +74,7 @@ class AdminAuthenticationTest extends TestCase
 
     public function test_inactive_admin_cannot_sign_in(): void
     {
-        $admin = AdminUser::factory()->inactive()->create();
+        $admin = AdminUser::factory()->superAdmin()->inactive()->create();
 
         $this->post($this->adminUrl('/login'), [
             'email' => $admin->email,
@@ -86,7 +86,7 @@ class AdminAuthenticationTest extends TestCase
 
     public function test_admin_can_sign_out(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->actingAs($admin, 'admin')
             ->post($this->adminUrl('/logout'))
@@ -113,6 +113,56 @@ class AdminAuthenticationTest extends TestCase
         ])->assertRedirect(route('admin.dashboard'));
 
         $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
+    public function test_admin_can_sign_in_using_email_username_with_normalized_case_and_spaces(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create(['email' => 'posman@example.com']);
+        $this->post($this->adminUrl('/login'), ['email' => '  POSMAN  ', 'password' => 'password'])
+            ->assertRedirect(route('admin.dashboard'));
+        $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
+    public function test_duplicate_usernames_require_full_email_even_with_matching_password(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create(['email' => 'shared@example.com']);
+        AdminUser::factory()->inactive()->create(['email' => 'shared@another.com', 'password' => 'different-secret']);
+        $this->post($this->adminUrl('/login'), ['email' => 'shared', 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest('admin');
+        $this->post($this->adminUrl('/login'), ['email' => $admin->email, 'password' => 'password'])
+            ->assertRedirect(route('admin.dashboard'));
+        $this->assertAuthenticatedAs($admin, 'admin');
+    }
+
+    public function test_username_login_rejects_unknown_wrong_password_and_inactive_accounts(): void
+    {
+        AdminUser::factory()->superAdmin()->create(['email' => 'known@example.com']);
+        AdminUser::factory()->inactive()->create(['email' => 'inactive@example.com']);
+        foreach ([['unknown', 'password'], ['known', 'wrong-password'], ['inactive', 'password'], ['known%', 'password']] as [$identifier, $password]) {
+            $this->post($this->adminUrl('/login'), ['email' => $identifier, 'password' => $password])->assertSessionHasErrors('email');
+            $this->assertGuest('admin');
+        }
+    }
+
+    public function test_username_does_not_bypass_pending_invitation(): void
+    {
+        $admin = AdminUser::factory()->create(['email' => 'invited@example.com']);
+        $admin->forceFill(['invited_at' => now(), 'invitation_accepted_at' => null])->save();
+        $this->post($this->adminUrl('/login'), ['email' => 'invited', 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest('admin');
+    }
+
+    public function test_login_field_accepts_usernames_on_mobile_and_rejects_array_input(): void
+    {
+        $this->get($this->adminUrl('/login'))->assertOk()
+            ->assertSee('name="email" type="text"', false)
+            ->assertSee('autocapitalize="none"', false)
+            ->assertSeeText('Username or email');
+        $this->post($this->adminUrl('/login'), ['email' => ['posman'], 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertGuest('admin');
     }
 
     private function adminUrl(string $path): string

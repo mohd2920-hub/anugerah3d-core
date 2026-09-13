@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\AdminAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -49,7 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->redirectUsersTo(
             fn (Request $request): string => match (true) {
-                $request->routeIs('admin.*') => route('admin.dashboard'),
+                $request->routeIs('admin.*') => route(AdminAccess::landingRoute($request->user('admin'))),
                 $request->routeIs('agent.*') => route('agent.dashboard'),
                 default => '/',
             },
@@ -57,6 +58,6 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->routeIs('agent.customer.store', 'admin.dashboard.data', 'admin.dashboard.inventory', 'admin.products.balance.show', 'admin.products.balance.update'),
         );
     })->create();

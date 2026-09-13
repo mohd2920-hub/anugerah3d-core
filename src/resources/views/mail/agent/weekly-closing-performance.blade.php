@@ -2,7 +2,7 @@
 <div style="padding:24px 24px 18px;border-radius:24px;background:linear-gradient(135deg,#ecfeff 0%,#cffafe 45%,#e0f2fe 100%);border:1px solid #a5f3fc;box-shadow:0 18px 40px rgba(14,116,144,.13);margin-bottom:24px;">
     @if (! empty($data['brand']['logo_url']))
     <div style="margin-bottom:14px;">
-        <img src="{{ $data['brand']['logo_url'] }}" alt="Anugerah3D" style="display:block;max-width:180px;height:auto;">
+        <img src="{{ $data['brand']['logo_url'] }}" alt="Anugerah3D" style="height:auto;display:block;max-width:180px;height:auto;">
     </div>
     @endif
     <div style="font-size:12px;letter-spacing:.16em;font-weight:800;color:#0e7490;text-transform:uppercase;">Weekly Closing</div>

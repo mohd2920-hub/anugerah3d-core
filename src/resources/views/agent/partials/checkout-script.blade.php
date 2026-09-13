@@ -117,18 +117,15 @@
         cartModal.classList.add('flex');
     });
 
-    document.querySelectorAll('[data-fulfilment]').forEach((button) => button.addEventListener('click', () => {
-        const isDelivery = button.dataset.fulfilment === 'delivery';
-        checkoutForm.elements.fulfilment_method.value = button.dataset.fulfilment;
-        document.querySelectorAll('[data-fulfilment]').forEach((option) => {
-            const active = option === button;
-            option.classList.toggle('bg-white', active);
-            option.classList.toggle('text-[#17324d]', active);
-            option.classList.toggle('shadow-sm', active);
-            option.classList.toggle('text-slate-500', !active);
-        });
+    checkoutForm.querySelectorAll('[data-fulfilment]').forEach((input) => input.addEventListener('change', () => {
+        if (!input.checked) return;
+        checkoutError.classList.add('hidden');
+        document.querySelector('[data-fulfilment-prompt]')?.classList.add('hidden');
+        const isDelivery = input.value === 'delivery';
         document.querySelector('[data-delivery-address]').classList.toggle('hidden', !isDelivery);
         document.querySelector('[name="delivery_address"]').required = isDelivery;
+        document.querySelector('[data-delivery-help]')?.classList.toggle('hidden', !isDelivery);
+        document.querySelector('[data-pickup-help]')?.classList.toggle('hidden', isDelivery);
         renderCheckout();
     }));
 
@@ -154,6 +151,13 @@
         submitOrderButton.disabled = true;
 
         const formData = new FormData(checkoutForm);
+        if (customerCatalogue && !formData.get('fulfilment_method')) {
+            checkoutError.textContent = 'Sila pilih Delivery atau Self Pickup terlebih dahulu.';
+            checkoutError.classList.remove('hidden');
+            document.querySelector('[data-fulfilment]')?.focus();
+            submitOrderButton.disabled = false;
+            return;
+        }
         const paymentMethod = String(formData.get('payment_method') || 'bank_transfer');
         const proofFiles = selectedPaymentProofFiles();
 
@@ -167,7 +171,8 @@
         const payload = new FormData();
         payload.append('_token', String(formData.get('_token') || ''));
         payload.append('idempotency_key', checkoutToken);
-        payload.append('fulfilment_method', String(formData.get('fulfilment_method') || 'delivery'));
+        payload.append('expected_total', (orderSummary().orderTotal/100).toFixed(2));
+        payload.append('fulfilment_method', String(formData.get('fulfilment_method') || (customerCatalogue ? '' : 'delivery')));
         payload.append('recipient_name', String(formData.get('recipient_name') || ''));
         payload.append('phone_number', String(formData.get('phone_number') || ''));
         payload.append('delivery_address', String(formData.get('delivery_address') || ''));
@@ -223,6 +228,7 @@
 
             document.querySelector('[data-success-order]').textContent = `Order ${result.order.number}`;
             document.querySelector('[data-success-total]').textContent = currency.format(Number(result.order.total));
+            if (result.order.status_url) checkoutForm.dataset.historyUrl = result.order.status_url;
             cart = {};
             localStorage.removeItem(cartKey);
             renderCart();

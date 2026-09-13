@@ -26,6 +26,23 @@ document.querySelectorAll("[data-attendance-timer]").forEach((timer) => {
 const businessSitesRoot = document.querySelector("[data-business-sites-root]");
 const stopModal = businessSitesRoot?.querySelector("[data-stop-business-modal]");
 const stopForm = stopModal?.querySelector("[data-stop-business-form]");
+
+businessSitesRoot?.querySelectorAll("[data-clickable-operation-row]").forEach((row) => {
+    const navigateToDetails = () => {
+        if (row.dataset.href) {
+            window.location.assign(row.dataset.href);
+        }
+    };
+
+    row.addEventListener("click", (event) => {
+        if (event.target.closest("a, button, input, select, textarea, form, label")) {
+            return;
+        }
+
+        navigateToDetails();
+    });
+
+});
 const closeStopModal = () => {
     stopModal?.classList.add("hidden");
     stopModal?.classList.remove("flex");
@@ -65,4 +82,3 @@ checkinForm?.addEventListener("submit", (event) => {
 });
 closedModal?.querySelectorAll("[data-close-site-closed]").forEach((button) => button.addEventListener("click", closeClosedModal));
 if (closedModal?.dataset.openOnLoad === "true") openClosedModal();
-

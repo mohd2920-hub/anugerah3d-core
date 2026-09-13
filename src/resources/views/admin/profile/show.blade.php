@@ -48,12 +48,14 @@
                     <button type="button" data-profile-toggle="change-password-form" class="inline-flex min-h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2" aria-expanded="{{ $showPasswordForm ? 'true' : 'false' }}">
                         Change password
                     </button>
-                    <form method="POST" action="{{ route('admin.logout') }}">
+                    @adminRoute('admin.logout')
+<form method="POST" action="{{ route('admin.logout') }}">
                         @csrf
                         <button type="submit" class="inline-flex min-h-8 items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2">
                             Sign Out
                         </button>
                     </form>
+@endadminRoute
                 </div>
             </div>
 
@@ -82,7 +84,8 @@
                 <h2 class="text-xl font-semibold text-slate-950">Edit Profile</h2>
             </div>
 
-            <form method="POST" action="{{ route('admin.profile.update') }}" class="grid gap-4 md:grid-cols-2">
+            @adminRoute('admin.profile.update')
+<form method="POST" action="{{ route('admin.profile.update') }}" class="grid gap-4 md:grid-cols-2">
                 @csrf
                 @method('PUT')
 
@@ -121,6 +124,7 @@
                     </div>
                 </div>
             </form>
+@endadminRoute
         </section>
 
         <section id="change-password-form" class="{{ $showPasswordForm ? '' : 'hidden' }} rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
@@ -128,7 +132,8 @@
                 <h2 class="text-xl font-semibold text-slate-950">Change Password</h2>
             </div>
 
-            <form method="POST" action="{{ route('admin.profile.password.update') }}" class="grid gap-4 md:grid-cols-3">
+            @adminRoute('admin.profile.password.update')
+<form method="POST" action="{{ route('admin.profile.password.update') }}" class="grid gap-4 md:grid-cols-3">
                 @csrf
                 @method('PUT')
 
@@ -164,6 +169,7 @@
                     </div>
                 </div>
             </form>
+@endadminRoute
         </section>
     </div>
 

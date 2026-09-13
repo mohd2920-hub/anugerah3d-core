@@ -47,6 +47,23 @@
             </div>
         </div>
     </section>
+    @if($customerCatalogueReady ?? false)
+    <section class="rounded-3xl border border-blue-200 bg-blue-50 p-5">
+        @php
+            $customerLink = \Illuminate\Support\Facades\URL::signedRoute('agent.customer.catalogue',['referrer'=>$agent->id]);
+        @endphp
+        <h2 class="text-lg font-bold">Kongsi Katalog &amp; Jana Komisen</h2>
+        <p class="mt-2 text-sm">Kongsi katalog kepada pelanggan dan terima komisen 25% bagi pesanan yang layak.</p>
+        <input data-customer-share-link readonly value="{{ $customerLink }}" class="mt-3 w-full rounded-lg border p-2 text-xs" aria-label="Link katalog pelanggan">
+        <div class="mt-3 flex flex-wrap gap-3 text-sm font-bold">
+            <button type="button" data-copy-customer-link class="rounded-lg bg-blue-700 p-3 text-white">Salin Link</button>
+            <a href="https://wa.me/?text={{ urlencode('Lihat katalog Anugerah3D dan tempah di sini: '.$customerLink) }}" target="_blank" rel="noopener" class="rounded-lg border bg-white p-3">Kongsi WhatsApp</a>
+            <a href="{{ route('agent.customer.qr') }}" class="rounded-lg border bg-white p-3">Muat Turun QR</a>
+            <a href="{{ $customerLink }}" target="_blank" rel="noopener" class="rounded-lg border bg-white p-3">Lihat Katalog Pelanggan</a>
+            <a href="{{ route('agent.customer.commissions') }}" class="rounded-lg border bg-white p-3">Rekod Komisen</a>
+        </div>
+    </section>
+    @endif
     @if ($topProducts->isNotEmpty())
         <section class="space-y-3">
             <div class="flex items-end justify-between gap-4">

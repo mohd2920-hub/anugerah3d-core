@@ -14,7 +14,7 @@
             <div class="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[#e7682b]/30 blur-3xl"></div>
             <div class="relative">
                 <div class="flex items-center gap-3">
-                    <span class="grid h-12 w-12 place-items-center rounded-2xl bg-white text-xs font-black text-[#17324d]">A3D</span>
+                    <x-brand-logo />
                     <div><p class="font-bold">Anugerah3D</p><p class="text-xs text-slate-300">Agent opportunity</p></div>
                 </div>
                 <p class="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">Grow with us</p>

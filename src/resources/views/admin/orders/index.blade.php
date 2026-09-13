@@ -39,28 +39,38 @@
                 <p class="text-xs text-slate-500">Financial values exclude cancelled orders and follow the active filters.</p>
             </div>
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <a href="{{ route('admin.orders.index', request()->except(['page', 'status'])) }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300">
+                @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index', request()->except(['page', 'status'])) }}" class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300">
                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Orders</p>
                     <p class="mt-2 text-2xl font-semibold text-slate-950">{{ number_format($summary['total']) }}</p>
                     <p class="mt-1 text-xs text-slate-500">{{ number_format($summary['total_units']) }} units</p>
                 </a>
-                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'pending'])) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+@endadminRoute
+                @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'pending'])) }}" class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Pending</p>
                     <p class="mt-2 text-2xl font-semibold text-amber-900">{{ number_format($summary['pending']) }}</p>
                 </a>
-                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'processing'])) }}" class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+@endadminRoute
+                @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'processing'])) }}" class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Processing</p>
                     <p class="mt-2 text-2xl font-semibold text-blue-900">{{ number_format($summary['processing']) }}</p>
                 </a>
-                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'completed'])) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+@endadminRoute
+                @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'completed'])) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Completed</p>
                     <p class="mt-2 text-2xl font-semibold text-emerald-900">{{ number_format($summary['completed']) }}</p>
                     <p class="mt-1 text-xs text-emerald-700">RM {{ number_format((float) $summary['completed_sales_amount'], 2) }}</p>
                 </a>
-                <a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'cancelled'])) }}" class="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
+@endadminRoute
+                @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index', array_merge(request()->except(['page', 'status']), ['status' => 'cancelled'])) }}" class="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-red-700">Cancelled</p>
                     <p class="mt-2 text-2xl font-semibold text-red-900">{{ number_format($summary['cancelled']) }}</p>
                 </a>
+@endadminRoute
             </div>
             <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
@@ -70,7 +80,7 @@
                 </div>
                 <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-rose-700">Product cost</p>
-                    <p class="mt-2 text-2xl font-semibold text-rose-950">RM {{ number_format((float) $summary['cost_amount'], 2) }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-rose-950">RM {{ number_format((float) $summary['cost_amount'], 2) }}</p><p class="mt-1 text-xs text-rose-700">{{ $summary['cost_incomplete'] ? 'Kos / varian belum lengkap; keuntungan masih anggaran.' : 'Kos semasa · casing lengkap mengikut bilangan huruf' }}</p>
                 </div>
                 <div class="rounded-lg border border-cyan-200 bg-cyan-50 p-4 shadow-sm">
                     <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Gross profit</p>
@@ -88,13 +98,20 @@
                         <span>Paid: RM {{ number_format((float) $summary['bonus_paid'], 2) }}</span>
                         <span>Pending: RM {{ number_format((float) $summary['bonus_pending'], 2) }}</span>
                         <span>Total: RM {{ number_format((float) $summary['bonus_paid'] + (float) $summary['bonus_pending'], 2) }}</span>
+                        <span class="inline-flex flex-wrap items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-rose-900">
+                            <span>Produk Dijual Bawah Kos</span>
+                            <span>{{ number_format($summary['below_cost_products']) }} produk · {{ number_format($summary['below_cost_units']) }} unit</span>
+                            <small class="w-full text-xs font-normal">Harga jual bawah kos semasa · Tanpa bonus / penghantaran{{ $summary['cost_incomplete'] ? ' · Produk tanpa kos lengkap tidak dikira' : '' }}</small>
+                        </span>
+                        @include('admin.orders._discount-settings')
                     </div>
                 </div>
             </div>
         </section>
 
         <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-            <form method="GET" action="{{ route('admin.orders.index') }}" class="grid gap-3 lg:grid-cols-7">
+            @adminRoute('admin.orders.index')
+<form method="GET" action="{{ route('admin.orders.index') }}" class="grid gap-3 lg:grid-cols-7">
                 <label class="lg:col-span-2">
                     <span class="mb-1 block text-xs font-semibold text-slate-600">Search</span>
                     <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Order no., agent, recipient or product..." class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
@@ -136,10 +153,13 @@
                 <div class="flex gap-2 lg:col-span-7 lg:justify-end">
                     <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-5 text-sm font-semibold text-white transition hover:bg-[#1558b0]">Apply filters</button>
                     @if (collect($filters)->filter()->isNotEmpty())
-                        <a href="{{ route('admin.orders.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+                        @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+@endadminRoute
                     @endif
                 </div>
             </form>
+@endadminRoute
         </section>
 
         <section class="hidden overflow-visible rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">
@@ -163,7 +183,9 @@
                         @forelse ($orders as $order)
                             <tr class="align-top transition hover:bg-slate-50">
                                 <td class="px-3 py-3">
-                                    <a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-xs font-semibold text-[#1a73e8] hover:underline">{{ $order->order_number }}</a>
+                                    @adminRoute('admin.orders.show')
+<a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-xs font-semibold text-[#1a73e8] hover:underline">{{ $order->order_number }}</a>
+@endadminRoute
                                     <p class="mt-1 text-slate-500">{{ $order->total_units }} units / {{ $order->items_count }} products</p>
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach ($order->items->take(1) as $item)
@@ -237,7 +259,7 @@
                                                 ? 'bg-red-100 text-red-800 ring-red-200'
                                                 : 'bg-slate-100 text-slate-700 ring-slate-200');
                                     @endphp
-                                    <p class="text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</p>
+                                    <p class="text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}{{ $order->cost_incomplete ? ' · Kos / varian belum lengkap; untung anggaran' : ' · Kos semasa' }}</p>
                                     @if ((float) $order->bonus_total > 0)
                                         <p class="mt-1 text-slate-500">
                                             Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
@@ -251,19 +273,25 @@
                                 </td>
                                 <td class="px-3 py-3 text-right">
                                     <div class="flex justify-end gap-2">
-                                        <a href="{{ route('admin.orders.show', $order) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-700 hover:bg-slate-50">Details</a>
+                                        @adminRoute('admin.orders.show')
+<a href="{{ route('admin.orders.show', $order) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-700 hover:bg-slate-50">Details</a>
+@endadminRoute
                                         @if ($order->status === 'pending' && ! $order->has_stock_shortage)
-                                            <form method="POST" action="{{ route('admin.orders.process', $order) }}">
+                                            @adminRoute('admin.orders.process')
+<form method="POST" action="{{ route('admin.orders.process', $order) }}">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button class="inline-flex min-h-9 items-center rounded-lg bg-[#1a73e8] px-3 font-semibold text-white hover:bg-[#1558b0]">Process</button>
                                             </form>
+@endadminRoute
                                         @elseif ($order->status === 'processing')
-                                            <form method="POST" action="{{ route('admin.orders.complete', $order) }}">
+                                            @adminRoute('admin.orders.complete')
+<form method="POST" action="{{ route('admin.orders.complete', $order) }}">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button class="inline-flex min-h-9 items-center rounded-lg bg-emerald-600 px-3 font-semibold text-white hover:bg-emerald-700">Complete</button>
                                             </form>
+@endadminRoute
                                         @endif
                                     </div>
                                 </td>
@@ -281,7 +309,9 @@
                 <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-sm font-semibold text-[#1a73e8]">{{ $order->order_number }}</a>
+                            @adminRoute('admin.orders.show')
+<a href="{{ route('admin.orders.show', $order) }}" class="font-mono text-sm font-semibold text-[#1a73e8]">{{ $order->order_number }}</a>
+@endadminRoute
                             <p class="mt-1 text-xs text-slate-500">{{ $order->placed_at->format('d M Y, h:i A') }}</p>
                         </div>
                         <span class="{{ $statusClass($order->status) }} inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1">{{ $order->statusLabel() }}</span>
@@ -338,7 +368,7 @@
                         </div>
                         <div class="rounded-lg bg-slate-50 p-3">
                             <dt class="text-xs font-semibold uppercase text-slate-500">Profit</dt>
-                            <dd class="mt-1 text-xs text-slate-600">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</dd>
+                            <dd class="mt-1 text-xs text-slate-600">Cost: RM {{ number_format((float) $order->total_cost, 2) }}{{ $order->cost_incomplete ? ' · Kos / varian belum lengkap; untung anggaran' : ' · Kos semasa' }}</dd>
                             @if ((float) $order->bonus_total > 0)
                                 <dd class="mt-1 text-xs text-slate-600">
                                     Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
@@ -366,7 +396,9 @@
                         </div>
                     </dl>
 
-                    <a href="{{ route('admin.orders.show', $order) }}" class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white">View details & actions</a>
+                    @adminRoute('admin.orders.show')
+<a href="{{ route('admin.orders.show', $order) }}" class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white">View details & actions</a>
+@endadminRoute
                 </article>
             @empty
                 <div class="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm">No orders match the selected filters.</div>

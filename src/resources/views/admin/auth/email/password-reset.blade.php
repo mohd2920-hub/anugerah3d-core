@@ -117,7 +117,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header"><x-brand-logo width="160" :message="$message ?? null" />
             <h1>🔐 Password Reset</h1>
             <p>Anugerah3D Admin Portal</p>
         </div>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\IndexAgentsRequest;
 use App\Http\Requests\Admin\ResetAgentPasswordRequest;
 use App\Http\Requests\Admin\StoreAgentRequest;
 use App\Http\Requests\Admin\UpdateAgentRequest;
@@ -12,9 +13,12 @@ use App\Models\Agent;
 use App\Models\BusinessSite;
 use App\Models\DataState;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Support\AdminActivity;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -28,8 +32,21 @@ use Throwable;
 
 class AgentController extends Controller
 {
-    public function index(Request $request): View
+    public function index(IndexAgentsRequest $request): View
     {
+        $rankingFilters = $request->validated();
+        $rankingPeriod = $rankingFilters['ranking_period'] ?? 'all';
+        $rankingStart = null;
+        $rankingEnd = null;
+        if ($rankingPeriod === 'month') {
+            $rankingStart = CarbonImmutable::createFromFormat('!Y-m', $rankingFilters['ranking_month'], 'Asia/Kuala_Lumpur');
+            $rankingEnd = $rankingStart->addMonth();
+        } elseif ($rankingPeriod === 'custom') {
+            $rankingStart = CarbonImmutable::parse($rankingFilters['ranking_start'], 'Asia/Kuala_Lumpur')->startOfDay();
+            $rankingEnd = CarbonImmutable::parse($rankingFilters['ranking_end'], 'Asia/Kuala_Lumpur')->addDay()->startOfDay();
+        }
+        $rankingLabel = $rankingStart ? $rankingStart->format('d M Y').' – '.$rankingEnd->subDay()->format('d M Y') : 'Keseluruhan';
+
         $search = $request->string('search')->trim()->toString();
         $status = $request->string('status')->trim()->toString();
 
@@ -126,6 +143,9 @@ class AgentController extends Controller
 
         return view('admin.agents.index', [
             'agents' => $agents,
+            'topOrderingAgents' => $this->topOrderingAgents($rankingStart, $rankingEnd),
+            'rankingFilters' => $rankingFilters,
+            'rankingLabel' => $rankingLabel,
             'search' => $search,
             'selectedStatus' => $status,
             'statusOptions' => Agent::statuses(),
@@ -137,6 +157,44 @@ class AgentController extends Controller
             'loginInfo' => session('agent_login_info'),
             'newRegistrationCount' => Agent::query()->where('agt_status', Agent::StatusPending)->count(),
         ]);
+    }
+
+    private function topOrderingAgents(?CarbonImmutable $start, ?CarbonImmutable $end): Collection
+    {
+        $completed = fn (Builder $query): Builder => $query->where('status', Order::StatusCompleted)
+            ->when($start, fn (Builder $query): Builder => $query->where('placed_at', '>=', $start)->where('placed_at', '<', $end));
+        $agents = Agent::query()
+            ->select(['id', 'agt_name', 'login_id', 'profile_picture', 'referrer_id'])
+            ->with('referrer:id,agt_name')
+            ->whereHas('orders', $completed)
+            ->withCount(['orders as completed_order_count' => $completed])
+            ->withSum(['orders as order_sales' => $completed], 'subtotal')
+            ->withSum(['orders as order_units' => $completed], 'total_units')
+            ->orderByDesc('order_sales')
+            ->orderByDesc('completed_order_count')
+            ->orderBy('id')
+            ->limit(5)
+            ->get();
+
+        $itemsTable = (new OrderItem)->getTable();
+        $ordersTable = (new Order)->getTable();
+        $products = OrderItem::query()
+            ->join($ordersTable, "{$ordersTable}.id", '=', "{$itemsTable}.order_id")
+            ->whereIn("{$ordersTable}.agent_id", $agents->modelKeys())
+            ->where("{$ordersTable}.status", Order::StatusCompleted)
+            ->when($start, fn (Builder $query): Builder => $query->where("{$ordersTable}.placed_at", '>=', $start)->where("{$ordersTable}.placed_at", '<', $end))
+            ->selectRaw("{$ordersTable}.agent_id, {$itemsTable}.product_id, MAX({$itemsTable}.product_name) as product_name, SUM({$itemsTable}.quantity) as units")
+            ->groupBy("{$ordersTable}.agent_id", "{$itemsTable}.product_id")
+            ->orderByDesc('units')
+            ->orderBy("{$itemsTable}.product_id")
+            ->get()
+            ->groupBy('agent_id');
+
+        foreach ($agents as $agent) {
+            $agent->setAttribute('top_order_product', $products->get($agent->id)?->first());
+        }
+
+        return $agents;
     }
 
     public function create(): View

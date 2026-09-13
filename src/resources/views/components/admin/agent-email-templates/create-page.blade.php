@@ -24,9 +24,11 @@
                     <h2 class="text-lg font-semibold text-slate-950">Create email template</h2>
                     <p class="mt-1 text-sm text-slate-500">Prepare the subject, body, and recipients now. The system will only send after you press the send button later.</p>
                 </div>
-                <a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                @adminRoute('admin.agent-email-templates.index')
+<a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                     Back to Templates
                 </a>
+@endadminRoute
             </div>
         </div>
 

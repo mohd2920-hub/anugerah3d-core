@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Agent;
 
 use App\Actions\Pos\CreatePosSale;
-use App\Actions\Pos\UpdatePosSale;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Agent\SignInPosRequest;
 use App\Http\Requests\Agent\StorePosSaleRequest;
-use App\Http\Requests\Agent\UpdatePosSaleRequest;
 use App\Mail\PosSaleReceipt;
 use App\Models\Agent;
 use App\Models\BusinessSite;
@@ -16,12 +14,12 @@ use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\PosSession;
 use App\Models\Product;
+use App\Support\PosClicker;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -37,7 +35,7 @@ class PosController extends Controller
         $businessSites = $agent->businessSites()->orderBy('site_name')->get(['business_sites.id', 'site_name', 'city', 'opened_at']);
         $products = $activeSession ? $this->posProducts() : collect();
         $operationSales = $activeOperation
-            ? $activeOperation->sales()
+            ? $activeOperation->sales()->notVoided()
                 ->toBase()
                 ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
                 ->first()
@@ -55,6 +53,7 @@ class PosController extends Controller
                 ? $activeSession->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture'])
                 : collect(),
             'products' => $products,
+            'posClickerCatalog' => app(PosClicker::class)->catalog($products),
             'topProducts' => $activeSession
                 ? $this->topSellingProducts($products, $activeSession->business_site_id)
                 : collect(),
@@ -130,25 +129,12 @@ class PosController extends Controller
 
     public function edit(Request $request, PosSale $posSale): View
     {
-        $session = $this->activeSession($request->user('agent'));
-        abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
-        $products = $this->posProducts();
-
-        return view('agent.pos.edit', [
-            'activeSession' => $session->load('businessSite'),
-            'posSale' => $posSale->load('items'),
-            'salesAgents' => $session->businessSite->agents()->where('agt_status', Agent::StatusActive)->orderBy('agt_name')->get(['usr_agent.id', 'agt_name', 'login_id', 'discount_percentage', 'profile_picture']),
-            'products' => $products,
-            'topProducts' => $this->topSellingProducts($products, $session->business_site_id),
-            'paymentMethods' => PosSale::paymentMethods(),
-        ]);
+        abort(403, 'Only administrators can correct a sale.');
     }
 
-    public function update(UpdatePosSaleRequest $request, PosSale $posSale, UpdatePosSale $updatePosSale): RedirectResponse
+    public function update(Request $request, PosSale $posSale): RedirectResponse
     {
-        $updatePosSale->handle($posSale, $request->activePosSession(), $request->validated());
-
-        return redirect()->route('agent.pos.index', ['tab' => 'history'])->with('success', 'Sale updated successfully.');
+        abort(403, 'Only administrators can correct a sale.');
     }
 
     public function sendReceipt(Request $request, PosSale $posSale): RedirectResponse
@@ -156,16 +142,9 @@ class PosController extends Controller
         $session = $this->activeSession($request->user('agent'));
         abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
 
-        if ($posSale->customer_email === null || $posSale->customer_email === '') {
-            $validated = $request->validateWithBag('receipt', [
-                'customer_name' => ['required', 'string', 'max:150'],
-                'customer_email' => ['required', 'email:rfc', 'max:150'],
-            ]);
-
-            $posSale->update([
-                'customer_name' => trim($validated['customer_name']),
-                'customer_email' => trim($validated['customer_email']),
-            ]);
+        abort_if($posSale->voided_at, 403, 'A void sale cannot be emailed.');
+        if (! $posSale->customer_email) {
+            return back()->withErrors(['receipt' => 'Ask an administrator to add the customer email before sending a receipt.']);
         }
 
         if (! $this->sendCustomerReceipt($posSale)) {
@@ -179,34 +158,9 @@ class PosController extends Controller
             ->with('success', 'Receipt emailed to '.$posSale->customer_email.'.');
     }
 
-    public function destroy(Request $request, PosSale $posSale, CreatePosSale $createPosSale): RedirectResponse
+    public function destroy(Request $request, PosSale $posSale): RedirectResponse
     {
-        $session = $this->activeSession($request->user('agent'));
-        abort_unless($this->saleBelongsToActiveOperation($session, $posSale), 403);
-
-        $request->validateWithBag('deleteSale', [
-            'delete_password' => ['required', 'string'],
-        ]);
-
-        $agent = $request->user('agent');
-
-        if (! Hash::check((string) $request->input('delete_password'), $agent->password)) {
-            return back()
-                ->withInput($request->except('delete_password'))
-                ->withErrors(['delete_password' => 'The provided password is incorrect.'], 'deleteSale');
-        }
-
-        $picturePaths = [
-            ...$posSale->salePicturePaths(),
-            ...$posSale->paymentProofPaths(),
-        ];
-
-        $posSale->delete();
-        $createPosSale->deleteStoredPictures($picturePaths);
-
-        return redirect()
-            ->route('agent.pos.index', ['tab' => 'history'])
-            ->with('success', 'Sale deleted successfully.');
+        abort(403, 'Only administrators can void a sale.');
     }
 
     private function activeOperation(PosSession $session): ?BusinessSiteOperation
@@ -265,17 +219,10 @@ class PosController extends Controller
     private function posProducts(): Collection
     {
         return Product::query()
+            ->availableForSale()
             ->with('images:id,product_id,image_path,alt_text,position')
             ->orderBy('prd_name')
-            ->get([
-                'id',
-                'prd_code',
-                'prd_name',
-                'price_selling',
-                'agent_discount_default',
-                'prd_balance',
-                'prd_picture',
-            ]);
+            ->get();
     }
 
     private function topSellingProducts(Collection $products, int $businessSiteId): Collection
@@ -283,6 +230,7 @@ class PosController extends Controller
         $rankedProductIds = PosSaleItem::query()
             ->join('pos_sales', 'pos_sales.id', '=', 'pos_sale_items.pos_sale_id')
             ->where('pos_sales.business_site_id', $businessSiteId)
+            ->whereNull('pos_sales.voided_at')
             ->select('pos_sale_items.product_id')
             ->selectRaw('SUM(pos_sale_items.quantity) as units_sold')
             ->groupBy('pos_sale_items.product_id')

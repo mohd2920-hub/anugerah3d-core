@@ -24,9 +24,11 @@
 
     <div class="space-y-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <a href="{{ route('admin.orders.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a73e8] hover:underline">
-                <span aria-hidden="true"?�</span> Back to orders
+            @adminRoute('admin.orders.index')
+<a href="{{ route('admin.orders.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a73e8] hover:underline">
+                <span aria-hidden="true">←</span> Back to orders
             </a>
+@endadminRoute
             <div class="flex flex-wrap gap-2">
                 <span class="{{ $statusClass }} inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ring-1">{{ $order->statusLabel() }}</span>
                 <span class="{{ $paymentClass }} inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ring-1">{{ $order->paymentStatusLabel() }}</span>
@@ -58,7 +60,7 @@
                     <p class="mt-1 text-3xl font-semibold">RM {{ number_format((float) $order->total_amount, 2) }}</p>
                     <p class="mt-1 text-xs text-slate-300">{{ $order->total_units }} units | Gross RM {{ number_format($grossSubtotal, 2) }} | Discount RM {{ number_format($discountAmount, 2) }} ({{ number_format($effectiveDiscountPercentage, 1) }}%)</p>
                     <p class="mt-1 text-xs text-slate-300">Delivery charge: {{ $deliveryFeeLabel }}</p>
-                    <p class="mt-1 text-xs text-slate-300">Cost: RM {{ number_format((float) $order->total_cost, 2) }} | Profit: RM {{ number_format((float) $order->profit_amount, 2) }}</p>
+                    <p class="mt-1 text-xs text-slate-300">Cost: RM {{ number_format((float) $order->total_cost, 2) }}{{ $order->cost_incomplete ? ' · Kos / varian belum lengkap; untung anggaran' : ' · Kos semasa' }} | Profit: RM {{ number_format((float) $order->profit_amount, 2) }}</p>
                     @if ((float) $order->bonus_total > 0)
                         <p class="mt-1 text-xs text-slate-300">
                             Bonus RM {{ number_format((float) $order->bonus_total, 2) }} (Tier1 RM {{ number_format((float) $order->tier1_bonus, 2) }} + Tier2 RM {{ number_format((float) $order->tier2_bonus, 2) }})
@@ -117,7 +119,7 @@
                                         $missing = $item->missingReservationQuantity();
                                         $available = max(0, (int) $item->product->prd_balance);
                                         $insufficient = $missing > $available;
-                                        $lineCost = (float) ($item->product?->cost_rm ?? 0) * (int) $item->quantity;
+                                        $lineCost = (float) ($item->report_unit_cost ?? 0) * (int) $item->quantity;
                                         $lineTier1Bonus = $order->agent?->referrer
                                             ? round((float) $item->line_total * ((float) $order->tier1_bonus_rate / 100), 2)
                                             : 0.0;
@@ -197,7 +199,7 @@
                                         <td class="px-4 py-4 text-right text-slate-700">RM {{ number_format((float) $item->unit_price, 2) }}</td>
                                         <td class="px-4 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $item->line_total, 2) }}</td>
                                         <td class="px-4 py-4 text-right">
-                                            <p class="text-xs text-slate-500">Cost: RM {{ number_format($lineCost, 2) }}</p>
+                                            <p class="text-xs text-slate-500">Cost: {{ $item->report_unit_cost === null ? $item->report_cost_issue : 'RM '.number_format($lineCost, 2) }}</p>
                                             <p class="mt-1 text-xs text-slate-500">Bonus: RM {{ number_format($lineBonus, 2) }}</p>
                                             <p class="mt-1 text-sm font-extrabold text-slate-900">RM {{ number_format($lineProfit, 2) }}</p>
                                         </td>
@@ -220,7 +222,7 @@
                                     <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-slate-600">Gross subtotal</td>
                                     <td class="px-4 py-3 text-right font-semibold text-slate-900">RM {{ number_format($grossSubtotal, 2) }}</td>
                                     <td class="px-4 py-3 text-right">
-                                        <p class="text-xs text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}</p>
+                                        <p class="text-xs text-slate-500">Cost: RM {{ number_format((float) $order->total_cost, 2) }}{{ $order->cost_incomplete ? ' · Kos / varian belum lengkap; untung anggaran' : ' · Kos semasa' }}</p>
                                         <p class="mt-1 text-xs text-slate-500">Bonus: RM {{ number_format((float) $order->bonus_total, 2) }}</p>
                                         <p class="mt-1 text-sm font-extrabold text-slate-900">RM {{ number_format((float) $order->profit_amount, 2) }}</p>
                                     </td>
@@ -271,7 +273,9 @@
                             <div><dt class="text-xs font-semibold uppercase text-slate-500">Email</dt><dd class="mt-1 break-all text-slate-700">{{ $order->agent->email }}</dd></div>
                             <div><dt class="text-xs font-semibold uppercase text-slate-500">Phone</dt><dd class="mt-1 text-slate-700">{{ $order->agent->phone_number ?: '-' }}</dd></div>
                         </dl>
-                        <a href="{{ route('admin.agents.show', $order->agent) }}" class="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">View agent profile</a>
+                        @adminRoute('admin.agents.show')
+<a href="{{ route('admin.agents.show', $order->agent) }}" class="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">View agent profile</a>
+@endadminRoute
                     </div>
                 </section>
             </div>
@@ -282,29 +286,37 @@
                     <p class="mt-1 text-sm text-slate-500">Actions are recorded in the activity log.</p>
 
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <a href="{{ route('admin.orders.print.full', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print full</a>
-                        <a href="{{ route('admin.orders.print.order', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print order</a>
+                        @adminRoute('admin.orders.print.full')
+<a href="{{ route('admin.orders.print.full', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print full</a>
+@endadminRoute
+                        @adminRoute('admin.orders.print.order')
+<a href="{{ route('admin.orders.print.order', $order) }}" target="_blank" rel="noopener" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Print order</a>
+@endadminRoute
                     </div>
 
                     <div class="mt-5 space-y-3">
                         @if ($order->status === 'pending')
                             @if ($stockShortages->isEmpty())
-                                <form method="POST" action="{{ route('admin.orders.process', $order) }}">
+                                @adminRoute('admin.orders.process')
+<form method="POST" action="{{ route('admin.orders.process', $order) }}">
                                     @csrf
                                     @method('PATCH')
                                     <button class="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">Proceed to processing</button>
                                 </form>
+@endadminRoute
                                 <p class="text-xs leading-5 text-slate-500">All remaining stock will be reserved when processing starts.</p>
                             @else
                                 <button type="button" disabled class="inline-flex min-h-11 w-full cursor-not-allowed items-center justify-center rounded-lg bg-slate-200 px-4 text-sm font-semibold text-slate-500">Cannot process: insufficient stock</button>
                                 <p class="text-xs leading-5 text-red-600">Update product balance first. The server will recheck every item before proceeding.</p>
                             @endif
                         @elseif ($order->status === 'processing')
-                            <form method="POST" action="{{ route('admin.orders.complete', $order) }}">
+                            @adminRoute('admin.orders.complete')
+<form method="POST" action="{{ route('admin.orders.complete', $order) }}">
                                 @csrf
                                 @method('PATCH')
                                 <button class="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700">Mark order completed</button>
                             </form>
+@endadminRoute
                         @elseif ($order->status === 'completed')
                             <div class="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700">This order is complete and sales have been added to the agent's total.</div>
                         @else
@@ -315,11 +327,13 @@
                             <details class="rounded-lg border border-red-200 bg-red-50 p-3">
                                 <summary class="cursor-pointer text-sm font-semibold text-red-700">Cancel order</summary>
                                 <p class="mt-2 text-xs leading-5 text-red-600">Cancellation is final. Every reserved unit will be returned to product balance.</p>
-                                <form method="POST" action="{{ route('admin.orders.cancel', $order) }}" class="mt-3">
+                                @adminRoute('admin.orders.cancel')
+<form method="POST" action="{{ route('admin.orders.cancel', $order) }}" class="mt-3">
                                     @csrf
                                     @method('PATCH')
                                     <button class="inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700">Confirm cancellation</button>
                                 </form>
+@endadminRoute
                             </details>
                         @endif
                     </div>
@@ -342,7 +356,8 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('admin.orders.payment.update', $order) }}" class="mt-4 space-y-3">
+                    @adminRoute('admin.orders.payment.update')
+<form method="POST" action="{{ route('admin.orders.payment.update', $order) }}" class="mt-4 space-y-3">
                         @csrf
                         @method('PATCH')
                         <label for="payment_status" class="block text-xs font-semibold uppercase text-slate-500">Payment status</label>
@@ -353,6 +368,7 @@
                         </select>
                         <button class="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Update payment</button>
                     </form>
+@endadminRoute
                 </section>
 
                 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">

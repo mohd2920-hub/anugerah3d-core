@@ -1,6 +1,6 @@
 @php
-    $logoPath = public_path('images/anugerah3d-logo.png');
-    $logoUrl = isset($message) && file_exists($logoPath) ? $message->embed($logoPath) : asset('images/anugerah3d-logo.png');
+    $logoPath = public_path('images/anugerah3d-official-logo.png');
+    $logoUrl = isset($message) && file_exists($logoPath) ? $message->embed($logoPath) : asset('images/anugerah3d-official-logo.png');
     $referrerPictureUrl = null;
     if ($referrer->profile_picture) {
         $picturePath = public_path(ltrim($referrer->profile_picture, '/'));
@@ -15,7 +15,7 @@
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3f6;padding:24px 10px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 12px 32px rgba(23,50,77,.12);">
 <tr><td style="background:linear-gradient(135deg,#17324d,#285875);padding:30px;text-align:center;color:#fff;">
-<img src="{{ $logoUrl }}" width="86" height="86" alt="Anugerah3D" style="display:block;margin:0 auto 16px;border-radius:20px;border:3px solid rgba(255,255,255,.8);object-fit:cover;">
+<img src="{{ $logoUrl }}" width="86" alt="Anugerah3D" style="height:auto;display:block;margin:0 auto 16px;border-radius:0;border:3px solid rgba(255,255,255,.8);object-fit:contain;">
 <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#fdba74;font-weight:800;">Application received</div>
 <h1 style="margin:10px 0 8px;font-size:27px;line-height:1.2;">Welcome, {{ $agent->agt_name }}!</h1>
 <p style="margin:0;color:#dbeafe;font-size:14px;line-height:1.6;">Your agent application is now pending administrator approval.</p>

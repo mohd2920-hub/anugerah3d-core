@@ -53,7 +53,7 @@
                 <form id="admin-search-form" method="GET" action="{{ url()->current() }}" class="absolute right-0 top-0 z-10 flex items-center gap-2 rounded-lg border border-white/10 bg-white px-3 py-1.5 shadow-lg transition duration-200" style="transform: translateX(0); visibility: hidden; opacity: 0; pointer-events: none;">
                     <label class="sr-only" for="admin-search-input">Search admin records</label>
                     <input id="admin-search-input" name="search" type="search" value="{{ $searchQuery }}" placeholder="Search orders, customers, products" class="h-9 min-w-[280px] rounded-lg border border-white/10 bg-white px-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#4285f4] focus:ring-2 focus:ring-blue-200">
-                    @foreach (request()->except("search") as $key => $value)
+                    @foreach (collect(request()->query())->except("search")->filter(fn ($value) => is_scalar($value) || (is_array($value) && count(array_filter($value, 'is_array')) === 0)) as $key => $value)
                         @if (is_array($value))
                             @foreach ($value as $item)
                                 <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
@@ -66,30 +66,38 @@
             </div>
 
             @if (request()->routeIs("admin.products.create", "admin.products.edit", "admin.products.show"))
-                <a href="{{ route("admin.products.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
+                @adminRoute('admin.products.index')
+<a href="{{ route("admin.products.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Products
                 </a>
+@endadminRoute
             @endif
 
             @if (request()->routeIs("admin.agents.create", "admin.agents.edit", "admin.agents.show"))
-                <a href="{{ route("admin.agents.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
+                @adminRoute('admin.agents.index')
+<a href="{{ route("admin.agents.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Agents
                 </a>
+@endadminRoute
             @endif
 
             @if (request()->routeIs("admin.agent-email-templates.create", "admin.agent-email-templates.edit"))
-                <a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
+                @adminRoute('admin.agent-email-templates.index')
+<a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#4285f4] px-4 text-sm font-semibold text-white shadow-sm shadow-blue-950/30 transition hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#4285f4] focus:ring-offset-2 focus:ring-offset-[#111827]">
                     Email to Agen
                 </a>
+@endadminRoute
             @endif
 
-            <a href="{{ route("admin.profile.show") }}" @class([
+            @adminRoute('admin.profile.show')
+<a href="{{ route("admin.profile.show") }}" @class([
                 "grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#111827]",
                 "bg-blue-50 text-[#1a73e8] ring-2 ring-blue-300" => request()->routeIs("admin.profile.*"),
                 "bg-white text-[#1a73e8] hover:bg-blue-50" => ! request()->routeIs("admin.profile.*"),
             ]) aria-label="View profile">
                 {{ $initials }}
             </a>
+@endadminRoute
         </div>
     </div>
 </header>

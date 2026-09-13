@@ -32,7 +32,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_view_agents_index(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create([
             'login_id' => 'AGT-TEST-001',
             'agt_name' => 'Aisyah Agent',
@@ -51,7 +51,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_view_agent_edit_form(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
 
         $this->actingAs($admin, 'admin')
@@ -65,7 +65,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_search_agents(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         Agent::factory()->create([
             'login_id' => 'AGT-KEY-001',
             'agt_name' => 'Searchable Agent',
@@ -84,7 +84,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_create_agent(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->actingAs($admin, 'admin')
             ->post($this->adminUrl('/agents'), $this->validPayload())
@@ -105,7 +105,7 @@ class AgentManagementTest extends TestCase
 
     public function test_agent_login_id_must_be_unique(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         Agent::factory()->create(['login_id' => 'AGT-TEST-001']);
 
         $this->actingAs($admin, 'admin')
@@ -117,7 +117,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_update_agent(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create([
             'login_id' => 'AGT-OLD-001',
             'agt_name' => 'Old Agent',
@@ -146,7 +146,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_clear_all_agent_business_sites(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
         $businessSite = BusinessSite::query()->create([
             'site_name' => 'Test Site',
@@ -169,7 +169,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_reset_agent_password(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
 
         $this->actingAs($admin, 'admin')
@@ -187,7 +187,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_upload_agent_profile_picture_as_300px_thumb(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['profile_picture' => null]);
 
         $this->actingAs($admin, 'admin')
@@ -216,7 +216,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_delete_agent(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
 
         $this->actingAs($admin, 'admin')
@@ -232,7 +232,7 @@ class AgentManagementTest extends TestCase
 
     public function test_order_detail_page_displays_print_actions(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $order = $this->createPrintableOrder();
 
         $this->actingAs($admin, 'admin')
@@ -246,7 +246,7 @@ class AgentManagementTest extends TestCase
 
     public function test_admin_can_view_full_order_print_page(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $order = $this->createPrintableOrder();
 
         $this->actingAs($admin, 'admin')
@@ -255,13 +255,13 @@ class AgentManagementTest extends TestCase
             ->assertSeeText("Order {$order->order_number}")
             ->assertSeeText('Stock shortages')
             ->assertSeeText($order->agent->agt_name)
-            ->assertSeeText('Agent discount')
+            ->assertSeeText('Eligible discount')
             ->assertSee('A4 landscape', false);
     }
 
     public function test_admin_can_view_a5_order_print_page(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $order = $this->createPrintableOrder();
 
         $this->actingAs($admin, 'admin')

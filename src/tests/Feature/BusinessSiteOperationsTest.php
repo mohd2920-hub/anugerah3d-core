@@ -20,7 +20,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_admin_can_start_a_business_site(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $site = BusinessSite::query()->create(['site_name' => 'Test Site', 'city' => 'Shah Alam']);
 
         $this->actingAs($admin, 'admin')
@@ -70,7 +70,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_stopping_business_checks_out_all_agents(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['agt_name' => 'Agent Closed']);
         $site = BusinessSite::query()->create(['site_name' => 'Running Site', 'city' => 'Klang', 'opened_at' => now()->subHour()]);
         $site->agents()->attach($agent);
@@ -97,7 +97,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_business_site_cards_show_only_active_agent_count(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['agt_name' => 'Agent Hadir']);
         $site = BusinessSite::query()->create(['site_name' => 'Live Site', 'city' => 'Klang', 'opened_at' => now()->subMinutes(15)]);
         $site->agents()->attach($agent);
@@ -119,7 +119,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_operation_summary_calculates_requested_totals(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['agt_name' => 'Agent Detail']);
         $site = BusinessSite::query()->create(['site_name' => 'Summary Site', 'city' => 'Klang']);
         $operation = BusinessSiteOperation::query()->create([
@@ -144,7 +144,7 @@ class BusinessSiteOperationsTest extends TestCase
             'customer_discount_amount' => 20, 'line_total' => 180,
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->get(route('admin.business-sites.index'));
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.business-sites.summary', ['businessSite' => $site, 'period' => 'all']));
         $summary = $response->viewData('operationSummaries')->first();
 
         $response->assertOk()
@@ -158,7 +158,8 @@ class BusinessSiteOperationsTest extends TestCase
         $this->assertSame(1, (int) $summary->sales_count);
         $this->assertSame(2, (int) $summary->items_sold);
         $this->assertSame(180.0, (float) $summary->sales_total);
-        $this->assertSame(130.0, (float) $summary->commission_total);
+        $this->assertSame(180.0, (float) $summary->net_company_total);
+        $this->assertSame(120.0, (float) $summary->gross_profit_total);
         $this->assertSame(60.0, (float) $summary->capital_total);
 
         $this->get(route('admin.business-site-operations.show', $operation))
@@ -172,7 +173,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_operation_summary_paginates_twenty_records(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $site = BusinessSite::query()->create(['site_name' => 'Pagination Site', 'city' => 'Klang']);
 
         foreach (range(1, 21) as $day) {
@@ -183,8 +184,8 @@ class BusinessSiteOperationsTest extends TestCase
             ]);
         }
 
-        $firstPage = $this->actingAs($admin, 'admin')->get(route('admin.business-sites.index'));
-        $secondPage = $this->get(route('admin.business-sites.index', ['operations_page' => 2]));
+        $firstPage = $this->actingAs($admin, 'admin')->get(route('admin.business-sites.summary', ['businessSite' => $site, 'period' => 'all']));
+        $secondPage = $this->get(route('admin.business-sites.summary', ['businessSite' => $site, 'period' => 'all', 'operations_page' => 2]));
 
         $this->assertCount(20, $firstPage->viewData('operationSummaries'));
         $this->assertCount(1, $secondPage->viewData('operationSummaries'));
@@ -192,7 +193,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_business_site_action_links_directly_to_details_and_delete_is_moved(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $site = BusinessSite::query()->create(['site_name' => 'Action Site', 'city' => 'Klang']);
 
         $this->actingAs($admin, 'admin')
@@ -200,7 +201,9 @@ class BusinessSiteOperationsTest extends TestCase
             ->assertOk()
             ->assertSeeText('Add new site')
             ->assertSee('data-business-site-card', false)
-            ->assertSeeText('...')
+            ->assertDontSee('>...</a>', false)
+            ->assertSee('site-details-link', false)
+            ->assertSee(route('admin.business-sites.summary', $site), false)
             ->assertSee('View details for Action Site', false)
             ->assertSee(route('admin.business-sites.show', $site), false)
             ->assertDontSee('data-site-action-toast', false)
@@ -217,7 +220,7 @@ class BusinessSiteOperationsTest extends TestCase
 
     public function test_pos_sales_are_linked_and_scoped_to_the_current_site_operation(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
         $site = BusinessSite::query()->create([
             'site_name' => 'Operation Linked Site',
@@ -279,9 +282,9 @@ class BusinessSiteOperationsTest extends TestCase
             ->assertDontSeeText('POS-OLD-OPERATION');
     }
 
-    public function test_admin_can_delete_a_closed_business_session_without_sales(): void
+    public function test_closed_business_session_without_sales_is_preserved(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $site = BusinessSite::query()->create(['site_name' => 'Empty Session Site', 'city' => 'Klang']);
         $operation = BusinessSiteOperation::query()->create([
             'business_site_id' => $site->getKey(),
@@ -292,20 +295,37 @@ class BusinessSiteOperationsTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get(route('admin.business-site-operations.show', $operation))
             ->assertOk()
-            ->assertSeeText('Delete session')
-            ->assertSee('_method', false)
-            ->assertSee('DELETE', false);
+            ->assertDontSeeText('Delete session')
+            ->assertSeeText('Business sessions are retained for history and cannot be deleted.');
 
         $this->delete(route('admin.business-site-operations.destroy', $operation))
-            ->assertRedirect(route('admin.business-sites.index'))
-            ->assertSessionHas('success');
+            ->assertRedirect()
+            ->assertSessionHasErrors('business_site_operation');
 
-        $this->assertModelMissing($operation);
+        $this->assertModelExists($operation);
+    }
+
+    public function test_session_with_attendance_and_no_sales_cannot_be_deleted(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create();
+        $agent = Agent::factory()->create();
+        $site = BusinessSite::query()->create(['site_name' => 'Attendance history', 'city' => 'Klang']);
+        $operation = BusinessSiteOperation::query()->create([
+            'business_site_id' => $site->id, 'opened_at' => now()->subHours(2), 'closed_at' => now()->subHour(),
+        ]);
+        $attendance = PosSession::query()->create([
+            'agent_id' => $agent->id, 'business_site_id' => $site->id,
+            'signed_in_at' => now()->subMinutes(90), 'signed_out_at' => now()->subHour(),
+        ]);
+        $this->actingAs($admin, 'admin')->delete(route('admin.business-site-operations.destroy', $operation))
+            ->assertSessionHasErrors('business_site_operation');
+        $this->assertModelExists($operation);
+        $this->assertModelExists($attendance);
     }
 
     public function test_business_session_with_sales_cannot_be_deleted(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
         $site = BusinessSite::query()->create(['site_name' => 'Sales Session Site', 'city' => 'Klang']);
         $operation = BusinessSiteOperation::query()->create([
@@ -335,7 +355,7 @@ class BusinessSiteOperationsTest extends TestCase
             ->get(route('admin.business-site-operations.show', $operation))
             ->assertOk()
             ->assertSeeText('POS-DELETE-GUARD')
-            ->assertSeeText('This session cannot be deleted because it has sales.');
+            ->assertSeeText('Business sessions are retained for history and cannot be deleted.');
 
         $this->from(route('admin.business-site-operations.show', $operation))
             ->delete(route('admin.business-site-operations.destroy', $operation))

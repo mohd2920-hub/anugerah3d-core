@@ -20,7 +20,7 @@ class ProductImage extends Model
     /** @use HasFactory<ProductImageFactory> */
     use HasFactory;
 
-    public const MAX_IMAGES_PER_PRODUCT = 5;
+    public const MAX_IMAGES_PER_PRODUCT = 10;
 
     /**
      * @return BelongsTo<Product, $this>
@@ -35,7 +35,7 @@ class ProductImage extends Model
         static::saving(function (ProductImage $image): void {
             if ($image->position < 1 || $image->position > self::MAX_IMAGES_PER_PRODUCT) {
                 throw ValidationException::withMessages([
-                    'position' => 'A product image position must be between 1 and 5.',
+                    'position' => 'A product image position must be between 1 and '.self::MAX_IMAGES_PER_PRODUCT.'.',
                 ]);
             }
         });

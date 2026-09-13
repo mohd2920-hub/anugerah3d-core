@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class SyncProductImages
@@ -56,7 +57,7 @@ class SyncProductImages
 
             if ($items->count() > ProductImage::MAX_IMAGES_PER_PRODUCT) {
                 throw ValidationException::withMessages([
-                    'product_images' => 'A product can have a maximum of 5 pictures.',
+                    'product_images' => 'A product can have a maximum of '.ProductImage::MAX_IMAGES_PER_PRODUCT.' pictures.',
                 ]);
             }
 

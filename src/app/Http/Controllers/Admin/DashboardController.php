@@ -3,45 +3,69 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DashboardRequest;
+use App\Models\BusinessSite;
+use App\Support\AdminAccess;
+use App\Support\DashboardInventory;
+use App\Support\DashboardReport;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display the admin dashboard.
-     */
-    public function __invoke(): View
+    public function __construct(private DashboardReport $report, private DashboardInventory $inventory) {}
+
+    public function __invoke(DashboardRequest $request): View
     {
+        $user = $request->user('admin');
+
         return view('admin.dashboard', [
-            'metrics' => [
-                ['label' => 'Orders Today', 'value' => '24', 'trend' => '+8%'],
-                ['label' => 'Pending Quotes', 'value' => '12', 'trend' => '+3'],
-                ['label' => 'Active Customers', 'value' => '148', 'trend' => '+11'],
-                ['label' => 'Print Queue', 'value' => '7', 'trend' => '2 urgent'],
-            ],
-            'activities' => [
-                'New custom keychain order received',
-                'Quotation prepared for corporate gift request',
-                'Miniature print marked ready for pickup',
-                'Customer profile updated by support desk',
-            ],
-            'productionStages' => [
-                ['label' => 'Design approval', 'percent' => 82, 'caption' => '12 jobs ready'],
-                ['label' => 'Printing queue', 'percent' => 64, 'caption' => '7 jobs active'],
-                ['label' => 'Finishing work', 'percent' => 48, 'caption' => '5 jobs pending'],
-                ['label' => 'Ready to deliver', 'percent' => 76, 'caption' => '9 parcels packed'],
-            ],
-            'customers' => [
-                ['name' => 'Nur Aisyah', 'initials' => 'NA', 'segment' => 'Corporate buyer', 'lastOrder' => 'Gift box set', 'value' => 'RM 1,280', 'status' => 'Active'],
-                ['name' => 'Farid Studio', 'initials' => 'FS', 'segment' => 'Event partner', 'lastOrder' => 'Name keychains', 'value' => 'RM 860', 'status' => 'Quotation'],
-                ['name' => 'Mira Craft', 'initials' => 'MC', 'segment' => 'Repeat customer', 'lastOrder' => 'Miniature display', 'value' => 'RM 540', 'status' => 'Printing'],
-                ['name' => 'Khalid Enterprise', 'initials' => 'KE', 'segment' => 'Bulk order', 'lastOrder' => 'Corporate souvenir', 'value' => 'RM 2,450', 'status' => 'Priority'],
-            ],
-            'channelMix' => [
-                ['label' => 'WhatsApp orders', 'percent' => 58],
-                ['label' => 'Website leads', 'percent' => 24],
-                ['label' => 'Agent referrals', 'percent' => 18],
-            ],
+            'report' => $this->report->data($user, $request->validated()),
+            'inventory' => AdminAccess::allows($user, 'products.view') ? $this->inventory->data($request->validated(), $user) : null,
+            'channels' => $this->report->channels($user),
+            'businessSites' => AdminAccess::allows($user, 'sales.view') ? BusinessSite::query()->orderBy('site_name')->get(['id', 'site_name']) : collect(),
         ]);
+    }
+
+    public function data(DashboardRequest $request): JsonResponse
+    {
+        return response()->json($this->report->data($request->user('admin'), $request->validated()))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function inventory(DashboardRequest $request): JsonResponse
+    {
+        abort_unless(AdminAccess::allows($request->user('admin'), 'products.view'), 403);
+
+        if ($request->boolean('stock_reservations')) {
+            return response()->json($this->inventory->reservations($request->user('admin'), $request->validated()))->header('Cache-Control', 'private, no-store');
+        }
+
+        return response()->json($this->inventory->data($request->validated(), $request->user('admin')))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function export(DashboardRequest $request): StreamedResponse
+    {
+        $filters = $request->validated();
+        [$start, $end] = $this->report->ranges($filters);
+        $query = $this->report->entries($request->user('admin'), $filters, $start, $end)
+            ->when(isset($filters['day']), fn ($q) => $q->whereDate('date', $start->day((int) $filters['day'])->toDateString()))
+            ->orderBy('date')->orderBy('channel')->orderBy('kind')->orderBy('id');
+
+        return response()->streamDownload(function () use ($query): void {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['Rujukan', 'Tarikh', 'Saluran', 'Jenis', 'Lokasi', 'Jualan RM', 'Kos direkodkan / anggaran RM', 'Anggaran untung RM'], escape: '');
+            foreach ($query->cursor() as $entry) {
+                $row = $this->report->transaction($entry);
+                $cells = array_map(function (mixed $value): string {
+                    $text = (string) $value;
+
+                    return preg_match('/^[\s]*[=+@\-]/u', $text) ? "'".$text : $text;
+                }, [$row['reference'], $row['date'], $row['channel'], $row['kind'], $row['site'], $row['sales'], $row['cost'], $row['profit']]);
+                fputcsv($handle, $cells, escape: '');
+            }
+            fclose($handle);
+        }, 'prestasi-'.$start->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
     }
 }

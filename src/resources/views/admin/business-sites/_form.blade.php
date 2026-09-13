@@ -37,6 +37,8 @@
 
     <div class="flex gap-3">
         <button class="rounded-lg bg-[#1a73e8] px-5 py-2.5 text-sm font-semibold text-white">{{ $submitLabel }}</button>
-        <a href="{{ route('admin.business-sites.index') }}" class="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</a>
+        @adminRoute('admin.business-sites.index')
+<a href="{{ route('admin.business-sites.index') }}" class="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</a>
+@endadminRoute
     </div>
 </form>

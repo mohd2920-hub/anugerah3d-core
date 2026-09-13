@@ -19,6 +19,9 @@ const initializeProductGallery = () => {
     const stopAutoplay = () => window.clearInterval(autoplayTimer);
 
     const updateControls = () => {
+        track.querySelectorAll('video').forEach((video) => {
+            if (video.parentElement !== track.children[currentIndex]) video.pause();
+        });
         const hasMultipleImages = images.length > 1;
         previous.classList.toggle('hidden', !hasMultipleImages);
         previous.classList.toggle('grid', hasMultipleImages);
@@ -53,7 +56,7 @@ const initializeProductGallery = () => {
     const startAutoplay = () => {
         stopAutoplay();
 
-        if (images.length < 2 || reduceMotion.matches) {
+        if (images.length < 2 || images.some((image) => image.type === 'video') || reduceMotion.matches) {
             return;
         }
 
@@ -66,9 +69,10 @@ const initializeProductGallery = () => {
     };
 
     const render = (event) => {
-        images = Array.isArray(event.detail?.images) ? event.detail.images.slice(0, 5) : [];
+        images = Array.isArray(event.detail?.images) ? event.detail.images : [];
         const productName = event.detail?.productName || 'Product';
         currentIndex = 0;
+        track.querySelectorAll('video').forEach((video) => video.pause());
         track.innerHTML = '';
         dots.innerHTML = '';
 
@@ -79,7 +83,12 @@ const initializeProductGallery = () => {
             const slide = document.createElement('div');
             slide.className = 'h-full w-full flex-none snap-center';
 
-            const picture = document.createElement('img');
+            const picture = document.createElement(image.type === 'video' ? 'video' : 'img');
+            if (image.type === 'video') {
+                picture.controls = true;
+                picture.playsInline = true;
+                picture.preload = 'metadata';
+            }
             picture.src = image.src;
             picture.alt = image.alt || `${productName} picture ${index + 1}`;
             picture.className = 'h-full w-full object-contain';
@@ -128,11 +137,55 @@ const initializeProductGallery = () => {
 
     reduceMotion.addEventListener('change', startAutoplay);
     window.addEventListener('product-gallery:open', render);
-    window.addEventListener('product-gallery:close', stopAutoplay);
+    window.addEventListener('product-gallery:close', () => {
+        stopAutoplay();
+        track.querySelectorAll('video').forEach((video) => video.pause());
+    });
 };
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeProductGallery);
-} else {
+const initializeClickerThumbnailScroll = () => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    document.querySelectorAll("[data-clicker-thumbs-group]").forEach((group) => {
+        const track = group.querySelector("[data-clicker-casing-thumbs], [data-clicker-huruf-thumbs]");
+        const previous = group.querySelector('[data-clicker-thumbs-scroll="-1"]');
+        const next = group.querySelector('[data-clicker-thumbs-scroll="1"]');
+
+        if (!track || !previous || !next) {
+            return;
+        }
+
+        const updateControls = () => {
+            const maximumScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+            previous.disabled = maximumScroll === 0 || track.scrollLeft <= 1;
+            next.disabled = maximumScroll === 0 || track.scrollLeft >= maximumScroll - 1;
+        };
+
+        group.querySelectorAll("[data-clicker-thumbs-scroll]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const direction = Number(button.dataset.clickerThumbsScroll);
+                const distance = Math.max(160, Math.round(track.clientWidth * 0.75));
+                track.scrollBy({
+                    left: direction * distance,
+                    behavior: reduceMotion.matches ? "auto" : "smooth",
+                });
+            });
+        });
+
+        track.addEventListener("scroll", updateControls, {passive: true});
+        window.addEventListener("resize", updateControls);
+        new MutationObserver(updateControls).observe(track, {childList: true});
+        updateControls();
+    });
+};
+
+const initializeProductOrderingUi = () => {
     initializeProductGallery();
+    initializeClickerThumbnailScroll();
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeProductOrderingUi);
+} else {
+    initializeProductOrderingUi();
 }

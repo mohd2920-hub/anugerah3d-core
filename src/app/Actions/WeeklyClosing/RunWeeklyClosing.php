@@ -70,7 +70,7 @@ class RunWeeklyClosing
                 ->where('status', '!=', Order::StatusCancelled)
                 ->get(['id', 'agent_id', 'total_amount', 'total_units']);
 
-            $posSales = PosSale::query()
+            $posSales = PosSale::query()->notVoided()
                 ->where('sold_at', '>=', $periodStart)
                 ->where('sold_at', '<', $periodEnd)
                 ->get(['id', 'sales_agent_id', 'total_amount']);

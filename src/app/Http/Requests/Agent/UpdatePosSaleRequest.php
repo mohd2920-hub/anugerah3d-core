@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Agent;
 
-use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use Illuminate\Validation\Validator;
 
@@ -10,16 +9,7 @@ class UpdatePosSaleRequest extends StorePosSaleRequest
 {
     public function authorize(): bool
     {
-        $posSale = $this->route('posSale');
-        $session = $this->activePosSession();
-
-        return $posSale instanceof PosSale
-            && $session !== null
-            && BusinessSiteOperation::query()
-                ->whereKey($posSale->business_site_operation_id)
-                ->where('business_site_id', $session->business_site_id)
-                ->whereNull('closed_at')
-                ->exists();
+        return false;
     }
 
     public function rules(): array

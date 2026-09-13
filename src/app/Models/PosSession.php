@@ -11,6 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['agent_id', 'business_site_id', 'signed_in_at', 'expires_at', 'signed_out_at'])]
 class PosSession extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $record): void {
+            throw new \LogicException('Historical records cannot be deleted.');
+        });
+    }
+
     public function agent(): BelongsTo
     {
         return $this->belongsTo(Agent::class);

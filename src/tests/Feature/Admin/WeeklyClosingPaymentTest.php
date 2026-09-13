@@ -8,6 +8,9 @@ use App\Models\Agent;
 use App\Models\WeeklyClosing;
 use App\Models\WeeklyClosingAgentSummary;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Mail\PendingMail;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -17,7 +20,7 @@ class WeeklyClosingPaymentTest extends TestCase
 
     public function test_weekly_closing_list_uses_current_agent_bank_details_and_payment_button_under_status(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create([
             'bank_name' => 'Maybank Current',
             'bank_account_name' => 'Aisyah Current Account',
@@ -45,9 +48,9 @@ class WeeklyClosingPaymentTest extends TestCase
             ->assertSee('name="notify_agent" value="1" checked', false);
     }
 
-    public function test_admin_can_complete_payment_and_queue_email_to_current_agent_email(): void
+    public function test_admin_can_complete_payment_and_send_email_immediately_to_current_agent_email(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create([
             'email' => 'current-agent@example.com',
             'bank_name' => 'CIMB',
@@ -89,16 +92,43 @@ class WeeklyClosingPaymentTest extends TestCase
         $this->assertNotNull($summary->paid_at);
         $this->assertNotNull($summary->notified_agent_at);
 
-        Mail::assertQueued(
+        Mail::assertNothingQueued();
+        Mail::assertSent(
             WeeklyClosingPaymentMadeMail::class,
             fn (WeeklyClosingPaymentMadeMail $mail): bool => $mail->summaryId === $summary->id
                 && $mail->hasTo('current-agent@example.com'),
         );
     }
 
+    public function test_email_failure_preserves_saved_payment_and_shows_a_warning(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create();
+        $agent = Agent::factory()->create();
+        $closing = $this->createClosing();
+        $summary = $this->createSummary($closing, $agent);
+        $pendingMail = \Mockery::mock(PendingMail::class);
+        Mail::shouldReceive('to')->once()->andReturn($pendingMail);
+        $pendingMail->shouldReceive('sendNow')->once()->andThrow(new \RuntimeException('Simulated SMTP failure'));
+
+        $this->actingAs($admin, 'admin')
+            ->from(route('admin.weekly-closings.show', $closing))
+            ->patch(route('admin.weekly-closings.payments.update', [$closing, $summary]), [
+                'payout_status' => 'paid',
+                'notify_agent' => 1,
+                'payment_receipt_datetime_text' => '27 Jul 2026, 3:30 PM',
+            ])
+            ->assertRedirect(route('admin.weekly-closings.show', $closing))
+            ->assertSessionHas('warning')
+            ->assertSessionMissing('success');
+
+        $this->assertSame('paid', $summary->refresh()->payout_status);
+        $this->assertNotNull($summary->paid_at);
+        $this->assertNull($summary->notified_agent_at);
+    }
+
     public function test_admin_can_complete_payment_without_email_when_notify_is_unchecked(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['email' => 'invalid-email']);
         $closing = $this->createClosing();
         $summary = $this->createSummary($closing, $agent, ['agent_email' => null]);
@@ -121,7 +151,7 @@ class WeeklyClosingPaymentTest extends TestCase
         $this->assertSame('paid', $summary->payout_status);
         $this->assertNotNull($summary->paid_at);
         $this->assertNull($summary->notified_agent_at);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_payment_email_has_polished_recipient_content(): void
@@ -147,11 +177,61 @@ class WeeklyClosingPaymentTest extends TestCase
         $mail->assertSeeInHtml('1122334455');
         $mail->assertSeeInHtml('PB-REF-88');
         $mail->assertSeeInHtml('Terima kasih atas prestasi anda.');
+
+        $html = $mail->render();
+
+        $this->assertStringNotContainsString('<pre', $html);
+        $this->assertStringNotContainsString('&lt;div', $html);
+        $this->assertStringNotContainsString('&lt;table', $html);
+        $this->assertStringNotContainsString('linear-gradient', $html);
+        $this->assertStringContainsString('background-color: #166534', $html);
+    }
+
+    public function test_uploaded_payment_receipt_is_attached_and_missing_receipts_are_skipped(): void
+    {
+        $directory = sys_get_temp_dir().'/weekly-receipt-'.bin2hex(random_bytes(8));
+        mkdir($directory);
+        $originalPublicPath = public_path();
+        $this->app->usePublicPath($directory);
+
+        try {
+            file_put_contents($directory.'/receipt.pdf', 'test receipt');
+            $summary = $this->createSummary($this->createClosing(), Agent::factory()->create(), [
+                'payment_attachment_path' => 'receipt.pdf',
+            ]);
+            $mail = new WeeklyClosingPaymentMadeMail($summary->id);
+            $mail->assertHasAttachment(Attachment::fromPath($directory.'/receipt.pdf'));
+            unlink($directory.'/receipt.pdf');
+            $this->assertSame([], $mail->attachments());
+        } finally {
+            $this->app->usePublicPath($originalPublicPath);
+            File::deleteDirectory($directory);
+        }
+    }
+
+    public function test_updating_an_already_paid_summary_sends_updated_details_immediately(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create();
+        $closing = $this->createClosing();
+        $summary = $this->createSummary($closing, Agent::factory()->create(), ['payout_status' => 'paid']);
+        Mail::fake();
+
+        $this->actingAs($admin, 'admin')->patch(route('admin.weekly-closings.payments.update', [$closing, $summary]), [
+            'payout_status' => 'paid',
+            'notify_agent' => 1,
+            'payment_receipt_datetime_text' => '27 Jul 2026, 3:30 PM',
+            'payment_reference' => 'UPDATED-REFERENCE',
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        Mail::assertSent(WeeklyClosingPaymentMadeMail::class, 1);
+        Mail::assertNothingQueued();
+        $this->assertSame('UPDATED-REFERENCE', $summary->refresh()->payment_reference);
+        $this->assertNotNull($summary->notified_agent_at);
     }
 
     public function test_payment_requires_receipt_date_time(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
         $closing = $this->createClosing();
         $summary = $this->createSummary($closing, $agent);
@@ -170,12 +250,12 @@ class WeeklyClosingPaymentTest extends TestCase
             ->assertSessionHasInput('modal_summary_id', (string) $summary->id);
 
         $this->assertSame('pending', $summary->refresh()->payout_status);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_payment_requires_a_valid_agent_email(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create(['email' => 'invalid-email']);
         $closing = $this->createClosing();
         $summary = $this->createSummary($closing, $agent, ['agent_email' => null]);
@@ -194,12 +274,12 @@ class WeeklyClosingPaymentTest extends TestCase
             ->assertSessionHasErrors('payout_status');
 
         $this->assertSame('pending', $summary->refresh()->payout_status);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_summary_must_belong_to_the_weekly_closing_route(): void
     {
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
         $agent = Agent::factory()->create();
         $closing = $this->createClosing();
         $otherClosing = $this->createClosing('2026-W31');
@@ -216,7 +296,7 @@ class WeeklyClosingPaymentTest extends TestCase
             ->assertNotFound();
 
         $this->assertSame('pending', $summary->refresh()->payout_status);
-        Mail::assertNothingQueued();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_payment_modal_javascript_source_contains_click_handler(): void

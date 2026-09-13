@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './business-sites.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -76,3 +77,171 @@ body.admin-shell .admin-data-table td {
 body.admin-shell .admin-data-table img {
     display: block;
 }
+
+/* Shared interaction emphasis: keep text metrics and semantic colours intact. */
+@media screen {
+    :where(a[href], button, summary, [role="button"], input, select, textarea) {
+        transition-property: background-color, border-color, box-shadow, outline-color;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+    }
+
+    :where(a[href], button, summary, [role="button"], input, select, textarea):focus-visible {
+        outline: 3px solid #2563eb;
+        outline-offset: 3px;
+    }
+
+    :where(main tbody tr):focus-within > td {
+        background-color: #e8f0ff;
+    }
+
+    :where(main tbody tr):focus-within > td:first-child {
+        box-shadow: inset 4px 0 #2563eb;
+    }
+}
+
+@media screen and (hover: hover) and (pointer: fine) {
+    :where(a[href], button, summary, [role="button"]):not(:disabled):not([aria-disabled="true"]):hover {
+        text-shadow: 0.25px 0 currentColor, -0.25px 0 currentColor;
+    }
+
+    :where(button, summary, [role="button"], a[href][class*="rounded"]):not(:disabled):not([aria-disabled="true"]):hover {
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent), 0 4px 12px rgb(15 23 42 / 16%);
+    }
+
+    :where(nav a[href], aside a[href], [data-action-menu-panel] a[href], [data-action-menu-panel] button):not([aria-current="page"]):not(:disabled):hover {
+        background-image: linear-gradient(rgb(59 130 246 / 16%), rgb(59 130 246 / 16%));
+        box-shadow: inset 3px 0 #3b82f6;
+    }
+
+    :where(main tbody tr):not([aria-selected="true"]):hover > td {
+        background-color: #e8f0ff;
+    }
+
+    :where(main tbody tr):hover > td:first-child {
+        box-shadow: inset 4px 0 #2563eb;
+    }
+
+    :where(main tbody tr):hover > td :is(.font-medium, .font-semibold, .font-bold) {
+        text-shadow: 0.25px 0 currentColor, -0.25px 0 currentColor;
+    }
+
+    :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):not(:disabled):not([readonly]):hover {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgb(37 99 235 / 14%);
+    }
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+    :where(a[href], button, summary, [role="button"], input, select, textarea) {
+        transition-duration: 0s;
+    }
+}
+
+.agent-rank-medal {
+    display:inline-flex;
+    flex-shrink:0;
+    width:64px;
+    height:72px;
+    color:#805d18;
+    --rank-light:#fff1b0;
+    --rank-mid:#d5a336;
+    --rank-dark:#986719;
+}
+.agent-rank-medal-2 {
+    color:#566475;
+    --rank-light:#f6f8ff;
+    --rank-mid:#b4c0d0;
+    --rank-dark:#748196;
+}
+.agent-rank-medal-3 {
+    color:#814726;
+    --rank-light:#ffdbb0;
+    --rank-mid:#cb8a50;
+    --rank-dark:#955730;
+}
+.agent-rank-medal svg { width:100%; height:100%; filter:drop-shadow(0 2px 2px rgb(0 0 0 / 12%)); }
+.rank-metal-light { stop-color:var(--rank-light); }
+.rank-metal-mid { stop-color:var(--rank-mid); }
+.rank-metal-dark { stop-color:var(--rank-dark); }
+.rank-medal-number { font-family:Georgia,serif; font-size:57px; font-weight:700; }
+
+.agent-rank-medal.rank-medal-compact { width:46px; height:54px; }
+.agent-rank-medal.rank-medal-neutral {
+    color:#607080;
+    --rank-light:#eef3f7;
+    --rank-mid:#c4cfd9;
+    --rank-dark:#8293a3;
+}
+.rank-medal-number.rank-medal-double { font-size:43px; }
+
+.rank-number-plain {
+    display:inline-flex;
+    flex-shrink:0;
+    align-items:center;
+    justify-content:center;
+    width:46px;
+    color:#475569;
+    font-size:16px;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+}
+
+.sales-summary-strip {
+    display:grid;
+    grid-template-columns:repeat(7,minmax(175px,1fr));
+    gap:12px;
+    overflow-x:auto;
+    padding:2px 2px 8px;
+}
+.sales-summary-strip > * { min-width:0; }
+.sales-summary-strip .text-2xl { font-size:clamp(18px,1.4vw,24px); overflow-wrap:anywhere; }
+
+.sales-scroll-shell { position:relative; min-width:0; }
+.sales-scroll-arrow { display:none; }
+@media(max-width:767px) {
+    .sales-scroll-shell:has(.sales-scroll-arrow:not([hidden])) { padding-inline:28px; }
+    .sales-scroll-arrow:not([hidden]) {
+        position:absolute;
+        top:50%;
+        transform:translateY(-50%);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:32px;
+        height:44px;
+        z-index:3;
+        border:1px solid #bfdbfe;
+        border-radius:10px;
+        background:#fff;
+        color:#2563eb;
+        box-shadow:0 2px 8px rgb(15 23 42 / 10%);
+        font-size:28px;
+        cursor:pointer;
+    }
+    .sales-scroll-arrow.is-left { left:0; }
+    .sales-scroll-arrow.is-right { right:0; }
+    .sales-scroll-arrow:disabled { opacity:.35; cursor:default; box-shadow:none; }
+    .sales-scroll-arrow:not(:disabled):hover { background:#eff6ff; }
+    .sales-scroll-arrow:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+}
+
+.ordering-agent-card {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+}
+.ordering-agent-rank {
+    height: 72px;
+    display: flex;
+    align-items: center;
+}
+.ordering-agent-rank .rank-number-plain {
+    width: 64px;
+    height: 72px;
+    color: #000;
+    font-family: Georgia, serif;
+    font-size: 36px;
+    font-weight: 700;
+}
+.ordering-agent-card > dl { margin-top: 0; }

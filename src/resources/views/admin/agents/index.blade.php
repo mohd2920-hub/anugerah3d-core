@@ -39,12 +39,72 @@
         @endif
 
         @if ($newRegistrationCount > 0)
-            <a href="{{ route('admin.agents.index', ['status' => \App\Models\Agent::StatusPending]) }}" class="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm transition hover:bg-blue-100">
+            @adminRoute('admin.agents.index')
+<a href="{{ route('admin.agents.index', ['status' => \App\Models\Agent::StatusPending]) }}" class="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm transition hover:bg-blue-100">
                 <span class="grid h-11 w-11 flex-none place-items-center rounded-full bg-blue-600 font-bold text-white">{{ $newRegistrationCount }}</span>
                 <span class="min-w-0 flex-1"><span class="block font-semibold text-blue-950">Pending agent {{ \Illuminate\Support\Str::plural('registration', $newRegistrationCount) }}</span><span class="mt-0.5 block text-sm text-blue-700">Review details and assign commission before approval.</span></span>
                 <span class="text-sm font-semibold text-blue-700">Review now →</span>
             </a>
+@endadminRoute
         @endif
+
+        <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Top 5 Ejen Aktif Order">
+            <h2 class="text-base font-semibold text-slate-900">Top 5 Ejen Aktif Order</h2>
+            <p class="mt-1 text-xs text-slate-500">{{ $rankingLabel }} · Mengikut jumlah jualan tertinggi · Order Completed · Jualan tanpa penghantaran</p>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <form method="GET" action="{{ route('admin.agents.index') }}" class="flex flex-wrap items-end gap-2 rounded-lg border border-blue-100 p-3">
+                    <label class="text-xs text-slate-600">Tempoh
+                        <select name="ranking_period" class="mt-1 block rounded-md border-slate-300 text-sm">
+                            <option value="all" @selected(($rankingFilters['ranking_period'] ?? 'all') === 'all')>Keseluruhan</option>
+                            <option value="month" @selected(($rankingFilters['ranking_period'] ?? '') === 'month')>Bulan</option>
+                        </select>
+                    </label>
+                    <label class="text-xs text-slate-600">Pilih bulan<input type="month" name="ranking_month" value="{{ $rankingFilters['ranking_month'] ?? now()->format('Y-m') }}" class="mt-1 block rounded-md border-slate-300 text-sm"></label>
+                    <button class="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Papar</button>
+                </form>
+                <form method="GET" action="{{ route('admin.agents.index') }}" class="flex flex-wrap items-end gap-2 rounded-lg border border-blue-100 p-3">
+                    <input type="hidden" name="ranking_period" value="custom">
+                    <label class="text-xs text-slate-600">Dari tarikh<input type="date" name="ranking_start" required value="{{ $rankingFilters['ranking_start'] ?? '' }}" class="mt-1 block rounded-md border-slate-300 text-sm"></label>
+                    <label class="text-xs text-slate-600">Hingga tarikh<input type="date" name="ranking_end" required value="{{ $rankingFilters['ranking_end'] ?? '' }}" class="mt-1 block rounded-md border-slate-300 text-sm"></label>
+                    <button class="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Cari</button>
+                </form>
+            </div>
+            @foreach (['ranking_period', 'ranking_month', 'ranking_start', 'ranking_end'] as $rankingField)
+                @error($rankingField)<p class="mt-2 text-xs text-red-700">{{ $message }}</p>@enderror
+            @endforeach
+            <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                @forelse ($topOrderingAgents as $rankedAgent)
+                    @php
+                        $rankedPhoto = $rankedAgent->profile_picture ? (filter_var($rankedAgent->profile_picture, FILTER_VALIDATE_URL) ? $rankedAgent->profile_picture : asset($rankedAgent->profile_picture)) : null;
+                    @endphp
+                    <article class="ordering-agent-card min-w-0 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                        <div class="ordering-agent-rank">
+                            <x-admin.rank-medal :rank="$loop->iteration" scope="ordering-agent" />
+                        </div>
+                        <div class="flex items-center gap-3">
+                            @if ($rankedPhoto)
+                                <img src="{{ $rankedPhoto }}" alt="{{ $rankedAgent->agt_name }}" class="h-11 w-11 shrink-0 rounded-full object-cover" loading="lazy">
+                            @else
+                                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-100 font-semibold text-blue-800">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($rankedAgent->agt_name, 0, 1)) }}</span>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="break-words text-sm font-semibold text-slate-900">{{ $rankedAgent->agt_name }}</p>
+                                <p class="break-words text-xs text-slate-500">{{ $rankedAgent->login_id }}</p>
+                            </div>
+                        </div>
+                        <dl class="mt-4 space-y-2 border-t border-blue-100 pt-3 text-xs">
+                            <div class="flex flex-wrap justify-between gap-1"><dt class="text-slate-500">Jumlah jualan</dt><dd class="font-semibold text-blue-900">RM {{ number_format((float) $rankedAgent->order_sales, 2) }}</dd></div>
+                            <div class="flex justify-between gap-1"><dt class="text-slate-500">Bilangan order</dt><dd class="font-semibold text-slate-900">{{ number_format($rankedAgent->completed_order_count) }} order</dd></div>
+                            <div class="flex justify-between gap-1"><dt class="text-slate-500">Bilangan produk</dt><dd class="font-semibold text-slate-900">{{ number_format($rankedAgent->order_units) }} unit</dd></div>
+                            <div><dt class="text-slate-500">Produk paling laris</dt><dd class="mt-1 break-words font-semibold text-slate-900">{{ $rankedAgent->top_order_product?->product_name ?? 'Tiada produk' }}</dd></div>
+                            <div class="border-t border-blue-100 pt-2"><dt class="inline text-slate-500">Introducer:</dt> <dd class="inline font-semibold text-slate-900">{{ $rankedAgent->referrer?->agt_name ?? 'Tiada introducer' }}</dd></div>
+                        </dl>
+                    </article>
+                @empty
+                    <p class="text-sm text-slate-500 xl:col-span-5">Belum ada order Completed untuk kedudukan ejen.</p>
+                @endforelse
+            </div>
+        </section>
 
         <div class="rounded-lg bg-white p-6 shadow-sm">
             <div class="flex items-center justify-end gap-2">
@@ -54,19 +114,24 @@
                         <path d="m21 21-4.35-4.35" />
                     </svg>
                 </button>
-                <a href="{{ route('admin.agents.create') }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#1a73e8] px-3 text-xs font-semibold uppercase tracking-wide text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0]">
+                @adminRoute('admin.agents.create')
+<a href="{{ route('admin.agents.create') }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#1a73e8] px-3 text-xs font-semibold uppercase tracking-wide text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0]">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
                         <path d="M12 5v14" />
                         <path d="M5 12h14" />
                     </svg>
                     <span>Add Agent</span>
                 </a>
-                <a href="{{ route('admin.agent-email-templates.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50">
+@endadminRoute
+                @adminRoute('admin.agent-email-templates.index')
+<a href="{{ route('admin.agent-email-templates.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm transition hover:bg-slate-50">
                     <span>Email to Agen</span>
                 </a>
+@endadminRoute
             </div>
 
-            <form id="agent-search-form-mobile" method="GET" action="{{ route('admin.agents.index') }}" class="{{ request('search') || request('status') ? 'mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' : 'mt-3 hidden gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' }}">
+            @adminRoute('admin.agents.index')
+<form id="agent-search-form-mobile" method="GET" action="{{ route('admin.agents.index') }}" class="{{ request('search') || request('status') ? 'mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' : 'mt-3 hidden gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]' }}">
                 <input type="text" name="search" value="{{ $search }}" placeholder="Search by login ID, name, email, IC or phone..." class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
                 <select name="status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
                     <option value="">All statuses</option>
@@ -78,13 +143,16 @@
                     Search
                 </button>
                 @if (request('search') || request('status'))
-                    <a href="{{ route('admin.agents.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    @adminRoute('admin.agents.index')
+<a href="{{ route('admin.agents.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                         Clear
                     </a>
+@endadminRoute
                 @else
                     <span class="hidden lg:block"></span>
                 @endif
             </form>
+@endadminRoute
         </div>
 
         <div class="hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">
@@ -181,9 +249,11 @@
                                         Actions
                                     </button>
                                     <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-44 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
-                                        <a href="{{ route('admin.agents.edit', $agent) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                        @adminRoute('admin.agents.edit')
+<a href="{{ route('admin.agents.edit', $agent) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                             Edit
                                         </a>
+@endadminRoute
                                         <button type="button" data-copy-text="{{ $agent->loginInfoMessage() }}" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                             Copy login info
                                         </button>
@@ -192,9 +262,11 @@
                                                 WhatsApp
                                             </a>
                                         @endif
-                                        <button type="button" data-action="{{ route('admin.agents.destroy', $agent) }}" data-name="{{ $agent->agt_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
+                                        @adminRoute('admin.agents.destroy')
+<button type="button" data-action="{{ route('admin.agents.destroy', $agent) }}" data-name="{{ $agent->agt_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
                                             Delete
                                         </button>
+@endadminRoute
                                     </div>
                                 </div>
                             </td>
@@ -250,9 +322,11 @@
                                 Actions
                             </button>
                             <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-44 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
-                                <a href="{{ route('admin.agents.edit', $agent) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+                                @adminRoute('admin.agents.edit')
+<a href="{{ route('admin.agents.edit', $agent) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                     Edit
                                 </a>
+@endadminRoute
                                 <button type="button" data-copy-text="{{ $agent->loginInfoMessage() }}" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                     Copy login info
                                 </button>
@@ -261,9 +335,11 @@
                                         WhatsApp
                                     </a>
                                 @endif
-                                <button type="button" data-action="{{ route('admin.agents.destroy', $agent) }}" data-name="{{ $agent->agt_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
+                                @adminRoute('admin.agents.destroy')
+<button type="button" data-action="{{ route('admin.agents.destroy', $agent) }}" data-name="{{ $agent->agt_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
                                     Delete
                                 </button>
+@endadminRoute
                             </div>
                         </div>
                     </div>

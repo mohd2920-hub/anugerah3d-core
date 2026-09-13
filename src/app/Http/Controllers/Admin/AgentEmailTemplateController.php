@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\SyncAgentEmailTemplateImages;
+use App\Actions\Admin\SyncAgentEmailTemplateVideo;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveAgentEmailTemplateRequest;
 use App\Mail\AgentTemplateMail;
@@ -53,6 +54,7 @@ class AgentEmailTemplateController extends Controller
                 ['created_by_admin_id' => $request->user('admin')?->getKey()],
             ));
             $syncAgentEmailTemplateImages->handle($template, $request->imageUploads(), []);
+            app(SyncAgentEmailTemplateVideo::class)->handle($template, $request->file('template_video'), $request->boolean('remove_template_video'));
 
             return $template;
         });
@@ -92,6 +94,7 @@ class AgentEmailTemplateController extends Controller
                 $request->imageUploads(),
                 $request->removedImagePaths(),
             );
+            app(SyncAgentEmailTemplateVideo::class)->handle($agentEmailTemplate, $request->file('template_video'), $request->boolean('remove_template_video'));
         });
 
         AdminActivity::record(

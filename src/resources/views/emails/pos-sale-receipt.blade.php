@@ -17,7 +17,7 @@
             : asset($relativePath);
     };
 
-    $logoUrl = $embedImage('images/anugerah3d-logo.png');
+    $logoUrl = $embedImage('images/anugerah3d-official-logo.png');
     $seller = $sale->salesAgent;
     $sellerPictureUrl = $embedImage($seller?->profile_picture);
     $productPictures = [];
@@ -45,7 +45,7 @@
         <tr>
             <td style="background:linear-gradient(135deg,#17324d,#285875);padding:28px 26px;text-align:center;color:#ffffff;">
                 @if ($logoUrl)
-                    <img src="{{ $logoUrl }}" width="82" height="82" alt="Anugerah3D" style="display:block;margin:0 auto 16px;border-radius:20px;border:3px solid rgba(255,255,255,.82);object-fit:cover;">
+                    <img src="{{ $logoUrl }}" width="82" alt="Anugerah3D" style="height:auto;display:block;margin:0 auto 16px;border-radius:0;border:3px solid rgba(255,255,255,.82);object-fit:contain;">
                 @endif
                 <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#fdba74;font-weight:700;">Purchase receipt</div>
                 <h1 style="margin:9px 0 7px;font-size:28px;line-height:1.2;color:#ffffff;">Thank you for your purchase!</h1>
@@ -79,7 +79,7 @@
                                 @endif
                             </td>
                             <td valign="middle" style="padding:11px 8px;border-bottom:1px solid #e2e8f0;">
-                                <div style="font-size:15px;font-weight:800;color:#17324d;">{{ $item->product_name }}</div>
+                                <div style="font-size:15px;font-weight:800;color:#17324d;">{{ $item->product_name }}</div><x-clicker-sale-details :configuration="$item->clicker_configuration ?? null" />
                                 <div style="margin-top:4px;font-size:12px;color:#64748b;">{{ $item->product_code }} · {{ $item->quantity }} × RM {{ number_format((float) $item->unit_price, 2) }}</div>
                                 @if ((float) $item->customer_discount_amount > 0)
                                     <div style="margin-top:3px;font-size:11px;color:#e7682b;">Discount RM {{ number_format((float) $item->customer_discount_amount, 2) }}</div>

@@ -20,6 +20,7 @@
 
         $productImages = $product->images ?? collect();
         $clickerImages = $clickerImages ?? collect();
+        $clickerResults = $clickerResults ?? collect();
         $mainImagePath = $productImages->first()?->image_path ?: $product->prd_picture;
         $mainImageUrl = $resolveImageUrl($mainImagePath);
         $galleryImages = $productImages
@@ -37,6 +38,7 @@
         $clickerGroups = collect([
             "Casing Images" => collect($clickerImages->get("casing", collect())),
             "Huruf Images" => collect($clickerImages->get("huruf", collect())),
+            "Result Images" => collect($clickerResults),
         ])->filter(fn ($images) => $images->isNotEmpty());
 
         $summary = $summary ?? null;
@@ -47,15 +49,19 @@
     @if ($isReadOnly)
         <div class="space-y-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <a href="{{ route("admin.products.index") }}" class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a73e8] hover:underline">
+                @adminRoute('admin.products.index')
+<a href="{{ route("admin.products.index") }}" class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a73e8] hover:underline">
                     <span aria-hidden="true">&larr;</span> Back to products
                 </a>
+@endadminRoute
 
                 <div class="flex flex-wrap gap-2">
                     <span class="inline-flex rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">{{ $typeLabel }}</span>
-                    <a href="{{ route("admin.products.edit", $product) }}" class="inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
+                    @adminRoute('admin.products.edit')
+<a href="{{ route("admin.products.edit", $product) }}" class="inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
                         Edit product
                     </a>
+@endadminRoute
                 </div>
             </div>
 
@@ -199,7 +205,7 @@
                                 @foreach (range(1, 8) as $characterCount)
                                     <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $characterCount }} Character</p>
-                                        <p class="mt-2 text-xl font-semibold text-slate-950">{{ $formatMoney($clickerCharacterPrices[$characterCount] ?? 0) }}</p>
+                                        <p class="mt-2 text-xl font-semibold text-slate-950">{{ $formatMoney($clickerCharacterPrices[$characterCount]["price_rm"] ?? 0) }}</p>
                                     </article>
                                 @endforeach
                             </div>
@@ -231,33 +237,47 @@
             </div>
         </div>
     @else
-        <div class="max-w-4xl">
+        <div class="max-w-4xl lg:w-full lg:max-w-none">
             <div class="rounded-lg bg-white p-6 shadow-sm">
-                <form method="POST" action="{{ route("admin.products.update", $product) }}" enctype="multipart/form-data" class="space-y-6">
+                @adminRoute('admin.products.update')
+<form method="POST" action="{{ route("admin.products.update", $product) }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @method("PUT")
 
-                    <div>
-                        <label for="prd_code" class="mb-2 block text-sm font-medium text-slate-700">
-                            Product Code <span class="text-red-600">*</span>
-                        </label>
-                        <input type="text" id="prd_code" name="prd_code" value="{{ old("prd_code", $product->prd_code) }}" placeholder="e.g., HY/prd/1001" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
-                        @error("prd_code")
-                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
-                        @enderror
+                    @if ($errors->any())
+                        <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                            <p class="font-semibold">Changes were not saved. Please correct the following:</p>
+                            <ul class="mt-2 list-disc space-y-1 pl-5">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <div class="space-y-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+                        <div>
+                            <label for="prd_code" class="mb-2 block text-sm font-medium text-slate-700">
+                                Product Code <span class="text-red-600">*</span>
+                            </label>
+                            <input type="text" id="prd_code" name="prd_code" value="{{ old("prd_code", $product->prd_code) }}" placeholder="e.g., HY/prd/1001" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            @error("prd_code")
+                                <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="prd_name" class="mb-2 block text-sm font-medium text-slate-700">
+                                Product Name <span class="text-red-600">*</span>
+                            </label>
+                            <input type="text" id="prd_name" name="prd_name" value="{{ old("prd_name", $product->prd_name) }}" placeholder="e.g., Hyurf 1" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            @error("prd_name")
+                                <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="prd_name" class="mb-2 block text-sm font-medium text-slate-700">
-                            Product Name <span class="text-red-600">*</span>
-                        </label>
-                        <input type="text" id="prd_name" name="prd_name" value="{{ old("prd_name", $product->prd_name) }}" placeholder="e.g., Hyurf 1" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
-                        @error("prd_name")
-                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <section data-clicker-product-builder class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <section data-casing-stock data-clicker-product-builder class="rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h2 class="text-sm font-semibold text-slate-900">Product Type</h2>
@@ -290,135 +310,42 @@
                         </div>
 
                         <div data-clicker-panel class="{{ $productVariant === "clicker" ? "" : "hidden" }} mt-5 space-y-5 border-t border-slate-200 pt-5">
-                            <div class="grid gap-5 lg:grid-cols-2">
-                                <div class="rounded-xl border border-slate-200 bg-white p-4">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div>
-                                            <h3 class="text-sm font-semibold text-slate-900">Casing</h3>
-                                            <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Maximum width 500px.</p>
-                                        </div>
-                                        <span data-clicker-file-count="casing" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ collect($clickerImages->get("casing", collect()))->count() }} / 10</span>
-                                    </div>
-
-                                    <label class="mt-4 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
-                                        <span>
-                                            <span class="block text-sm font-semibold text-slate-800">Upload / Select image</span>
-                                            <span class="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP</span>
-                                        </span>
-                                        <input data-clicker-file-input="casing" type="file" name="clicker_casing_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
-                                    </label>
-
-                                    <p data-clicker-file-error="casing" class="mt-2 hidden text-sm font-medium text-red-600"></p>
-
-                                    <p class="mt-3 text-xs text-slate-500">Selected files</p>
-                                    <div data-clicker-file-list="casing" class="mt-2 flex min-h-11 flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                                        @if (collect($clickerImages->get("casing", collect()))->isNotEmpty())
-                                            <span>{{ collect($clickerImages->get("casing", collect()))->count() }} existing image(s). Select new files to replace.</span>
-                                        @else
-                                            <span>No images selected yet.</span>
-                                        @endif
-                                    </div>
-
-                                    @if (collect($clickerImages->get("casing", collect()))->isNotEmpty())
-                                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-                                            @foreach (collect($clickerImages->get("casing", collect())) as $image)
-                                                @php
-                                                    $casingUrl = $resolveImageUrl($image->image_path ?? null);
-                                                @endphp
-                                                @if ($casingUrl)
-                                                    <a href="{{ $casingUrl }}" target="_blank" rel="noopener" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                                                        <img src="{{ $casingUrl }}" alt="{{ $product->prd_name }} casing" class="h-full w-full object-cover">
-                                                    </a>
-                                                @endif
-                                            @endforeach
-                                        </div>
+                            @if ($casingStockAvailable ?? false)
+                                <div class="space-y-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm">
+                                    @if (isset($product) && ! \App\Support\CasingStock::enabled($product))
+                                        <label class="flex items-center gap-2 font-semibold"><input type="checkbox" name="enable_casing_stock" value="1" @checked(old('enable_casing_stock'))> Aktifkan stok mengikut saiz casing</label>
+                                        <p class="text-xs text-slate-600">Masukkan stok fizikal sebenar bagi saiz 1–8. Jumlah baharu akan menggantikan baki lama selepas disimpan. Pesanan terbuka perlu diselesaikan dahulu.</p>
+                                    @else
+                                        <input type="hidden" name="enable_casing_stock" value="1">
                                     @endif
+                                    <p>Baki lama: <strong>{{ $product->prd_balance ?? 0 }}</strong> unit → Jumlah baharu: <strong data-casing-stock-total>{{ collect(old("clicker_images.casing", []))->sum(fn ($row) => array_sum($row["stock"] ?? [])) }}</strong> unit</p>
+                                    <label class="block text-xs font-semibold">Sebab pelarasan stok<input name="casing_stock_reason" maxlength="500" value="{{ old('casing_stock_reason') }}" placeholder="Wajib apabila stok berubah atau diaktifkan" class="mt-1 block w-full rounded-lg border-slate-300 bg-white text-sm"></label>
                                 </div>
-
-                                <div class="rounded-xl border border-slate-200 bg-white p-4">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div>
-                                            <h3 class="text-sm font-semibold text-slate-900">Huruf</h3>
-                                            <p class="mt-1 text-xs text-slate-500">Upload/select image max 10 images. Maximum width 500px.</p>
-                                        </div>
-                                        <span data-clicker-file-count="huruf" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ collect($clickerImages->get("huruf", collect()))->count() }} / 10</span>
-                                    </div>
-
-                                    <label class="mt-4 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
-                                        <span>
-                                            <span class="block text-sm font-semibold text-slate-800">Upload / Select image</span>
-                                            <span class="mt-1 block text-xs text-slate-500">PNG, JPG, WEBP</span>
-                                        </span>
-                                        <input data-clicker-file-input="huruf" type="file" name="clicker_huruf_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
-                                    </label>
-
-                                    <p data-clicker-file-error="huruf" class="mt-2 hidden text-sm font-medium text-red-600"></p>
-
-                                    <p class="mt-3 text-xs text-slate-500">Selected files</p>
-                                    <div data-clicker-file-list="huruf" class="mt-2 flex min-h-11 flex-wrap gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                                        @if (collect($clickerImages->get("huruf", collect()))->isNotEmpty())
-                                            <span>{{ collect($clickerImages->get("huruf", collect()))->count() }} existing image(s). Select new files to replace.</span>
-                                        @else
-                                            <span>No images selected yet.</span>
-                                        @endif
-                                    </div>
-
-                                    @if (collect($clickerImages->get("huruf", collect()))->isNotEmpty())
-                                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-                                            @foreach (collect($clickerImages->get("huruf", collect())) as $image)
-                                                @php
-                                                    $hurufUrl = $resolveImageUrl($image->image_path ?? null);
-                                                @endphp
-                                                @if ($hurufUrl)
-                                                    <a href="{{ $hurufUrl }}" target="_blank" rel="noopener" class="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-                                                        <img src="{{ $hurufUrl }}" alt="{{ $product->prd_name }} huruf" class="h-full w-full object-cover">
-                                                    </a>
-                                                @endif
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
+                            @endif
+                            <div class="grid gap-5 xl:grid-cols-2">
+                                <x-admin.clicker-image-manager type="casing" :images="collect($clickerImages->get('casing', collect()))"  :stock-available="$casingStockAvailable ?? false" :stocks="$casingStocks ?? []" />
+                                <x-admin.clicker-image-manager type="huruf" :images="collect($clickerImages->get('huruf', collect()))" />
                             </div>
 
-                            <div class="rounded-xl border border-slate-200 bg-white p-4">
-                                <div>
-                                    <h3 class="text-sm font-semibold text-slate-900">Character Pricing</h3>
-                                    <p class="mt-1 text-xs text-slate-500">Setiap character ada harga masing masing.</p>
-                                </div>
+                            <x-admin.clicker-result-manager
+                                :casing-images="collect($clickerImages->get('casing', collect()))"
+                                :huruf-images="collect($clickerImages->get('huruf', collect()))"
+                                :results="$clickerResults"
+                                :product="$product"
+                                :stock-available="$casingStockAvailable ?? false"
+                                :stocks="$casingStocks ?? []"
+                            />
 
-                                <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                                    @foreach (range(1, 8) as $characterCount)
-                                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                            <div class="flex items-center gap-3">
-                                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700">{{ $characterCount }}</span>
-
-                                                <div class="min-w-0 flex-1">
-                                                    <input
-                                                        type="number"
-                                                        name="clicker_character_prices[{{ $characterCount }}]"
-                                                        value="{{ old("clicker_character_prices.".$characterCount, $clickerCharacterPrices[$characterCount] ?? "") }}"
-                                                        placeholder="0.00"
-                                                        step="0.01"
-                                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm text-slate-900 outline-none transition placeholder:text-center placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100"
-                                                    >
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-
-                                @error("clicker_character_prices")
-                                    <span class="mt-3 block text-sm text-red-600">{{ $message }}</span>
-                                @enderror
-                            </div>
+                            <x-admin.clicker-character-pricing :pricing="$clickerCharacterPrices" :disabled="$productVariant !== 'clicker'"  :stock-available="$casingStockAvailable ?? false" :stocks="$casingStocks ?? []" />
                         </div>
                     </section>
 
+                    <div data-standard-product-fields class="{{ $productVariant === 'clicker' ? 'hidden' : '' }} space-y-6">
                     <div>
                         <label for="weight_g" class="mb-2 block text-sm font-medium text-slate-700">
                             Weight (grams) <span class="text-red-600">*</span>
                         </label>
-                        <input type="number" id="weight_g" name="weight_g" value="{{ old("weight_g", $product->weight_g) }}" placeholder="10" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                        <input type="number" id="weight_g" name="weight_g" data-standard-required value="{{ old("weight_g", $product->weight_g) }}" placeholder="10" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                         @error("weight_g")
                             <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                         @enderror
@@ -429,7 +356,7 @@
                             <label for="width_mm" class="mb-2 block text-sm font-medium text-slate-700">
                                 Width (mm) <span class="text-red-600">*</span>
                             </label>
-                            <input type="number" id="width_mm" name="width_mm" value="{{ old("width_mm", $product->width_mm) }}" placeholder="50" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            <input type="number" id="width_mm" name="width_mm" data-standard-required value="{{ old("width_mm", $product->width_mm) }}" placeholder="50" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                             @error("width_mm")
                                 <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                             @enderror
@@ -438,7 +365,7 @@
                             <label for="height_mm" class="mb-2 block text-sm font-medium text-slate-700">
                                 Height (mm) <span class="text-red-600">*</span>
                             </label>
-                            <input type="number" id="height_mm" name="height_mm" value="{{ old("height_mm", $product->height_mm) }}" placeholder="50" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            <input type="number" id="height_mm" name="height_mm" data-standard-required value="{{ old("height_mm", $product->height_mm) }}" placeholder="50" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                             @error("height_mm")
                                 <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                             @enderror
@@ -483,22 +410,12 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label for="prd_balance" class="mb-2 block text-sm font-medium text-slate-700">
-                            Stock Balance <span class="text-red-600">*</span>
-                        </label>
-                        <input type="number" id="prd_balance" name="prd_balance" value="{{ old("prd_balance", $product->prd_balance) }}" placeholder="100" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
-                        @error("prd_balance")
-                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
-                        @enderror
-                    </div>
-
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label for="cost_rm" class="mb-2 block text-sm font-medium text-slate-700">
                                 Cost (RM) <span class="text-red-600">*</span>
                             </label>
-                            <input type="number" id="cost_rm" name="cost_rm" value="{{ old("cost_rm", $product->cost_rm) }}" placeholder="5.00" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            <input type="number" id="cost_rm" name="cost_rm" data-standard-required value="{{ old("cost_rm", $product->cost_rm) }}" placeholder="5.00" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                             @error("cost_rm")
                                 <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                             @enderror
@@ -507,11 +424,13 @@
                             <label for="price_selling" class="mb-2 block text-sm font-medium text-slate-700">
                                 Selling Price (RM) <span class="text-red-600">*</span>
                             </label>
-                            <input type="number" id="price_selling" name="price_selling" value="{{ old("price_selling", $product->price_selling) }}" placeholder="10.00" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                            <input type="number" id="price_selling" name="price_selling" data-standard-required value="{{ old("price_selling", $product->price_selling) }}" placeholder="10.00" step="0.01" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
                             @error("price_selling")
                                 <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
                             @enderror
                         </div>
+                    </div>
+
                     </div>
 
                     <div>
@@ -524,17 +443,30 @@
                         @enderror
                     </div>
 
+                    <div data-standard-stock class="{{ $productVariant === 'clicker' ? 'hidden' : '' }}">
+                        <label for="prd_balance" class="mb-2 block text-sm font-medium text-slate-700">
+                            Stock Balance <span class="text-red-600">*</span>
+                        </label>
+                        <input type="number" id="prd_balance" name="prd_balance" @disabled($productVariant === 'clicker') @readonly(\App\Support\CasingStock::enabled($product)) value="{{ old("prd_balance", $product->prd_balance ?? 0) }}" placeholder="0" min="0" step="1" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100" required>
+                        @error("prd_balance")
+                            <span class="mt-1 text-sm text-red-600">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <x-admin.product-image-manager :product="$product" />
 
                     <div class="flex gap-3 pt-4">
                         <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-[#1a73e8] px-6 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
                             Save Changes
                         </button>
-                        <a href="{{ route("admin.products.index") }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        @adminRoute('admin.products.index')
+<a href="{{ route("admin.products.index") }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                             Cancel
                         </a>
+@endadminRoute
                     </div>
                 </form>
+@endadminRoute
             </div>
         </div>
 
@@ -553,6 +485,8 @@
                     const clickerPanel = container.querySelector("[data-clicker-panel]");
                     const clickerInputs = [...clickerPanel.querySelectorAll("input:not([type=hidden])")];
                     const fileInputs = [...container.querySelectorAll("[data-clicker-file-input]")];
+                    const standardFields = container.closest("form").querySelector("[data-standard-product-fields]");
+                    const standardInputs = [...standardFields.querySelectorAll("input, select")];
 
                     const renderFileSelection = (input) => {
                         const type = input.dataset.clickerFileInput;
@@ -581,7 +515,17 @@
                         const isClicker = variantInput.value === "clicker";
 
                         productTypeInput.value = variantInput.value;
+                        const stockField = container.closest('form').querySelector('[data-standard-stock]');
+                        stockField.classList.toggle('hidden', isClicker);
+                        stockField.querySelector('input').disabled = isClicker;
+                        container.querySelectorAll('[name="enable_casing_stock"]').forEach((input) => { input.disabled = !isClicker; });
                         clickerPanel.classList.toggle("hidden", !isClicker);
+                        standardFields.classList.toggle("hidden", isClicker);
+
+                        standardInputs.forEach((input) => {
+                            input.disabled = isClicker;
+                            input.required = !isClicker && input.hasAttribute("data-standard-required");
+                        });
 
                         variantButtons.forEach((button) => {
                             const active = button.dataset.variant === variantInput.value;
@@ -595,7 +539,7 @@
                         });
 
                         clickerInputs.forEach((input) => {
-                            input.disabled = !isClicker;
+                            input.disabled = !isClicker || input.hasAttribute("data-stock-locked");
                         });
                     };
 

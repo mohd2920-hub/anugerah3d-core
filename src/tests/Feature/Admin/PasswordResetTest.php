@@ -19,7 +19,7 @@ class PasswordResetTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->adminUser = AdminUser::factory()->create([
+        $this->adminUser = AdminUser::factory()->superAdmin()->create([
             'email' => 'admin@example.com',
         ]);
     }

@@ -8,12 +8,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\IndexOrdersRequest;
 use App\Http\Requests\Admin\ManageOrderRequest;
 use App\Http\Requests\Admin\UpdateOrderPaymentRequest;
+use App\Models\ActivityLog;
+use App\Models\AgentDiscountSetting;
 use App\Models\Order;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class OrderController extends Controller
@@ -60,13 +63,14 @@ class OrderController extends Controller
                             ]),
                     ]),
                 'items:id,order_id,product_id,product_name,quantity,clicker_character_count,clicker_characters,reserved_quantity,is_preorder',
-                'items.product:id,prd_balance,cost_rm,prd_picture',
+                'items.product:id,product_type,prd_balance,cost_rm,prd_picture',
             ])
             ->withCount('items')
             ->latest('placed_at')
             ->paginate(20)
             ->withQueryString();
 
+        $this->loadReportCosts($orders->getCollection());
         $orders->getCollection()->each(function (Order $order) use ($hasTier1Column, $hasTier2Column): void {
             $order->setAttribute('has_stock_shortage', $order->stockShortages()->isNotEmpty());
             $this->decorateOrderFinancials($order, $hasTier1Column, $hasTier2Column);
@@ -94,11 +98,12 @@ class OrderController extends Controller
                                 'referrer' => fn ($query) => $query->select($tier2UplineSelect),
                             ]),
                     ]),
-                'items:id,order_id,product_id,quantity',
-                'items.product:id,cost_rm',
+                'items:id,order_id,product_id,quantity,clicker_character_count,unit_selling_price',
+                'items.product:id,product_type,cost_rm',
             ])
             ->get(['id', 'agent_id', 'status', 'payment_status', 'subtotal', 'delivery_fee', 'total_amount', 'total_units']);
 
+        $this->loadReportCosts($summaryOrders);
         $financials = [
             'sales_amount' => 0.0,
             'subtotal_amount' => 0.0,
@@ -109,17 +114,30 @@ class OrderController extends Controller
             'bonus_paid' => 0.0,
             'bonus_pending' => 0.0,
             'total_units' => 0,
+            'cost_incomplete' => false,
         ];
+
+        $belowCostProductIds = [];
+        $belowCostUnits = 0;
 
         foreach ($summaryOrders as $summaryOrder) {
             $numbers = $this->computeOrderFinancials($summaryOrder, $hasTier1Column, $hasTier2Column);
             $financials['sales_amount'] += (float) $summaryOrder->total_amount;
             $financials['subtotal_amount'] += (float) $summaryOrder->subtotal;
             $financials['delivery_amount'] += (float) ($summaryOrder->delivery_fee ?? 0);
+            $financials['cost_incomplete'] = $financials['cost_incomplete'] || $summaryOrder->items->contains(fn ($item): bool => $item->report_unit_cost === null);
             $financials['cost_amount'] += $numbers['total_cost'];
             $financials['gross_profit'] += $numbers['gross_profit_amount'];
             $financials['net_profit'] += $numbers['profit_amount'];
             $financials['total_units'] += (int) $summaryOrder->total_units;
+
+            foreach ($summaryOrder->items as $item) {
+                if ($item->report_unit_cost !== null && $item->unit_selling_price !== null
+                    && round((float) $item->unit_selling_price, 2) < round((float) $item->report_unit_cost, 2)) {
+                    $belowCostProductIds[$item->product_id] = true;
+                    $belowCostUnits += (int) $item->quantity;
+                }
+            }
 
             if ($summaryOrder->payment_status === Order::PaymentStatusPaid) {
                 $financials['bonus_paid'] += $numbers['bonus_total'];
@@ -131,6 +149,8 @@ class OrderController extends Controller
         }
 
         return view('admin.orders.index', [
+            'discountSetting' => AgentDiscountSetting::current(),
+            'discountHistory' => ActivityLog::query()->where('event', 'admin.orders.discount.updated')->latest('id')->limit(10)->get(),
             'orders' => $orders,
             'filters' => $filters,
             'statuses' => $this->statuses(),
@@ -147,11 +167,14 @@ class OrderController extends Controller
                 'subtotal_amount' => round($financials['subtotal_amount'], 2),
                 'delivery_amount' => round($financials['delivery_amount'], 2),
                 'cost_amount' => round($financials['cost_amount'], 2),
+                'cost_incomplete' => $financials['cost_incomplete'],
                 'gross_profit' => round($financials['gross_profit'], 2),
                 'total_profit' => round($financials['net_profit'], 2),
                 'bonus_paid' => round($financials['bonus_paid'], 2),
                 'bonus_pending' => round($financials['bonus_pending'], 2),
                 'total_units' => $financials['total_units'],
+                'below_cost_products' => count($belowCostProductIds),
+                'below_cost_units' => $belowCostUnits,
             ],
         ]);
     }
@@ -234,9 +257,10 @@ class OrderController extends Controller
                             'referrer' => fn ($query) => $query->select($tier2UplineSelect),
                         ]),
                 ]),
-            'items.product:id,prd_code,prd_name,prd_balance,material_id,material,color,cost_rm,prd_picture',
+            'items.product:id,product_type,prd_code,prd_name,prd_balance,material_id,material,color,cost_rm,prd_picture',
             'items.product.materialType:id,name',
         ]);
+        $this->loadReportCosts(collect([$order]));
         $this->decorateOrderFinancials($order, $hasTier1Column, $hasTier2Column);
 
         return [
@@ -321,7 +345,7 @@ class OrderController extends Controller
         .sheet { width: min(1200px, calc(100vw - 32px)); margin: 24px auto; background: #ffffff; padding: 24px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14); }
         .brand-strip, .hero { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
         .brand-mark { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 16px; background: #0f172a; color: #ffffff; font-weight: 700; letter-spacing: 0.14em; }
-        .brand-logo { display: block; width: 72px; height: 72px; border-radius: 14px; object-fit: cover; }
+        .brand-logo { display: block; width: 100px; height: auto; border-radius: 8px; object-fit: contain; }
         .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #475569; }
         h1, h2, h3, p { margin: 0; }
         h1 { margin-top: 6px; font-size: 28px; }
@@ -400,7 +424,7 @@ HTML;
         $phone = $this->escape($order->phone_number ?: '-');
         $address = $this->escape($order->delivery_address ?: 'Anugerah3D pickup counter');
         $notes = $this->escape($order->notes ?: 'No notes provided.');
-        $logoUrl = $this->escape(asset('images/anugerah3d-logo.png'));
+        $logoUrl = $this->escape(asset('images/anugerah3d-official-logo.png'));
         $grossSubtotal = $this->formatMoney($order->grossSubtotalAmount());
         $discountAmount = $this->formatMoney($order->discountAmount());
         $discountPercentage = number_format($order->effectiveDiscountPercentage(), 1).'%';
@@ -588,9 +612,11 @@ HTML;
         </section>
         HTML;
 
+        $printLogoUrl = $this->escape(asset('images/anugerah3d-official-logo.png'));
         $body = <<<HTML
         <section class="hero">
             <div>
+                <img src="{$printLogoUrl}" alt="Anugerah3D" class="brand-logo">
                 <div class="eyebrow">Anugerah3D admin print</div>
                 <h1>Order {$orderNumber}</h1>
                 <p class="muted" style="margin-top: 8px;">Placed {$placedAt}</p>
@@ -706,10 +732,29 @@ HTML;
         ];
     }
 
+    private function loadReportCosts(Collection $orders): void
+    {
+        $items = $orders->flatMap(fn (Order $order) => $order->items);
+        $prices = DB::table('product_clicker_prices')
+            ->whereIn('product_id', $items->pluck('product_id')->unique())
+            ->get(['product_id', 'character_count', 'cost_rm'])
+            ->keyBy(fn ($price): string => $price->product_id.':'.$price->character_count);
+
+        foreach ($items as $item) {
+            $clicker = $item->clicker_character_count !== null || $item->product?->product_type === 'clicker';
+            $cost = $clicker
+                ? ($prices->get($item->product_id.':'.$item->clicker_character_count)?->cost_rm)
+                : $item->product?->cost_rm;
+            $item->setAttribute('report_unit_cost', $cost === null ? null : (float) $cost);
+            $item->setAttribute('report_cost_issue', $cost !== null ? null : ($clicker && ! $item->clicker_character_count ? 'Maklumat varian belum lengkap' : 'Kos belum ditetapkan'));
+        }
+    }
+
     private function decorateOrderFinancials(Order $order, bool $hasTier1Column, bool $hasTier2Column): void
     {
         $numbers = $this->computeOrderFinancials($order, $hasTier1Column, $hasTier2Column);
 
+        $order->setAttribute('cost_incomplete', $order->items->contains(fn ($item): bool => $item->report_unit_cost === null));
         $order->setAttribute('total_cost', $numbers['total_cost']);
         $order->setAttribute('tier1_bonus_rate', $numbers['tier1_bonus_rate']);
         $order->setAttribute('tier2_bonus_rate', $numbers['tier2_bonus_rate']);
@@ -725,7 +770,7 @@ HTML;
     {
         $subtotal = (float) $order->subtotal;
         $totalCost = $order->items->sum(function ($item): float {
-            return (float) ($item->product?->cost_rm ?? 0) * (int) $item->quantity;
+            return (float) ($item->report_unit_cost ?? 0) * (int) $item->quantity;
         });
 
         $tier1Upline = $order->agent?->referrer;

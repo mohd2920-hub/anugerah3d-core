@@ -9,7 +9,7 @@
                 <div class="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
 
                 <a href="{{ route('admin.login') }}" class="flex items-center gap-3" aria-label="Anugerah3D admin login">
-                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-white text-sm font-bold text-[#111827] shadow-sm">A3D</span>
+                    <x-brand-logo />
                     <span>
                         <span class="block text-sm font-semibold">Anugerah3D</span>
                         <span class="block text-xs text-blue-100/80">Admin Operations</span>
@@ -50,8 +50,9 @@
                         @csrf
 
                         <label class="grid gap-2 text-sm font-medium text-slate-700">
-                            Email
-                            <input name="email" type="email" value="{{ old('email') }}" autocomplete="username" placeholder="admin@anugerah3d.com" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            Username or email
+                            <input name="email" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" required aria-describedby="admin-login-identifier-help" value="{{ old('email') }}" autocomplete="username" placeholder="Username atau e-mel penuh" class="min-h-11 rounded-lg border border-slate-300 bg-[#f8fafd] px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:bg-white focus:ring-2 focus:ring-blue-100">
+                            <span id="admin-login-identifier-help" class="text-xs font-normal text-slate-500">Username ialah bahagian e-mel sebelum @. Jika username bertindih, gunakan e-mel penuh.</span>
                             @error('email')
                                 <span class="text-xs font-semibold text-red-600">{{ $message }}</span>
                             @enderror

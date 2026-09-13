@@ -8,6 +8,8 @@ use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\Product;
+use App\Support\CasingStock;
+use App\Support\PosClicker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +38,7 @@ class CreatePosSale
                     ->latest('opened_at')
                     ->firstOrFail();
                 $items = $this->items($data['items'], $data['sales_agent_id']);
+                app(PosClicker::class)->inventory([], $items, true);
                 $sale = PosSale::query()->create([
                     'sale_number' => 'POS-'.now()->format('Ymd').'-'.Str::upper(Str::random(8)),
                     'pos_session_id' => $session->getKey(),
@@ -76,7 +79,7 @@ class CreatePosSale
     {
         return Product::query()
             ->whereKey(collect($items)->pluck('product_id'))
-            ->get(['id', 'prd_code', 'prd_name', 'price_selling', 'agent_discount_default'])
+            ->orderBy('id')->lockForUpdate()->get()
             ->keyBy('id');
     }
 
@@ -93,10 +96,11 @@ class CreatePosSale
     /** @param array<int, array{product_id: int, quantity: int, discount_amount?: float|int|string|null}> $items */
     private function itemRows(array $items, Collection $products, float $agentDiscount): array
     {
-        return collect($items)->map(function (array $item) use ($products, $agentDiscount): array {
+        return collect($items)->map(function (array $item, int $index) use ($products, $agentDiscount): array {
             $product = $products->get($item['product_id']);
             $quantity = (int) $item['quantity'];
-            $unitPrice = (float) $product->price_selling;
+            $clicker = app(PosClicker::class)->resolve($product, $item, "items.{$index}");
+            $unitPrice = (float) ($clicker['unit_price'] ?? $product->price_selling);
             $unitPriceCents = (int) round($unitPrice * 100);
             $grossTotalCents = $unitPriceCents * $quantity;
             $baselineDiscount = $agentDiscount > 0
@@ -110,10 +114,13 @@ class CreatePosSale
 
             return [
                 'product_id' => $product->getKey(),
+                'uses_product_stock' => ! CasingStock::enabled($product),
                 'product_code' => $product->prd_code,
                 'product_name' => $product->prd_name,
                 'quantity' => $quantity,
                 'unit_price' => $unitPriceCents / 100,
+                'unit_cost' => (float) ($clicker['unit_cost'] ?? $product->cost_rm ?? 0),
+                ...($clicker ? collect($clicker)->only(['clicker_configuration', 'stock_casing_image_id'])->all() : []),
                 'agent_discount_percentage' => $baselineDiscount,
                 'agent_discount_amount' => $agentDiscountAmountCents / 100,
                 'customer_discount_amount' => $customerDiscountAppliedCents / 100,

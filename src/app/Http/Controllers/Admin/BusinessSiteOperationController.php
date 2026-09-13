@@ -7,7 +7,7 @@ use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\PosSession;
-use App\Support\AdminActivity;
+use App\Models\Product;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -26,17 +26,29 @@ class BusinessSiteOperationController extends Controller
             ->selectRaw('COUNT(*) as sales_count, COALESCE(SUM(total_amount), 0) as sales_total')
             ->first();
 
-        $itemsSold = PosSaleItem::query()
+        $itemsTable = (new PosSaleItem)->getTable();
+        $productsTable = (new Product)->getTable();
+        $itemTotals = PosSaleItem::query()
+            ->join($productsTable, "{$productsTable}.id", '=', "{$itemsTable}.product_id")
             ->whereHas('posSale', fn (Builder $query): Builder => $query
-                ->whereBelongsTo($businessSiteOperation, 'businessSiteOperation'))
-            ->sum('quantity');
+                ->notVoided()->whereBelongsTo($businessSiteOperation, 'businessSiteOperation'))
+            ->toBase()
+            ->selectRaw("COALESCE(SUM({$itemsTable}.quantity), 0) as items_sold")
+            ->selectRaw("COALESCE(SUM(COALESCE({$itemsTable}.unit_cost, {$productsTable}.cost_rm, 0) * {$itemsTable}.quantity), 0) as capital_total")
+            ->first();
+
+        $netCompanyTotal = (float) $salesTotal->sales_total;
+        $capitalTotal = (float) $itemTotals->capital_total;
 
         return view('admin.business-site-operations.show', [
             'operation' => $businessSiteOperation,
             'summary' => [
                 'sales_count' => (int) $salesTotal->sales_count,
                 'sales_total' => (float) $salesTotal->sales_total,
-                'items_sold' => (int) $itemsSold,
+                'items_sold' => (int) $itemTotals->items_sold,
+                'net_company_total' => $netCompanyTotal,
+                'capital_total' => $capitalTotal,
+                'gross_profit_total' => $netCompanyTotal - $capitalTotal,
             ],
             'attendances' => PosSession::query()
                 ->where('business_site_id', $businessSiteOperation->business_site_id)
@@ -45,7 +57,7 @@ class BusinessSiteOperationController extends Controller
                 ->oldest('signed_in_at')
                 ->paginate(20, ['*'], 'attendance_page')
                 ->withQueryString(),
-            'sales' => $salesQuery()
+            'sales' => PosSale::query()->whereBelongsTo($businessSiteOperation, 'businessSiteOperation')
                 ->with(['salesAgent:id,agt_name,login_id', 'recordedBy:id,agt_name,login_id'])
                 ->withCount('items')
                 ->withSum('items as items_sold', 'quantity')
@@ -57,31 +69,13 @@ class BusinessSiteOperationController extends Controller
 
     public function destroy(Request $request, BusinessSiteOperation $businessSiteOperation): RedirectResponse
     {
-        if (! $businessSiteOperation->closed_at) {
-            return back()->withErrors(['business_site_operation' => 'Close this business session before deleting it.']);
-        }
-
-        if ($businessSiteOperation->sales()->exists()) {
-            return back()->withErrors(['business_site_operation' => 'This business session has sales and cannot be deleted.']);
-        }
-
-        $operationId = $businessSiteOperation->getKey();
-        $siteName = $businessSiteOperation->businessSite()->value('site_name');
-        $businessSiteOperation->delete();
-
-        AdminActivity::record(
-            request: $request,
-            event: 'admin.business_site_operation.deleted',
-            description: "Business session {$operationId} for {$siteName} deleted.",
-            adminUser: $request->user('admin'),
-            properties: ['page' => 'Business Site Details', 'business_site_operation_id' => $operationId],
-        );
-
-        return redirect()->route('admin.business-sites.index')->with('success', 'Business session deleted successfully.');
+        return back()->withErrors([
+            'business_site_operation' => 'Business sessions are retained for history and cannot be deleted.',
+        ]);
     }
 
     private function salesQuery(BusinessSiteOperation $businessSiteOperation): Builder
     {
-        return PosSale::query()->whereBelongsTo($businessSiteOperation, 'businessSiteOperation');
+        return PosSale::query()->notVoided()->whereBelongsTo($businessSiteOperation, 'businessSiteOperation');
     }
 }

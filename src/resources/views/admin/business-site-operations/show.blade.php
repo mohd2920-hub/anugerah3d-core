@@ -5,12 +5,17 @@
 
 @section('content')
 <div class="space-y-6">
+    @adminRoute('admin.sales.create')
+<a href="{{ route('admin.sales.create', $operation) }}" class="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Add Missing Sale</a>
+@endadminRoute
     @error('business_site_operation')
         <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $message }}</div>
     @enderror
 
     <div>
-        <a href="{{ route('admin.business-sites.index') }}" class="text-sm font-semibold text-[#1a73e8]">← Back to business sites</a>
+        @adminRoute('admin.business-sites.summary')
+<a href="{{ route('admin.business-sites.summary', ['businessSite' => $operation->businessSite, 'period' => 'date', 'date' => $operation->opened_at->copy()->timezone('Asia/Kuala_Lumpur')->toDateString()]) }}" class="text-sm font-semibold text-[#1a73e8]">← Sales summary · {{ $operation->businessSite->site_name }}</a>
+@endadminRoute
         <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h2 class="text-2xl font-semibold text-slate-950">{{ $operation->businessSite->site_name }}</h2>
@@ -28,11 +33,26 @@
         </div>
     </div>
 
-    <section class="grid gap-4 sm:grid-cols-2">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total sales</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Net sales</p>
             <p class="mt-3 text-3xl font-bold text-[#1a73e8]">RM {{ number_format($summary['sales_total'], 2) }}</p>
             <p class="mt-1 text-sm text-slate-500">{{ number_format($summary['sales_count']) }} receipt(s)</p>
+        </article>
+        <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Net company</p>
+            <p class="mt-3 text-3xl font-bold text-blue-700">RM {{ number_format($summary['net_company_total'], 2) }}</p>
+            <p class="mt-1 text-sm text-slate-500">Full net sales retained by company</p>
+        </article>
+        <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Capital</p>
+            <p class="mt-3 text-3xl font-bold text-slate-950">RM {{ number_format($summary['capital_total'], 2) }}</p>
+            <p class="mt-1 text-sm text-slate-500">Product cost multiplied by units sold</p>
+        </article>
+        <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Gross profit</p>
+            <p class="mt-3 text-3xl font-bold text-emerald-700">RM {{ number_format($summary['gross_profit_total'], 2) }}</p>
+            <p class="mt-1 text-sm text-slate-500">Net company minus capital</p>
         </article>
         <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Items sold</p>
@@ -83,12 +103,14 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($sales as $sale)
                         <tr>
-                            <td class="px-5 py-4 font-mono font-semibold text-slate-900">{{ $sale->sale_number }}</td>
+                            <td class="px-5 py-4 font-mono font-semibold text-slate-900">{{ $sale->sale_number }} @if ($sale->voided_at)<span class="rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">Void</span>@endif @if ($sale->correction_version > 0)<span class="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Corrected</span>@endif</td>
                             <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $sale->sold_at->format('d M Y, h:i A') }}</td>
                             <td class="px-5 py-4"><p class="font-semibold text-slate-800">{{ $sale->salesAgent->agt_name }}</p><p class="mt-0.5 text-xs text-slate-500">Recorded by {{ $sale->recordedBy->agt_name }}</p></td>
                             <td class="px-5 py-4 text-right text-slate-700">{{ number_format((int) $sale->items_sold) }}</td>
                             <td class="px-5 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $sale->total_amount, 2) }}</td>
-                            <td class="px-5 py-4 text-right"><a href="{{ route('admin.sales.show', $sale) }}" class="inline-flex rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-[#1a73e8] hover:bg-blue-50">Details</a></td>
+                            <td class="px-5 py-4 text-right">@adminRoute('admin.sales.show')
+<a href="{{ route('admin.sales.show', $sale) }}" class="inline-flex rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-[#1a73e8] hover:bg-blue-50">Details</a>
+@endadminRoute</td>
                         </tr>
                     @empty
                         <tr><td colspan="6" class="px-5 py-10 text-center text-slate-500">No sales recorded during this session.</td></tr>
@@ -98,25 +120,7 @@
         </div>
         @if ($sales->hasPages())<div class="border-t border-slate-200 px-5 py-4">{{ $sales->links() }}</div>@endif
     </section>
-    <div class="flex justify-end border-t border-slate-200 pt-6">
-        @if (! $operation->closed_at)
-            <div class="text-right">
-                <button type="button" disabled class="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400">Delete session</button>
-                <p class="mt-2 text-xs text-slate-500">Close this business session before deleting it.</p>
-            </div>
-        @elseif ($summary['sales_count'] > 0)
-            <div class="text-right">
-                <button type="button" disabled class="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400">Delete session</button>
-                <p class="mt-2 text-xs text-slate-500">This session cannot be deleted because it has sales.</p>
-            </div>
-        @else
-            <form method="POST" action="{{ route('admin.business-site-operations.destroy', $operation) }}" onsubmit="return confirm('Delete this business session?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50">Delete session</button>
-            </form>
-        @endif
-    </div>
+    <p class="border-t border-slate-200 pt-6 text-sm text-slate-500">Business sessions are retained for history and cannot be deleted.</p>
 
 </div>
 @endsection

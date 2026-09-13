@@ -75,6 +75,13 @@
     let debounceTimer = null;
     const imageModal = document.querySelector('[data-catalogue-image-modal]');
     const modalImage = imageModal.querySelector('[data-catalogue-modal-image]');
+    const modalVideo = document.createElement('video');
+    modalVideo.controls = true;
+    modalVideo.playsInline = true;
+    modalVideo.preload = 'metadata';
+    modalVideo.className = modalImage.className;
+    modalVideo.hidden = true;
+    modalImage.after(modalVideo);
     const modalName = imageModal.querySelector('[data-catalogue-modal-name]');
     const modalCounter = imageModal.querySelector('[data-catalogue-modal-counter]');
     const modalDots = imageModal.querySelector('[data-catalogue-modal-dots]');
@@ -209,7 +216,16 @@
         const image = modalImages[modalIndex];
         if (!image) return;
 
-        modalImage.src = image.src;
+        modalVideo.pause();
+        const isVideo = image.type === 'video';
+        modalVideo.hidden = !isVideo;
+        modalImage.hidden = isVideo;
+        if (isVideo) {
+            modalVideo.src = image.src;
+        } else {
+            modalVideo.removeAttribute('src');
+            modalImage.src = image.src;
+        }
         modalImage.alt = image.alt || modalName.textContent;
         modalCounter.textContent = `${modalIndex + 1} of ${modalImages.length}`;
         previousButton.classList.toggle('hidden', modalImages.length <= 1);
@@ -252,6 +268,9 @@
     const closeImageModal = () => {
         imageModal.classList.add('hidden');
         imageModal.classList.remove('flex');
+        modalVideo.pause();
+        modalVideo.removeAttribute('src');
+        modalVideo.load();
         modalImage.src = '';
         document.body.classList.remove('overflow-hidden');
     };

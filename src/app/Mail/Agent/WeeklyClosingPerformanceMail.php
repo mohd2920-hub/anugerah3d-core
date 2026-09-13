@@ -42,7 +42,7 @@ class WeeklyClosingPerformanceMail extends Mailable
 
         $payload = [
             'brand' => [
-                'logo_url' => asset('images/anugerah3d-logo.png'),
+                'logo_url' => asset('images/anugerah3d-official-logo.png'),
             ],
             'period_label' => $summary->closing->period_start->format('d M Y').' - '.$summary->closing->period_end->subSecond()->format('d M Y'),
             'week_key' => $summary->closing->week_key,

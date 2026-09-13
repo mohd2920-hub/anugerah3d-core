@@ -17,7 +17,7 @@
         <aside class="relative overflow-hidden bg-[linear-gradient(145deg,#17324d,#285875)] p-7 text-white sm:p-10">
             <div class="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#e7682b]/30 blur-3xl"></div>
             <div class="relative">
-                <img src="{{ asset('images/anugerah3d-logo.png') }}" alt="Anugerah3D" class="h-16 w-16 rounded-2xl border-2 border-white/70 object-cover shadow-lg">
+                <img src="{{ asset('images/anugerah3d-official-logo.png') }}" alt="Anugerah3D" class="h-auto w-16 rounded-2xl border-2 border-white/70 object-contain shadow-lg">
                 <p class="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-orange-300">Grow together</p>
                 <h1 class="mt-3 text-3xl font-black leading-tight sm:text-4xl">Turn creativity into opportunity.</h1>
                 <p class="mt-4 text-sm leading-7 text-slate-300">Join the Anugerah3D agent community, share creative 3D products and grow your income with friendly support along the way.</p>

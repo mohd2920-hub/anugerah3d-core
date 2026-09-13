@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'clicker_character_count',
     'clicker_characters',
     'clicker_casing_image_path',
+    'clicker_casing_image_id',
     'clicker_huruf_image_path',
     'reserved_quantity',
     'unit_selling_price',

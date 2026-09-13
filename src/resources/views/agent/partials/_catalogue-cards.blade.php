@@ -4,7 +4,7 @@
             ? (filter_var($product->prd_picture, FILTER_VALIDATE_URL) ? $product->prd_picture : asset(ltrim($product->prd_picture, '/')))
             : null;
         $galleryImages = $product->images
-            ->take(5)
+            ->take(\App\Models\ProductImage::MAX_IMAGES_PER_PRODUCT)
             ->map(fn ($image) => [
                 'src' => filter_var($image->image_path, FILTER_VALIDATE_URL) ? $image->image_path : asset(ltrim($image->image_path, '/')),
                 'alt' => $image->alt_text ?: $product->prd_name,
@@ -12,6 +12,9 @@
             ->values();
         if ($galleryImages->isEmpty() && $legacyPicture) {
             $galleryImages->push(['src' => $legacyPicture, 'alt' => $product->prd_name]);
+        }
+        if ($product->video_path) {
+            $galleryImages->push(['src' => asset($product->video_path), 'alt' => $product->prd_name.' video', 'type' => 'video']);
         }
         $searchValue = Str::lower($product->prd_code.' '.$product->prd_name);
         $isPreOrder = (int) $product->prd_balance <= 0;
@@ -22,7 +25,11 @@
                 <div data-catalogue-gallery class="flex h-full w-full snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none]">
                     @foreach ($galleryImages as $image)
                         <button type="button" data-catalogue-slide data-image-index="{{ $loop->index }}" class="h-full min-w-full snap-center" aria-label="Open picture {{ $loop->iteration }} of {{ $galleryImages->count() }} for {{ $product->prd_name }}">
+                            @if (($image['type'] ?? 'image') === 'video')
+                                <span class="grid h-full w-full place-items-center bg-slate-900 text-sm font-bold text-white">▶ Play video</span>
+                            @else
                             <img src="{{ $image['src'] }}" alt="{{ $image['alt'] }}" loading="lazy" class="h-full w-full object-cover">
+                            @endif
                         </button>
                     @endforeach
                 </div>
@@ -46,6 +53,7 @@
         <div class="flex flex-1 flex-col p-3">
             <p class="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $product->prd_code }}</p>
             <h3 class="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#17324d]">{{ $product->prd_name }}</h3>
+            @if(($product->discontinued_at ?? null))<p class="mt-1 text-xs font-bold text-amber-800">Stok terakhir — sehingga habis stok</p>@endif
             <div class="mt-3 flex items-end justify-between gap-2 border-t border-slate-100 pt-3">
                 <span class="text-[9px] font-semibold text-slate-500">Selling price</span>
                 <span class="text-base font-black text-[#e7682b]">RM {{ number_format((float) $product->price_selling, 2) }}</span>

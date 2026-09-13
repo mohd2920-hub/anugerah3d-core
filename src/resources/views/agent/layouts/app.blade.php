@@ -23,7 +23,7 @@
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
                     </a>
                 @else
-                    <span class="grid h-10 w-10 flex-none place-items-center rounded-xl bg-[#17324d] text-[11px] font-extrabold tracking-tight text-white">A3D</span>
+                    <x-brand-logo />
                 @endif
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#e7682b]">Agent workspace</p>

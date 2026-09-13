@@ -3,10 +3,11 @@
 namespace App\Actions\Orders;
 
 use App\Models\Agent;
+use App\Models\CustomerOrder;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Support\AdminActivity;
+use App\Support\CasingStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,17 +27,10 @@ class ManageAdminOrder
                 ->get()
                 ->keyBy('id');
 
-            $shortages = $items
-                ->map(function (OrderItem $item) use ($products): ?string {
-                    $required = $item->missingReservationQuantity();
-                    $available = max(0, (int) $products->get($item->product_id)?->prd_balance);
-
-                    return $required > $available
-                        ? "{$item->product_name}: requires {$required}, available {$available}"
-                        : null;
-                })
-                ->filter()
-                ->values();
+            foreach ($items as $item) {
+                $item->setRelation('product', $products->get($item->product_id));
+            }
+            $shortages = app(CasingStock::class)->orderShortages($items)->map(fn (array $row): string => "{$row['product_name']}: requires {$row['required']}, available {$row['available']}");
 
             if ($shortages->isNotEmpty()) {
                 throw ValidationException::withMessages([
@@ -53,7 +47,12 @@ class ManageAdminOrder
 
                 /** @var Product $product */
                 $product = $products->get($item->product_id);
-                $product->decrement('prd_balance', $required);
+                $casingId = $item->getRawOriginal('clicker_casing_image_id');
+                if ($casingId !== null) {
+                    app(CasingStock::class)->move($product, (int) $casingId, (int) $item->clicker_character_count, -$required);
+                } else {
+                    $product->decrement('prd_balance', $required);
+                }
                 $item->update(['reserved_quantity' => $item->quantity]);
             }
 
@@ -86,9 +85,9 @@ class ManageAdminOrder
                 'completed_at' => now(),
             ]);
 
-            Agent::query()
-                ->whereKey($lockedOrder->agent_id)
-                ->increment('total_sale', $lockedOrder->total_amount);
+            if (! $lockedOrder instanceof CustomerOrder) {
+                Agent::query()->whereKey($lockedOrder->agent_id)->increment('total_sale', $lockedOrder->total_amount);
+            }
 
             $this->record(
                 $request,
@@ -108,7 +107,7 @@ class ManageAdminOrder
             $lockedOrder = $this->lockedOrder($order);
             $this->ensureStatus(
                 $lockedOrder,
-                [Order::StatusPending, Order::StatusProcessing],
+                $lockedOrder instanceof CustomerOrder ? [Order::StatusPending, Order::StatusProcessing, 'ready', 'pickup_ready'] : [Order::StatusPending, Order::StatusProcessing],
                 'Completed or cancelled orders cannot be cancelled.',
             );
 
@@ -128,7 +127,12 @@ class ManageAdminOrder
 
                 /** @var Product $product */
                 $product = $products->get($item->product_id);
-                $product->increment('prd_balance', $item->reserved_quantity);
+                $casingId = $item->getRawOriginal('clicker_casing_image_id');
+                if ($casingId !== null) {
+                    app(CasingStock::class)->move($product, (int) $casingId, (int) $item->clicker_character_count, $item->reserved_quantity);
+                } else {
+                    $product->increment('prd_balance', $item->reserved_quantity);
+                }
                 $restoredUnits += $item->reserved_quantity;
                 $item->update(['reserved_quantity' => 0]);
             }
@@ -184,7 +188,7 @@ class ManageAdminOrder
 
     private function lockedOrder(Order $order): Order
     {
-        return Order::query()->lockForUpdate()->findOrFail($order->getKey());
+        return $order->newQuery()->lockForUpdate()->findOrFail($order->getKey());
     }
 
     /**
@@ -213,7 +217,7 @@ class ManageAdminOrder
             description: $description,
             adminUser: $request->user('admin'),
             properties: array_merge([
-                'page' => 'Orders',
+                'page' => $order instanceof CustomerOrder ? 'Customer Orders' : 'Orders',
                 'order_id' => $order->getKey(),
                 'order_number' => $order->order_number,
             ], $properties),

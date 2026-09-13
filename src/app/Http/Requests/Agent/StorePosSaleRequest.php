@@ -5,6 +5,7 @@ namespace App\Http\Requests\Agent;
 use App\Models\Agent;
 use App\Models\PosSale;
 use App\Models\PosSession;
+use App\Support\PosClicker;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,9 +23,10 @@ class StorePosSaleRequest extends FormRequest
     {
         return [
             'sales_agent_id' => ['required', 'integer', 'exists:usr_agent,id'],
+            ...PosClicker::rules(),
             'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*' => ['array:product_id,quantity,discount_amount'],
-            'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
+            'items.*' => ['array:product_id,quantity,discount_amount,clicker_character_count,clicker_characters,clicker_casing_image_id,clicker_huruf_image_id'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
             'items.*.discount_amount' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'customer_name' => ['nullable', 'string', 'max:150'],
@@ -44,6 +46,7 @@ class StorePosSaleRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                PosClicker::validateStandardDuplicates(is_array($this->input('items')) ? $this->input('items') : [], $validator);
                 $session = $this->activePosSession();
 
                 if ($session === null) {

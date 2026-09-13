@@ -13,7 +13,7 @@ class ExampleTest extends TestCase
 
     public function test_fallback_root_redirects_to_the_public_site(): void
     {
-        $this->get('/')
+        $this->getFromDomain('fallback.example.test')
             ->assertRedirect(config('domains.public_url'));
     }
 
@@ -56,25 +56,23 @@ class ExampleTest extends TestCase
     public function test_admin_dashboard_page_displays_admin_navigation(): void
     {
         $domain = (string) config('domains.admin');
-        $admin = AdminUser::factory()->create();
+        $admin = AdminUser::factory()->superAdmin()->create();
 
         $this->actingAs($admin, 'admin')
             ->get("http://{$domain}/dashboard")
             ->assertOk()
             ->assertViewIs('admin.dashboard')
-            ->assertSeeText('Admin Dashboard')
-            ->assertSeeText('Revenue Trend')
-            ->assertSeeText('Production Progress')
-            ->assertSeeText('Top Customers')
-            ->assertSeeText('Order Pipeline')
-            ->assertSeeText('Order management');
+            ->assertSeeText('Prestasi Perniagaan')
+            ->assertSeeText('Prestasi Bulanan')
+            ->assertSeeText('ANGGARAN UNTUNG')
+            ->assertSeeText('Stok hari ini. Potensi esok.')
+            ->assertSeeText('Asas pengiraan & kelengkapan data');
     }
 
-    public function test_agent_domain_returns_placeholder_portal_response(): void
+    public function test_agent_domain_redirects_guests_to_login(): void
     {
         $this->getFromDomain((string) config('domains.agent'))
-            ->assertOk()
-            ->assertSeeText('Anugerah3D Agent Portal Ready');
+            ->assertRedirect('/login');
     }
 
     public function test_customer_domain_returns_placeholder_portal_response(): void

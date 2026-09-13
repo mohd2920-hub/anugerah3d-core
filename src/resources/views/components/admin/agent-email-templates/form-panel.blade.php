@@ -27,6 +27,7 @@
     $imagePosition = old("image_position", $template->image_position ?: \App\Models\AgentEmailTemplate::ImagePositionTop);
 @endphp
 
+@adminRoute('admin.agent-email-templates.update')
 <form method="POST" enctype="multipart/form-data" action="{{ $isEdit ? route("admin.agent-email-templates.update", $template) : route("admin.agent-email-templates.store") }}" class="space-y-4">
     @csrf
     @if ($isEdit)
@@ -127,6 +128,17 @@
         @error("body")
             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
         @enderror
+        <section class="mt-5 rounded-xl border border-slate-200 p-4">
+            <label for="template_video" class="block text-sm font-semibold text-slate-900">Video e-mel (pilihan)</label>
+            <p class="mt-1 text-sm text-slate-500">Muat naik 1 video MP4 atau WebM, maksimum 20 MB. Penerima membuka video melalui butang Tonton Video dalam e-mel.</p>
+            @if($template->video_path)
+                <video controls preload="metadata" class="mt-3 max-h-72 w-full rounded-lg" src="{{ asset($template->video_path) }}"></video>
+                <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" name="remove_template_video" value="1">Buang video daripada templat ini</label>
+                <p class="mt-1 text-xs text-slate-500">Video lama dikekalkan untuk pautan dalam e-mel yang telah dihantar.</p>
+            @endif
+            <input id="template_video" name="template_video" type="file" accept="video/mp4,video/webm,.mp4,.webm" class="mt-3 block w-full rounded-lg border border-slate-300 p-3 text-sm">
+            @error('template_video')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+        </section>
         <div class="mt-5 border-t border-slate-200 pt-5" data-email-template-image-picker data-max-images="{{ \App\Models\AgentEmailTemplate::MAX_IMAGES }}">
             <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -191,15 +203,18 @@
     <div class="flex flex-col gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3.5 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
         <p>Email akan menggunakan header standard Anugerah3D dan hanya dihantar selepas anda tekan butang <strong>Send Email</strong>.</p>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+            @adminRoute('admin.agent-email-templates.index')
+<a href="{{ route("admin.agent-email-templates.index") }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
                 Back
             </a>
+@endadminRoute
             <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white transition hover:bg-[#1558b0]">
                 Save Template
             </button>
         </div>
     </div>
 </form>
+@endadminRoute
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {

@@ -1,7 +1,6 @@
 <div data-checkout-modal class="fixed inset-0 z-50 hidden justify-center bg-[#f7f9fa] sm:items-center sm:bg-slate-950/45 sm:p-5 sm:backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
-    <form data-checkout-form action="{{ route('agent.orders.store') }}" method="post" enctype="multipart/form-data" data-history-url="{{ route('agent.history') }}" class="flex h-full w-full max-w-xl flex-col overflow-hidden bg-[#f7f9fa] sm:h-[92vh] sm:rounded-[2rem] sm:shadow-2xl">
+    <form data-checkout-form action="{{ $checkoutAction ?? route('agent.orders.store') }}" method="post" enctype="multipart/form-data" data-history-url="{{ ($customerCatalogue ?? false) ? '' : route('agent.history') }}" class="flex h-full w-full max-w-xl flex-col overflow-hidden bg-[#f7f9fa] sm:h-[92vh] sm:rounded-[2rem] sm:shadow-2xl">
         @csrf
-        <input name="fulfilment_method" type="hidden" value="delivery">
         <header class="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3" style="padding-top: max(.75rem, env(safe-area-inset-top));">
             <button type="button" data-back-to-cart class="grid h-10 w-10 flex-none place-items-center rounded-full bg-slate-100 text-slate-600" aria-label="Back to cart"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button>
             <div class="min-w-0 flex-1"><p class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7682b]">Final step</p><h2 id="checkout-title" class="text-lg font-extrabold text-[#17324d]">Checkout</h2></div>
@@ -10,11 +9,22 @@
 
         <div class="flex-1 space-y-4 overflow-y-auto p-4 pb-8">
             <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 class="text-sm font-extrabold text-[#17324d]">Fulfilment method</h3>
+                <h3 class="text-sm font-extrabold text-[#17324d]">{{ ($customerCatalogue ?? false) ? 'Pilih Cara Terima Pesanan' : 'Fulfilment method' }}</h3>
                 <div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
-                    <button type="button" data-fulfilment="delivery" class="h-10 rounded-xl bg-white text-xs font-extrabold text-[#17324d] shadow-sm">Delivery</button>
-                    <button type="button" data-fulfilment="pickup" class="h-10 rounded-xl text-xs font-extrabold text-slate-500">Self pickup</button>
+                    <label class="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-extrabold text-[#17324d] has-[:checked]:bg-white has-[:checked]:shadow-sm">
+                        <input type="radio" name="fulfilment_method" value="delivery" data-fulfilment="delivery" required @checked(!($customerCatalogue ?? false)) class="h-4 w-4 shrink-0 accent-orange-600">
+                        <span>{{ ($customerCatalogue ?? false) ? 'Delivery · Penghantaran' : 'Delivery' }}</span>
+                    </label>
+                    <label class="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-extrabold text-[#17324d] has-[:checked]:bg-white has-[:checked]:shadow-sm">
+                        <input type="radio" name="fulfilment_method" value="pickup" data-fulfilment="pickup" required class="h-4 w-4 shrink-0 accent-orange-600">
+                        <span>{{ ($customerCatalogue ?? false) ? 'Self Pickup · Ambil Sendiri' : 'Self pickup' }}</span>
+                    </label>
                 </div>
+                @if($customerCatalogue ?? false)
+                <p data-fulfilment-prompt class="mt-3 text-xs font-bold text-orange-700">Sila pilih Delivery atau Self Pickup untuk menentukan jumlah bayaran.</p>
+                <p data-delivery-help class="mt-3 hidden text-xs text-slate-600">Pesanan dihantar ke alamat anda. Caj penghantaran dipaparkan dalam ringkasan pesanan.</p>
+                <p data-pickup-help class="mt-3 hidden text-xs font-bold text-emerald-700">Ambil sendiri — tiada caj penghantaran (RM0). Tunggu status Sedia Diambil sebelum mengambil pesanan.</p>
+                @endif
             </section>
 
             <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -23,18 +33,27 @@
                     <label class="grid gap-1.5 text-xs font-bold text-slate-600">Recipient name<input name="recipient_name" value="{{ $agent->agt_name }}" required class="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium outline-none focus:border-[#e7682b] focus:ring-3 focus:ring-orange-100"></label>
                     <label class="grid gap-1.5 text-xs font-bold text-slate-600">Phone number<input name="phone_number" value="{{ $agent->phone_number }}" type="tel" required class="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium outline-none focus:border-[#e7682b] focus:ring-3 focus:ring-orange-100"></label>
                 </div>
-                <div data-delivery-address class="mt-3">
-                    <label class="grid gap-1.5 text-xs font-bold text-slate-600">Delivery address<textarea name="delivery_address" rows="3" required class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium outline-none focus:border-[#e7682b] focus:ring-3 focus:ring-orange-100">{{ collect([$agent->address, $agent->city, $agent->state])->filter()->implode(', ') }}</textarea></label>
+                <div data-delivery-address class="mt-3 {{ ($customerCatalogue ?? false) ? 'hidden' : '' }}">
+                    <label class="grid gap-1.5 text-xs font-bold text-slate-600">Delivery address<textarea name="delivery_address" rows="3" @required(!($customerCatalogue ?? false)) class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium outline-none focus:border-[#e7682b] focus:ring-3 focus:ring-orange-100">{{ collect([$agent->address, $agent->city, $agent->state])->filter()->implode(', ') }}</textarea></label>
                 </div>
                 <label class="mt-3 grid gap-1.5 text-xs font-bold text-slate-600">Order notes <span class="font-normal text-slate-400">(optional)</span><textarea name="notes" rows="2" placeholder="Colour, delivery or other instructions" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium outline-none focus:border-[#e7682b] focus:ring-3 focus:ring-orange-100"></textarea></label>
             </section>
 
             <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                 <h3 class="text-sm font-extrabold text-[#17324d]">Payment method</h3>
+                @if($customerCatalogue ?? false)
+                    <div class="mt-3">
+                        <input type="hidden" name="payment_method" value="bank_transfer">
+                        <x-customer-bank-details />
+                        <p class="mt-3 text-sm text-slate-600">Pihak kami akan membuat pengesahan melalui WhatsApp selepas bayaran dan pesanan ini diterima.</p>
+                    </div>
+                @else
                 <div class="mt-3 space-y-2">
                     <label data-payment-option class="flex items-center gap-3 rounded-2xl border-2 border-[#17324d] bg-blue-50/50 p-3"><input name="payment_method" value="bank_transfer" type="radio" checked class="h-4 w-4 text-[#17324d]"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#17324d] text-white"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7M5 10v8m4-8v8m6-8v8m4-8v8M3 21h18"/></svg></span><span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-[#17324d]">Bank transfer</span><span class="block text-[10px] text-slate-500">Payment instructions after confirmation</span></span></label>
-                    <label data-payment-option class="flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3"><input name="payment_method" value="pay_later" type="radio" class="h-4 w-4 text-[#17324d]"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#17324d] text-white"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-[#17324d]">Pay later</span><span class="block text-[10px] text-slate-500">Make payment after order confirmation</span></span></label>
+                    <label data-payment-option class="flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white p-3"><input name="payment_method" value="pay_later" type="radio"  class="h-4 w-4 text-[#17324d]"><span class="grid h-9 w-9 place-items-center rounded-xl bg-[#17324d] text-white"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="min-w-0 flex-1"><span class="block text-sm font-extrabold text-[#17324d]">Pay later</span><span class="block text-[10px] text-slate-500">Make payment after order confirmation</span></span></label>
                 </div>
+
+                @endif
 
                 <div data-payment-proof-section class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Payment proof <span class="normal-case text-slate-400">(required for bank transfer)</span></p>
@@ -63,8 +82,8 @@
                 <div data-checkout-items class="mt-3 space-y-2"></div>
                 <div class="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
                     <div class="flex justify-between text-slate-500"><span>Products</span><span data-checkout-subtotal class="font-bold text-slate-700">RM 0.00</span></div>
-                    <div class="flex justify-between text-slate-500"><span>Eligible discount</span><span data-checkout-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
-                    <p data-checkout-discount-note class="text-[10px] text-slate-400">No discount yet.</p>
+                    <div @if($customerCatalogue ?? false) hidden @endif class="flex justify-between text-slate-500"><span>Eligible discount</span><span @if($customerCatalogue ?? false) hidden @endif data-checkout-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
+                    <p @if($customerCatalogue ?? false) hidden @endif data-checkout-discount-note class="text-[10px] text-slate-400">No discount yet.</p>
                     <div class="flex justify-between text-slate-500"><span>Delivery charge</span><span data-checkout-delivery class="font-bold text-emerald-600">RM 6.00</span></div>
                     <div class="flex items-end justify-between pt-2"><span class="font-extrabold text-[#17324d]">Order total</span><span data-checkout-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div>
                 </div>
@@ -80,7 +99,7 @@
 </div>
 
 <div data-checkout-success class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/50 p-5 backdrop-blur-sm" role="dialog" aria-modal="true">
-    <div class="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-2xl"><span class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4 4L19 6"/></svg></span><p class="mt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Order placed successfully</p><h2 data-success-order class="mt-2 text-2xl font-black text-[#17324d]">Order confirmed</h2><p class="mt-2 text-sm leading-6 text-slate-500">Your order has been saved and the admin team has been notified.</p><div class="mt-5 rounded-2xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Order total</p><p data-success-total class="mt-1 text-xl font-black text-[#e7682b]">RM 0.00</p></div><button type="button" data-close-success class="mt-5 h-12 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">View order history</button></div>
+    <div class="w-full max-w-sm rounded-[2rem] bg-white p-6 text-center shadow-2xl"><span class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 4 4L19 6"/></svg></span><p class="mt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">Order placed successfully</p><h2 data-success-order class="mt-2 text-2xl font-black text-[#17324d]">Order confirmed</h2><p class="mt-2 text-sm leading-6 text-slate-500">Your order has been saved and the admin team has been notified.</p><div class="mt-5 rounded-2xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Order total</p><p data-success-total class="mt-1 text-xl font-black text-[#e7682b]">RM 0.00</p></div><button type="button" data-close-success class="mt-5 h-12 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">{{ ($customerCatalogue ?? false) ? 'Lihat status pesanan' : 'View order history' }}</button></div>
 </div>
 
 <div class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/80 p-4" data-checkout-proof-modal>

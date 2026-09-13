@@ -28,7 +28,7 @@
                 @php
                     $legacyPicture = $product->prd_picture ? (filter_var($product->prd_picture, FILTER_VALIDATE_URL) ? $product->prd_picture : asset($product->prd_picture)) : null;
                     $galleryImages = $product->images
-                        ->take(5)
+                        ->take(\App\Models\ProductImage::MAX_IMAGES_PER_PRODUCT)
                         ->map(fn ($image) => [
                             'src' => filter_var($image->image_path, FILTER_VALIDATE_URL) ? $image->image_path : asset(ltrim($image->image_path, '/')),
                             'alt' => $image->alt_text ?: $product->prd_name,
@@ -38,6 +38,9 @@
                         $galleryImages->push(['src' => $legacyPicture, 'alt' => $product->prd_name]);
                     }
                     $picture = data_get($galleryImages->first(), 'src');
+                    if ($product->video_path) {
+                        $galleryImages->push(['src' => asset($product->video_path), 'alt' => $product->prd_name.' video', 'type' => 'video']);
+                    }
                     $price = (float) $product->price_selling;
                     $searchValue = Str::lower($product->prd_code.' '.$product->prd_name);
                     $isPreOrder = (int) $product->prd_balance <= 0;
@@ -55,8 +58,9 @@
                     <div class="flex flex-1 flex-col p-3">
                         <p class="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $product->prd_code }}</p>
                         <h3 class="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5 text-[#17324d]">{{ $product->prd_name }}</h3>
+            @if(($product->discontinued_at ?? null))<p class="mt-1 text-xs font-bold text-amber-800">Stok terakhir — sehingga habis stok</p>@endif
                         <div class="mt-3 flex items-end justify-between gap-1"><span class="text-[9px] font-semibold text-slate-500">Price</span><span class="text-base font-black text-[#e7682b]">RM {{ number_format($price, 2) }}</span></div>
-                        <button type="button" data-add-product data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-images="{{ $galleryImages->toJson() }}" data-price="{{ number_format($price, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" data-material="{{ $product->materialType?->name ?? $product->material ?? '' }}" data-color="{{ $product->color }}" data-weight="{{ $product->weight_g }}" data-width="{{ $product->width_mm }}" data-height="{{ $product->height_mm }}" data-length="{{ $product->length_mm }}" data-product-type="{{ $product->product_type ?? 'standard' }}" data-clicker-prices='@json(data_get($clickerCharacterPricesByProduct, (string) $product->getKey(), []))' data-clicker-casing-images='@json(data_get($clickerImagesByProduct, $product->getKey().".casing", []))' data-clicker-huruf-images='@json(data_get($clickerImagesByProduct, $product->getKey().".huruf", []))' @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
+                        <button type="button" data-add-product data-discontinued="{{ ($product->discontinued_at ?? null) ? 1 : 0 }}" data-id="{{ $product->getKey() }}" data-code="{{ $product->prd_code }}" data-name="{{ $product->prd_name }}" data-images="{{ $galleryImages->toJson() }}" data-price="{{ number_format($price, 2, '.', '') }}" data-max="{{ $isPreOrder ? 9999 : (int) $product->prd_balance }}" data-preorder="{{ $isPreOrder ? '1' : '0' }}" data-material="{{ $product->materialType?->name ?? $product->material ?? '' }}" data-color="{{ $product->color }}" data-weight="{{ $product->weight_g }}" data-width="{{ $product->width_mm }}" data-height="{{ $product->height_mm }}" data-length="{{ $product->length_mm }}" data-product-type="{{ $product->product_type ?? 'standard' }}" data-clicker-prices='@json(data_get($clickerCharacterPricesByProduct, (string) $product->getKey(), []))' data-clicker-casing-images='@json(data_get($clickerImagesByProduct, $product->getKey().".casing", []))' data-clicker-huruf-images='@json(data_get($clickerImagesByProduct, $product->getKey().".huruf", []))' data-clicker-results='@json(data_get($clickerResultsByProduct, (string) $product->getKey(), []))' @class(['mt-3 h-10 w-full rounded-xl text-xs font-extrabold text-white transition active:scale-[0.98]', 'bg-[#17324d]' => ! $isPreOrder, 'bg-[#e7682b]' => $isPreOrder])><span data-add-label>{{ $isPreOrder ? 'Pre-order' : 'Add' }}</span></button>
                     </div>
                 </article>
             @endforeach
@@ -91,14 +95,31 @@
                             <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Casing <span class="text-red-500">*</span></p>
                             <button type="button" data-open-clicker-gallery="casing" class="text-[10px] font-bold text-[#e7682b] underline decoration-orange-200 underline-offset-2">Open bigger image</button>
                         </div>
-                        <div data-clicker-casing-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
+                        <div class="relative mt-1.5" data-clicker-thumbs-group="casing">
+                            <button type="button" data-clicker-thumbs-scroll="-1" class="absolute left-0 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md ring-1 ring-slate-200 transition focus:outline-none focus:ring-2 focus:ring-[#e7682b] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Scroll casing left"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                            <div data-clicker-casing-thumbs class="flex gap-2 overflow-x-auto px-11 pb-1 [scrollbar-width:none]"></div>
+                            <button type="button" data-clicker-thumbs-scroll="1" class="absolute right-0 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md ring-1 ring-slate-200 transition focus:outline-none focus:ring-2 focus:ring-[#e7682b] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Scroll casing right"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
+                        </div>
                     </div>
                     <div data-clicker-huruf-group class="hidden">
                         <div class="flex items-center justify-between gap-3">
                             <p class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Huruf <span class="text-red-500">*</span></p>
                             <button type="button" data-open-clicker-gallery="huruf" class="text-[10px] font-bold text-[#e7682b] underline decoration-orange-200 underline-offset-2">Open bigger image</button>
                         </div>
-                        <div data-clicker-huruf-thumbs class="mt-1.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"></div>
+                        <div class="relative mt-1.5" data-clicker-thumbs-group="huruf">
+                            <button type="button" data-clicker-thumbs-scroll="-1" class="absolute left-0 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md ring-1 ring-slate-200 transition focus:outline-none focus:ring-2 focus:ring-[#e7682b] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Scroll huruf left"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                            <div data-clicker-huruf-thumbs class="flex gap-2 overflow-x-auto px-11 pb-1 [scrollbar-width:none]"></div>
+                            <button type="button" data-clicker-thumbs-scroll="1" class="absolute right-0 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#17324d] shadow-md ring-1 ring-slate-200 transition focus:outline-none focus:ring-2 focus:ring-[#e7682b] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Scroll huruf right"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg></button>
+                        </div>
+                    </div>
+                    <div data-clicker-result-card class="hidden overflow-hidden rounded-2xl border border-orange-100 bg-orange-50/40">
+                        <img data-clicker-result-image src="" alt="" class="hidden aspect-[16/9] w-full object-contain bg-white">
+                        <div class="p-3">
+                            <p class="text-[9px] font-bold uppercase tracking-wide text-[#e7682b]">Combination result</p>
+                            <p data-clicker-result-name class="mt-1 text-xs font-extrabold text-[#17324d]"></p>
+                            <p data-clicker-result-hint class="mt-1 text-[10px] text-slate-500"></p>
+                            <p data-clicker-preorder-notice role="status" class="mt-3 hidden whitespace-normal break-words rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900"></p>
+                        </div>
                     </div>
                     <p data-clicker-image-hint class="text-[11px] font-semibold text-amber-700">Select one casing and one huruf.</p>
                 </div>
@@ -137,8 +158,8 @@
         <div class="border-t border-slate-100 p-5">
             <div class="flex justify-between text-sm"><span class="font-semibold text-slate-500">Total units</span><span data-review-units class="font-extrabold">0</span></div>
             <div class="mt-2 flex justify-between text-sm"><span class="font-semibold text-slate-500">Total amount</span><span data-review-subtotal class="font-bold text-slate-700">RM 0.00</span></div>
-            <div class="mt-2 flex justify-between text-sm"><span class="font-semibold text-slate-500">Eligible discount</span><span data-review-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
-            <p data-review-discount-note class="mt-1 text-[10px] text-slate-400">No discount yet.</p>
+            <div @if($customerCatalogue ?? false) hidden @endif class="mt-2 flex justify-between text-sm"><span class="font-semibold text-slate-500">Eligible discount</span><span data-review-discount class="font-bold text-emerald-600">- RM 0.00</span></div>
+            <p @if($customerCatalogue ?? false) hidden @endif data-review-discount-note class="mt-1 text-[10px] text-slate-400">No discount yet.</p>
             <div class="mt-2 flex items-end justify-between"><span class="font-semibold text-slate-500">Order total</span><span data-review-total class="text-2xl font-black text-[#e7682b]">RM 0.00</span></div>
             <button type="button" data-ui-checkout class="mt-5 h-13 w-full rounded-2xl bg-[#17324d] text-sm font-extrabold text-white">Proceed to checkout</button>
             <p class="mt-2 text-center text-[10px] text-slate-400">Review your selected items before checkout.</p>
@@ -185,10 +206,20 @@
 @push('scripts')
 <script>
 (() => {
-    const cartKey = 'a3d-agent-cart-{{ $agent->getKey() }}';
+    const customerCatalogue = @json($customerCatalogue ?? false);
+    const cartKey = customerCatalogue ? 'a3d-customer-cart' : 'a3d-agent-cart-{{ $agent->getKey() }}';
+    if (customerCatalogue) {
+        const owner = @json(isset($referrer) ? (string) $referrer->id : '');
+        const previous = JSON.parse(localStorage.getItem('a3d-customer-owner') || 'null');
+        if (previous && previous.id !== owner && localStorage.getItem(cartKey)) {
+            if (!window.confirm('Troli anda berasal daripada link ejen lain. Mulakan troli baharu?')) { window.location.assign(previous.url); return; }
+            localStorage.removeItem(cartKey);
+        }
+        localStorage.setItem('a3d-customer-owner', JSON.stringify({id: owner, url: window.location.href}));
+    }
     const currency = new Intl.NumberFormat('en-MY', {style: 'currency', currency: 'MYR'});
     const clickerCharacterPricesByProduct = @json($clickerCharacterPricesByProduct);
-    const discountRules = @json(\App\Support\AgentOrderDiscount::frontendConfig((float) $agent->discount_percentage));
+    const discountRules = @json(($customerCatalogue ?? false) ? ['deliveryFeeCents' => \App\Support\AgentOrderDiscount::DELIVERY_FEE_CENTS] : \App\Support\AgentOrderDiscount::frontendConfig((float) $agent->discount_percentage));
     const searchInput = document.querySelector('[data-product-search]');
     const quantityModal = document.querySelector('[data-quantity-modal]');
     const cartModal = document.querySelector('[data-cart-modal]');
@@ -199,12 +230,17 @@
     const clickerHint = document.querySelector('[data-clicker-hint]');
     const clickerInputsContainer = document.querySelector('[data-clicker-inputs]');
     const clickerImagesByProduct = @json($clickerImagesByProduct);
+    const clickerResultsByProduct = @json($clickerResultsByProduct);
     const clickerImageGroups = document.querySelector('[data-clicker-image-groups]');
     const clickerCasingGroup = document.querySelector('[data-clicker-casing-group]');
     const clickerHurufGroup = document.querySelector('[data-clicker-huruf-group]');
     const clickerCasingThumbs = document.querySelector('[data-clicker-casing-thumbs]');
     const clickerHurufThumbs = document.querySelector('[data-clicker-huruf-thumbs]');
     const clickerImageHint = document.querySelector('[data-clicker-image-hint]');
+    const clickerResultCard = document.querySelector('[data-clicker-result-card]');
+    const clickerResultImage = document.querySelector('[data-clicker-result-image]');
+    const clickerResultName = document.querySelector('[data-clicker-result-name]');
+    const clickerResultHint = document.querySelector('[data-clicker-result-hint]');
     const clickerPreviewModal = document.querySelector('[data-clicker-preview-modal]');
     const clickerPreviewImage = document.querySelector('[data-clicker-preview-image]');
     const clickerPreviewTitle = document.querySelector('[data-clicker-preview-title]');
@@ -217,11 +253,55 @@
     let clickerPreviewType = null;
     let clickerPreviewImages = [];
     let clickerPreviewIndex = 0;
+    const preorderNotice = 'Anggaran siap dalam 4 hari selepas tempahan disahkan. Tempoh ini tidak termasuk penghantaran.';
+    const appendPreorderNotice = (detail, item) => {
+        if (!item.preorder) return;
+        const note = document.createElement('p');
+        note.className = 'mt-2 text-xs leading-5 text-amber-800';
+        note.textContent = preorderNotice;
+        detail.append(note);
+    };
+    const createCartLineId = () => crypto.randomUUID();
+    const availableProductIds = new Set(
+        [...document.querySelectorAll('[data-add-product]')].map((button) => String(button.dataset.id)),
+    );
+    const normalizeStoredCart = (storedCart) => {
+        if (!storedCart || Array.isArray(storedCart) || typeof storedCart !== "object") {
+            return {};
+        }
+
+        return Object.entries(storedCart).reduce((normalizedCart, [legacyKey, item]) => {
+            if (!item || typeof item !== "object") {
+                return normalizedCart;
+            }
+
+            const productId = String(item.productId || item.id || legacyKey);
+            if (!Number.isFinite(Number(productId)) || Number(productId) < 1 || !availableProductIds.has(productId)) {
+                return normalizedCart;
+            }
+
+            const lineId = typeof item.lineId === "string" && item.lineId !== ""
+                ? item.lineId
+                : createCartLineId();
+            normalizedCart[lineId] = {...item, id: productId, lineId};
+
+            return normalizedCart;
+        }, {});
+    };
+
     let cart = {};
-    try { cart = JSON.parse(localStorage.getItem(cartKey)) || {}; } catch (error) { cart = {}; }
+    try {
+        cart = normalizeStoredCart(JSON.parse(localStorage.getItem(cartKey)));
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+    } catch (error) {
+        cart = {};
+    }
 
     const values = () => Object.values(cart);
     const units = () => values().reduce((sum, item) => sum + Number(item.quantity), 0);
+    const cartUnitsForProduct = (productId, excludedLineId = null) => values()
+        .filter((item) => item.lineId !== excludedLineId && String(item.id) === String(productId))
+        .reduce((sum, item) => sum + Number(item.quantity), 0);
     const priceCents = (amount) => Math.round(Number(amount) * 100);
     const formatCents = (cents) => currency.format(cents / 100);
     const normalizeImageList = (images) => {
@@ -238,9 +318,21 @@
                     id: Number(image.id || 0),
                     src,
                     alt: String(image.alt || '').trim(),
+                    stock: image.stock === null || image.stock === undefined ? null : image.stock,
                 };
             })
             .filter(Boolean);
+    };
+    const normalizeClickerResults = (results) => {
+        if (!Array.isArray(results)) return [];
+
+        return results.map((result) => ({
+            id: Number(result?.id || 0),
+            casingImageId: Number(result?.casingImageId || 0),
+            hurufImageId: Number(result?.hurufImageId || 0),
+            name: String(result?.name || '').trim(),
+            src: String(result?.src || '').trim(),
+        })).filter((result) => result.id > 0 && result.casingImageId > 0 && result.hurufImageId > 0 && result.src !== '');
     };
     const normalizeClickerPrices = (prices) => {
         if (!prices || typeof prices !== 'object') return {};
@@ -313,11 +405,20 @@
 
         return text === '' ? `${count} characters` : `${count} characters: ${text}`;
     };
-    const selectedFulfilmentMethod = () => document.querySelector('[data-checkout-form]')?.elements?.fulfilment_method?.value || 'delivery';
+    const clickerOptionsLabel = (item) => {
+        if (item?.productType !== "clicker") return null;
+
+        const casing = String(item.clickerCasingSelection?.alt || "").trim();
+        const huruf = String(item.clickerHurufSelection?.alt || "").trim();
+
+        return casing && huruf ? `Casing: ${casing} · Huruf: ${huruf}` : null;
+    };
+    const selectedFulfilmentMethod = () => document.querySelector('[data-checkout-form]')?.elements?.fulfilment_method?.value || (customerCatalogue ? '' : 'delivery');
     const deliveryFeeCents = (fulfilmentMethod = selectedFulfilmentMethod()) => fulfilmentMethod === 'delivery' ? Number(discountRules.deliveryFeeCents) : 0;
     const subtotalCents = () => values().reduce((sum, item) => sum + (priceCents(item.price) * Number(item.quantity)), 0);
     const resolveDiscountPercentage = (grossSubtotalCents) => {
         if (grossSubtotalCents <= 0) return 0;
+        if (customerCatalogue) return 0;
         if (grossSubtotalCents < discountRules.belowRm20ThresholdCents) return Number(discountRules.belowRm20Percentage);
         if (grossSubtotalCents < discountRules.belowRm100ThresholdCents) return Number(discountRules.belowRm100Percentage);
         return Number(discountRules.aboveRm100Percentage);
@@ -387,7 +488,7 @@
 
         clickerPreviewImage.src = image.src;
         clickerPreviewImage.alt = image.alt || selectedProduct?.name || 'Clicker image';
-        clickerPreviewTitle.textContent = `${clickerPreviewType === 'casing' ? 'Casing' : 'Huruf'} pictures`;
+        clickerPreviewTitle.textContent = image.alt || `${clickerPreviewType === "casing" ? "Casing" : "Huruf"} picture`;
         clickerPreviewCounter.textContent = `${clickerPreviewIndex + 1} / ${clickerPreviewImages.length}`;
         clickerPreviewPrevious.classList.toggle('hidden', clickerPreviewImages.length < 2);
         clickerPreviewNext.classList.toggle('hidden', clickerPreviewImages.length < 2);
@@ -425,7 +526,7 @@
             button.type = 'button';
             const isSelected = selectedClickerImage(type)?.src === image.src;
             button.className = `relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white shadow-sm transition active:scale-[0.98] ${isSelected ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'}`;
-            button.setAttribute('aria-label', `Select ${type} image ${index + 1}`);
+            button.setAttribute("aria-label", "Select " + type + " " + (image.alt || ("image " + (index + 1))));
             button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
 
             const thumb = document.createElement('img');
@@ -434,6 +535,12 @@
             thumb.className = 'h-full w-full object-cover';
 
             button.appendChild(thumb);
+            if (image.alt) {
+                const nameLabel = document.createElement("span");
+                nameLabel.className = "absolute inset-x-0 top-0 truncate bg-slate-950/70 px-1 py-0.5 text-center text-[7px] font-bold text-white";
+                nameLabel.textContent = image.alt;
+                button.appendChild(nameLabel);
+            }
             if (isSelected) {
                 const selectedIcon = document.createElement('span');
                 selectedIcon.className = 'absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-emerald-600 px-1 py-1 text-[7px] font-black uppercase tracking-wide text-white';
@@ -443,6 +550,39 @@
             button.addEventListener('click', () => setSelectedClickerImage(type, image));
             container.appendChild(button);
         });
+    };
+
+    const renderClickerResult = () => {
+        if (!clickerResultCard || !clickerResultImage || !clickerResultName || !clickerResultHint || !selectedProduct) return;
+
+        const complete = clickerImagesComplete(selectedProduct);
+        clickerResultCard.classList.toggle('hidden', selectedProduct.productType !== 'clicker' || !complete);
+
+        if (!complete) {
+            clickerResultImage.src = '';
+            clickerResultImage.classList.add('hidden');
+            return;
+        }
+
+        const casingImageId = Number(selectedProduct.clickerCasingSelection?.id || 0);
+        const hurufImageId = Number(selectedProduct.clickerHurufSelection?.id || 0);
+        const result = normalizeClickerResults(selectedProduct.clickerResults).find((item) => (
+            item.casingImageId === casingImageId && item.hurufImageId === hurufImageId
+        ));
+
+        if (!result) {
+            clickerResultImage.src = '';
+            clickerResultImage.classList.add('hidden');
+            clickerResultName.textContent = 'Preview not available';
+            clickerResultHint.textContent = 'This combination can still be ordered. Admin has not uploaded its result image yet.';
+            return;
+        }
+
+        clickerResultImage.src = result.src;
+        clickerResultImage.alt = result.name || 'Clicker combination result';
+        clickerResultImage.classList.remove('hidden');
+        clickerResultName.textContent = result.name || 'Combination result';
+        clickerResultHint.textContent = 'Preview for the selected casing and huruf.';
     };
 
     const renderClickerImageGroups = () => {
@@ -460,6 +600,7 @@
         clickerCasingGroup.classList.toggle('hidden', casingImages.length === 0);
         clickerHurufGroup.classList.toggle('hidden', hurufImages.length === 0);
         clickerImageGroups.classList.toggle('hidden', !isClicker || (casingImages.length === 0 && hurufImages.length === 0));
+        renderClickerResult();
         if (isClicker && clickerImageHint) {
             const complete = clickerImagesComplete(selectedProduct);
             clickerImageHint.textContent = complete ? 'Casing and huruf selected.' : 'Select one casing and one huruf.';
@@ -484,14 +625,50 @@
 
     const updateModalTotal = () => {
         if (!selectedProduct) return;
-        const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
+        const casing = selectedProduct.clickerCasingImages?.find((image) => Number(image.id) === Number(selectedProduct.clickerCasingSelection?.id));
+        if (selectedProduct.productType === 'clicker' && casing?.stock !== null && casing?.stock !== undefined) {
+            const reserved = values().filter((item) => String(item.id) === String(selectedProduct.id)
+                && item.lineId !== selectedProduct.lineId
+                && Number(item.clickerCasingSelection?.id) === Number(casing.id)
+                && Number(item.clickerCharacterCount) === Number(selectedProduct.clickerCharacterCount))
+                .reduce((sum, item) => sum + Number(item.quantity), 0);
+            const sizeStock = Number(casing.stock[selectedProduct.clickerCharacterCount] || 0);
+            selectedProduct.preorder = sizeStock === 0 && !selectedProduct.discontinued;
+            selectedProduct.max = selectedProduct.preorder ? 9999 : sizeStock;
+            selectedProduct.availableMax = selectedProduct.preorder ? 9999 : Math.max(0, sizeStock - reserved);
+            quantityInput.max = Math.max(1, selectedProduct.availableMax);
+            document.querySelector('[data-modal-stock]').textContent = selectedProduct.preorder
+                ? 'Stok habis — Pre-order tersedia. ' + preorderNotice
+                : selectedProduct.availableMax + ' casing units available after cart reservations';
+            document.querySelector('[data-modal-status]').textContent = selectedProduct.preorder ? 'Stok habis · Pre-order' : 'In stock';
+            document.querySelector('[data-confirm-add]').textContent = selectedProduct.lineId ? 'Update cart item'
+                : (selectedProduct.preorder ? 'Tambah sebagai Pre-order' : 'Add new item');
+        }
+
+        if (selectedProduct.discontinued && selectedProduct.availableMax < 1) {
+            document.querySelector('[data-modal-stock]').textContent = 'Pilihan ini habis stok. Produk dihentikan; pre-order tidak tersedia.';
+            document.querySelector('[data-modal-status]').textContent = 'Stok habis';
+            document.querySelector('[data-confirm-add]').textContent = 'Stok habis';
+        }
+        const preorderMessage = document.querySelector('[data-clicker-preorder-notice]');
+        const showPreorderMessage = selectedProduct.productType === 'clicker'
+            && clickerImagesComplete(selectedProduct) && selectedProduct.preorder;
+        if (preorderMessage) {
+            preorderMessage.classList.toggle('hidden', !showPreorderMessage);
+            preorderMessage.textContent = showPreorderMessage ? 'Stok habis — Pre-order tersedia. ' + preorderNotice : '';
+        }
+        if (showPreorderMessage) {
+            document.querySelector('[data-modal-stock]').textContent = 'Stok habis · Pre-order tersedia';
+        }
+
+        const quantity = Math.max(1, Math.min(Math.max(1, selectedProduct.availableMax), Number(quantityInput.value) || 1));
         quantityInput.value = quantity;
         const selectedUnitPrice = resolveSelectedUnitPrice(selectedProduct);
         selectedProduct.price = selectedUnitPrice;
         document.querySelector('[data-modal-price]').textContent = currency.format(selectedUnitPrice);
         document.querySelector('[data-modal-total]').textContent = currency.format(quantity * selectedUnitPrice);
         const addButton = document.querySelector('[data-confirm-add]');
-        addButton.disabled = !clickerConfigurationComplete(selectedProduct);
+        addButton.disabled = !clickerConfigurationComplete(selectedProduct) || selectedProduct.availableMax < 1;
         addButton.classList.toggle('opacity-50', addButton.disabled);
         addButton.classList.toggle('cursor-not-allowed', addButton.disabled);
     };
@@ -592,27 +769,35 @@
         renderClickerInputs();
     };
 
-    const openProductDetails = (button) => {
+    const openProductDetails = (button, cartLineId = null) => {
         const productId = String(button.dataset.id);
-        const restoredItem = cart[productId] || null;
+        const restoredItem = cartLineId ? cart[cartLineId] ?? null : null;
         const fallbackClickerPrices = clickerCharacterPricesByProduct[productId] || clickerCharacterPricesByProduct[Number(productId)] || {};
         const fallbackClickerImages = clickerImagesByProduct[productId] || clickerImagesByProduct[Number(productId)] || {};
+        const fallbackClickerResults = clickerResultsByProduct[productId] || clickerResultsByProduct[Number(productId)] || [];
         selectedProduct = {
-            id: productId, code: button.dataset.code, name: button.dataset.name,
+            id: productId, lineId: cartLineId, code: button.dataset.code, name: button.dataset.name,
             images: JSON.parse(button.dataset.images || '[]'), basePrice: Number(button.dataset.price),
             price: Number(button.dataset.price),
-            max: Number(button.dataset.max), preorder: button.dataset.preorder === '1',
+            discontinued: button.dataset.discontinued === '1', max: Number(button.dataset.max), preorder: button.dataset.preorder === '1',
             material: button.dataset.material, color: button.dataset.color, weight: button.dataset.weight,
             width: button.dataset.width, height: button.dataset.height, length: button.dataset.length,
             productType: button.dataset.productType === 'clicker' ? 'clicker' : 'standard',
             clickerPrices: normalizeClickerPrices(JSON.parse(button.dataset.clickerPrices || JSON.stringify(fallbackClickerPrices || {}))),
             clickerCasingImages: normalizeImageList(JSON.parse(button.dataset.clickerCasingImages || JSON.stringify(fallbackClickerImages.casing || []))),
             clickerHurufImages: normalizeImageList(JSON.parse(button.dataset.clickerHurufImages || JSON.stringify(fallbackClickerImages.huruf || []))),
+            clickerResults: normalizeClickerResults(JSON.parse(button.dataset.clickerResults || JSON.stringify(fallbackClickerResults))),
             clickerCasingSelection: restoredItem?.clickerCasingSelection || null,
             clickerHurufSelection: restoredItem?.clickerHurufSelection || null,
             clickerCharacterCount: Number(restoredItem?.clickerCharacterCount || 0),
             clickerCharacters: getClickerCharacters(restoredItem),
         };
+        const reservedQuantity = selectedProduct.preorder
+            ? 0
+            : cartUnitsForProduct(productId, cartLineId);
+        selectedProduct.availableMax = selectedProduct.preorder
+            ? selectedProduct.max
+            : Math.max(0, selectedProduct.max - reservedQuantity);
 
         if (selectedProduct.productType === 'clicker' && (selectedProduct.clickerCharacterCount < 1 || selectedProduct.clickerCharacterCount > 8)) {
             selectedProduct.clickerCharacterCount = 1;
@@ -628,13 +813,15 @@
         }));
 
         const status = document.querySelector('[data-modal-status]');
-        status.textContent = selectedProduct.preorder ? 'Pre-order' : 'In stock';
+        status.textContent = selectedProduct.preorder ? 'Stok habis · Pre-order' : 'In stock';
         status.className = `absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase shadow-sm sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-[10px] ${selectedProduct.preorder ? 'bg-orange-50 text-[#e7682b]' : 'bg-emerald-50 text-emerald-700'}`;
         document.querySelector('[data-modal-code]').textContent = selectedProduct.code;
         document.querySelector('[data-modal-name]').textContent = selectedProduct.name;
         renderClickerImageGroups();
         document.querySelector('[data-modal-price]').textContent = currency.format(selectedProduct.price);
-        document.querySelector('[data-modal-stock]').textContent = selectedProduct.preorder ? 'Pre-order item · choose required quantity' : `${selectedProduct.max} units available`;
+        document.querySelector("[data-modal-stock]").textContent = selectedProduct.preorder
+            ? "Stok habis — Pre-order tersedia. " + preorderNotice
+            : selectedProduct.availableMax + " units available after cart reservations";
 
         const dimensions = [selectedProduct.length, selectedProduct.width, selectedProduct.height].filter(Boolean);
         const specs = [
@@ -656,9 +843,9 @@
 
         renderClickerConfig();
 
-        quantityInput.max = selectedProduct.max;
+        quantityInput.max = Math.max(1, selectedProduct.availableMax);
         quantityInput.value = restoredItem?.quantity || 1;
-        document.querySelector('[data-confirm-add]').textContent = cart[selectedProduct.id] ? 'Update cart' : (selectedProduct.preorder ? 'Add pre-order to cart' : 'Add to cart');
+        document.querySelector('[data-confirm-add]').textContent = cartLineId ? 'Update cart item' : (selectedProduct.preorder ? 'Tambah sebagai Pre-order' : 'Add new item');
         updateModalTotal();
         quantityModal.classList.remove('hidden');
         quantityModal.classList.add('flex');
@@ -681,10 +868,31 @@
             } else {
                 detail.append(name);
             }
-            const price = document.createElement('p'); price.className = 'mt-1 text-xs font-bold text-[#e7682b]'; price.textContent = `${item.preorder ? 'Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)} = ${currency.format(item.quantity * item.price)}`;
+            const clickerOptions = clickerOptionsLabel(item);
+            if (clickerOptions) {
+                const optionInfo = document.createElement("p");
+                optionInfo.className = "mt-0.5 text-[10px] text-slate-500";
+                optionInfo.textContent = clickerOptions;
+                detail.append(optionInfo);
+            }
+            const price = document.createElement('p'); price.className = 'mt-1 text-xs font-bold text-[#e7682b]'; price.textContent = `${item.preorder ? 'Stok habis · Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)} = ${currency.format(item.quantity * item.price)}`;
             detail.append(price);
-            const remove = document.createElement('button'); remove.type = 'button'; remove.dataset.removeCartItem = item.id; remove.className = 'grid h-9 w-9 place-items-center rounded-full bg-white text-red-500 shadow-sm'; remove.innerHTML = '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg>';
-            row.append(detail, remove); container.append(row);
+            appendPreorderNotice(detail, item);
+            const actions = document.createElement("div");
+            actions.className = "flex flex-none flex-col gap-1.5";
+            const edit = document.createElement("button");
+            edit.type = "button";
+            edit.dataset.editCartItem = item.lineId;
+            edit.className = "h-8 rounded-lg bg-white px-3 text-[10px] font-extrabold text-[#17324d] shadow-sm ring-1 ring-slate-200";
+            edit.textContent = "Edit";
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.dataset.removeCartItem = item.lineId;
+            remove.className = "h-8 rounded-lg bg-red-50 px-3 text-[10px] font-extrabold text-red-600";
+            remove.textContent = "Remove";
+            actions.append(edit, remove);
+            row.append(detail, actions);
+            container.append(row);
         });
 
         const summary = orderSummary();
@@ -704,7 +912,7 @@
             const row = document.createElement('div'); row.className = 'flex items-start justify-between gap-3 rounded-xl bg-slate-50 p-3';
             const detail = document.createElement('div'); detail.className = 'min-w-0 flex-1';
             const name = document.createElement('p'); name.className = 'truncate text-xs font-extrabold text-[#17324d]'; name.textContent = item.name;
-            const caption = document.createElement('p'); caption.className = 'mt-1 text-[10px] text-slate-500'; caption.textContent = `${item.preorder ? 'Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)}`;
+            const caption = document.createElement('p'); caption.className = 'mt-1 text-[10px] text-slate-500'; caption.textContent = `${item.preorder ? 'Stok habis · Pre-order · ' : ''}${item.quantity} × ${currency.format(item.price)}`;
             const clickerLabel = clickerCharactersLabel(item);
             if (clickerLabel) {
                 const clickerInfo = document.createElement('p');
@@ -714,7 +922,15 @@
             } else {
                 detail.append(name, caption);
             }
+            const clickerOptions = clickerOptionsLabel(item);
+            if (clickerOptions) {
+                const optionInfo = document.createElement("p");
+                optionInfo.className = "mt-0.5 text-[10px] text-slate-500";
+                optionInfo.textContent = clickerOptions;
+                detail.append(optionInfo);
+            }
             const total = document.createElement('p'); total.className = 'flex-none text-xs font-black text-[#e7682b]'; total.textContent = currency.format(item.quantity * item.price);
+            appendPreorderNotice(detail, item);
             row.append(detail, total); container.append(row);
         });
 
@@ -731,6 +947,11 @@
         document.querySelector('[data-checkout-total]').textContent = formatCents(summary.orderTotal);
         document.querySelector('[data-confirm-total]').textContent = formatCents(summary.orderTotal);
         document.querySelector('[data-success-total]').textContent = formatCents(summary.orderTotal);
+        if (customerCatalogue && !selectedFulfilmentMethod()) {
+            document.querySelector('[data-checkout-delivery]').textContent = 'Pilih cara penerimaan';
+            document.querySelector('[data-checkout-total]').textContent = 'Belum ditentukan';
+            document.querySelector('[data-confirm-total]').textContent = 'Pilih cara penerimaan';
+        }
     };
 
     const renderCart = () => {
@@ -739,11 +960,22 @@
         document.querySelectorAll('[data-cart-visible]').forEach((element) => { element.classList.toggle('hidden', quantity === 0); element.classList.toggle('flex', quantity > 0); });
         document.querySelectorAll('[data-cart-units]').forEach((element) => element.textContent = quantity);
         document.querySelectorAll('[data-cart-total]').forEach((element) => element.textContent = formatCents(summary.grossSubtotal));
-        document.querySelectorAll('[data-product-card]').forEach((card) => {
-            const item = cart[card.dataset.productId]; const badge = card.querySelector('[data-card-cart-badge]');
-            badge.classList.toggle('hidden', !item); badge.classList.toggle('flex', Boolean(item));
-            if (item) { card.querySelector('[data-card-cart-quantity]').textContent = item.quantity; card.querySelector('[data-add-label]').textContent = item.preorder ? 'Edit pre-order' : 'Edit quantity'; card.classList.add('border-orange-300', 'ring-2', 'ring-orange-100'); }
-            else { card.querySelector('[data-add-label]').textContent = card.querySelector('[data-add-product]').dataset.preorder === '1' ? 'Pre-order' : 'Add'; card.classList.remove('border-orange-300', 'ring-2', 'ring-orange-100'); }
+        document.querySelectorAll("[data-product-card]").forEach((card) => {
+            const productItems = values().filter((item) => String(item.id) === String(card.dataset.productId));
+            const productQuantity = productItems.reduce((total, item) => total + Number(item.quantity), 0);
+            const hasItems = productItems.length > 0;
+            const badge = card.querySelector("[data-card-cart-badge]");
+            const addButton = card.querySelector("[data-add-product]");
+
+            badge.classList.toggle("hidden", !hasItems);
+            badge.classList.toggle("flex", hasItems);
+            card.querySelector("[data-card-cart-quantity]").textContent = productQuantity;
+            card.querySelector("[data-add-label]").textContent = hasItems
+                ? (addButton.dataset.preorder === "1" ? "Add another pre-order" : "Add another")
+                : (addButton.dataset.preorder === "1" ? "Pre-order" : "Add");
+            card.classList.toggle("border-orange-300", hasItems);
+            card.classList.toggle("ring-2", hasItems);
+            card.classList.toggle("ring-orange-100", hasItems);
         });
         renderReview();
     };
@@ -808,9 +1040,9 @@
     document.querySelector('[data-quantity-plus]').addEventListener('click', () => { quantityInput.value = Math.min(Number(quantityInput.max), Number(quantityInput.value) + 1); updateModalTotal(); }); quantityInput.addEventListener('input', updateModalTotal);
     document.querySelector('[data-confirm-add]').addEventListener('click', () => {
         if (!selectedProduct) return;
-        if (!clickerConfigurationComplete(selectedProduct)) return;
+        if (!clickerConfigurationComplete(selectedProduct) || selectedProduct.availableMax < 1) return;
 
-        const quantity = Math.max(1, Math.min(selectedProduct.max, Number(quantityInput.value) || 1));
+        const quantity = Math.max(1, Math.min(Math.max(1, selectedProduct.availableMax), Number(quantityInput.value) || 1));
         const clickerCharacterCount = selectedProduct.productType === 'clicker'
             ? Number(selectedProduct.clickerCharacterCount || 0)
             : null;
@@ -818,7 +1050,9 @@
             ? getClickerCharacters(selectedProduct).slice(0, clickerCharacterCount || 0)
             : [];
 
-        cart[selectedProduct.id] = {
+        const lineId = selectedProduct.lineId || createCartLineId();
+        cart[lineId] = {
+            lineId,
             id: selectedProduct.id,
             code: selectedProduct.code,
             name: selectedProduct.name,
@@ -845,7 +1079,33 @@
         close(quantityModal);
     });
     document.querySelectorAll('[data-open-cart]').forEach((button) => button.addEventListener('click', () => { renderReview(); cartModal.classList.remove('hidden'); cartModal.classList.add('flex'); }));
-    document.querySelector('[data-cart-items]').addEventListener('click', (event) => { const button = event.target.closest('[data-remove-cart-item]'); if (!button) return; delete cart[button.dataset.removeCartItem]; save(); if (!units()) close(cartModal); });
+    document.querySelector("[data-cart-items]").addEventListener("click", (event) => {
+        const editButton = event.target.closest("[data-edit-cart-item]");
+        if (editButton) {
+            const lineId = editButton.dataset.editCartItem;
+            const item = cart[lineId];
+            const productButton = [...document.querySelectorAll("[data-add-product]")]
+                .find((button) => String(button.dataset.id) === String(item?.id));
+
+            if (item && productButton) {
+                close(cartModal);
+                openProductDetails(productButton, lineId);
+            }
+
+            return;
+        }
+
+        const removeButton = event.target.closest("[data-remove-cart-item]");
+        if (!removeButton) {
+            return;
+        }
+
+        delete cart[removeButton.dataset.removeCartItem];
+        save();
+        if (!units()) {
+            close(cartModal);
+        }
+    });
     document.querySelector('[data-ui-checkout]').addEventListener('click', () => {
         renderCheckout();
         close(cartModal);

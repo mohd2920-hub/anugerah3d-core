@@ -18,11 +18,13 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 @foreach (['week' => 'This week', 'month' => 'This month'] as $period => $label)
-                    <a href="{{ route('admin.weekly-closings.index', array_merge(request()->except(['page', 'report_period', 'start_date', 'end_date']), ['report_period' => $period])) }}" @class([
+                    @adminRoute('admin.weekly-closings.index')
+<a href="{{ route('admin.weekly-closings.index', array_merge(request()->except(['page', 'report_period', 'start_date', 'end_date']), ['report_period' => $period])) }}" @class([
                         'inline-flex min-h-9 items-center rounded-lg px-3 text-sm font-semibold',
                         'bg-[#1a73e8] text-white' => $payoutReport['filters']['report_period'] === $period,
                         'border border-slate-300 bg-white text-slate-700' => $payoutReport['filters']['report_period'] !== $period,
                     ])>{{ $label }}</a>
+@endadminRoute
                 @endforeach
             </div>
         </div>
@@ -31,7 +33,8 @@
             <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div>
         @endif
 
-        <form method="GET" action="{{ route('admin.weekly-closings.index') }}" class="mt-4 grid gap-3 sm:grid-cols-[minmax(160px,1fr)_minmax(160px,1fr)_auto]">
+        @adminRoute('admin.weekly-closings.index')
+<form method="GET" action="{{ route('admin.weekly-closings.index') }}" class="mt-4 grid gap-3 sm:grid-cols-[minmax(160px,1fr)_minmax(160px,1fr)_auto]">
             <input type="hidden" name="report_period" value="custom">
             @if ($search !== '')
                 <input type="hidden" name="search" value="{{ $search }}">
@@ -46,6 +49,7 @@
             </label>
             <button type="submit" class="mt-auto inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white">View report</button>
         </form>
+@endadminRoute
 
         <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -103,7 +107,8 @@
     </section>
 
     <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-        <form method="GET" action="{{ route('admin.weekly-closings.index') }}" class="flex flex-col gap-3 md:flex-row md:items-center">
+        @adminRoute('admin.weekly-closings.index')
+<form method="GET" action="{{ route('admin.weekly-closings.index') }}" class="flex flex-col gap-3 md:flex-row md:items-center">
             <input type="hidden" name="report_period" value="{{ $payoutReport['filters']['report_period'] }}">
             @if ($payoutReport['filters']['report_period'] === 'custom')
                 <input type="hidden" name="start_date" value="{{ $payoutReport['filters']['start_date'] }}">
@@ -113,10 +118,13 @@
             <div class="flex gap-2">
                 <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white hover:bg-[#1558b0]">Search</button>
                 @if ($search !== '')
-                    <a href="{{ route('admin.weekly-closings.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+                    @adminRoute('admin.weekly-closings.index')
+<a href="{{ route('admin.weekly-closings.index') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+@endadminRoute
                 @endif
             </div>
         </form>
+@endadminRoute
     </section>
 
     <section class="hidden overflow-visible rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">
@@ -155,7 +163,9 @@
                             <td class="px-3 py-3 text-right font-semibold text-slate-900">RM {{ number_format((float) $closing->total_payable_bonus, 2) }}</td>
                             <td class="px-3 py-3 text-right text-slate-600">{{ number_format($closing->pending_payout_count) }} / {{ number_format($closing->paid_payout_count) }}</td>
                             <td class="px-3 py-3 text-right">
-                                <a href="{{ route('admin.weekly-closings.show', $closing) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-700 hover:bg-slate-50">Details</a>
+                                @adminRoute('admin.weekly-closings.show')
+<a href="{{ route('admin.weekly-closings.show', $closing) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 font-semibold text-slate-700 hover:bg-slate-50">Details</a>
+@endadminRoute
                             </td>
                         </tr>
                     @empty
@@ -174,7 +184,9 @@
                         <p class="font-mono text-sm font-semibold text-[#1a73e8]">{{ $closing->week_key }}</p>
                         <p class="mt-1 text-xs text-slate-500">{{ $closing->period_start->format('d M Y') }} - {{ $closing->period_end->subSecond()->format('d M Y') }}</p>
                     </div>
-                    <a href="{{ route('admin.weekly-closings.show', $closing) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">Details</a>
+                    @adminRoute('admin.weekly-closings.show')
+<a href="{{ route('admin.weekly-closings.show', $closing) }}" class="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">Details</a>
+@endadminRoute
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div class="rounded-lg bg-slate-50 p-2"><p class="text-slate-500">Orders</p><p class="font-semibold text-slate-900">{{ number_format($closing->total_orders) }}</p></div>

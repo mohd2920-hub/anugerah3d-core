@@ -9,7 +9,7 @@
                 <div class="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
 
                 <a href="{{ route('admin.login') }}" class="flex items-center gap-3" aria-label="Anugerah3D admin">
-                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-white text-sm font-bold text-[#111827] shadow-sm">A3D</span>
+                    <x-brand-logo />
                     <span>
                         <span class="block text-sm font-semibold">Anugerah3D</span>
                         <span class="block text-xs text-blue-100/80">Admin Operations</span>

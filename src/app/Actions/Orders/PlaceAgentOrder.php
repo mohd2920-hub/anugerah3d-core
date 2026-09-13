@@ -3,12 +3,16 @@
 namespace App\Actions\Orders;
 
 use App\Mail\Admin\AgentOrderPlacedMail;
+use App\Mail\Admin\CustomerOrderPlacedMail;
 use App\Models\AdminUser;
 use App\Models\Agent;
+use App\Models\CustomerOrder;
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\AdminAccess;
 use App\Support\AdminActivity;
 use App\Support\AgentOrderDiscount;
+use App\Support\CasingStock;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -27,7 +31,18 @@ class PlaceAgentOrder
      */
     public function handle(Agent $agent, array $data, Request $request): Order
     {
-        $existingOrder = Order::query()
+        return $this->place($agent, $data, $request, false);
+    }
+
+    public function handleCustomer(Agent $agent, array $data, Request $request): CustomerOrder
+    {
+        return $this->place($agent, $data, $request, true);
+    }
+
+    private function place(Agent $agent, array $data, Request $request, bool $customer): Order
+    {
+        $model = $customer ? CustomerOrder::class : Order::class;
+        $existingOrder = $model::query()
             ->whereBelongsTo($agent)
             ->where('idempotency_key', $data['idempotency_key'])
             ->first();
@@ -36,12 +51,13 @@ class PlaceAgentOrder
             return $this->notifyAdmins($existingOrder);
         }
 
-        $paymentProofPaths = $this->storePaymentProofs($data['payment_proofs'] ?? []);
+        $paymentProofPaths = $this->storePaymentProofs($data['payment_proofs'] ?? [], $customer);
 
         try {
-            $order = DB::transaction(function () use ($agent, $data, $request, $paymentProofPaths): Order {
+            $order = DB::transaction(function () use ($agent, $data, $request, $paymentProofPaths, $customer, $model): Order {
                 $items = collect($data['items']);
                 $products = Product::query()
+                    ->visibleToAgents()
                     ->whereKey($items->pluck('product_id'))
                     ->lockForUpdate()
                     ->get()
@@ -66,10 +82,12 @@ class PlaceAgentOrder
                 $clickerImagesById = DB::table('product_clicker_images')
                     ->whereIn('id', $clickerImageIds)
                     ->lockForUpdate()
-                    ->get(['id', 'product_id', 'image_type', 'image_path'])
+                    ->get()
                     ->keyBy('id');
 
+                $casingQuantities = app(CasingStock::class)->quantities($clickerImageIds->all());
                 $this->ensureEveryProductExists($items, $products);
+                $this->ensureStockIsAvailable($items, $products);
 
                 $grossSubtotalCents = 0;
                 $subtotalCents = 0;
@@ -81,13 +99,12 @@ class PlaceAgentOrder
                     /** @var Product $product */
                     $product = $products->get($item['product_id']);
                     $quantity = (int) $item['quantity'];
-                    $isPreorder = $product->prd_balance <= 0;
+                    $casingStock = CasingStock::enabled($product);
+                    $casing = $clickerImagesById->get((int) ($item['clicker_casing_image_id'] ?? 0));
+                    $isPreorder = $casingStock ? (int) ($casingQuantities[$casing->id ?? 0][(int) ($item['clicker_character_count'] ?? 0)] ?? 0) <= 0 : $product->prd_balance <= 0;
                     $isClicker = ($product->product_type ?? 'standard') === 'clicker';
-
-                    if (! $isPreorder && $quantity > $product->prd_balance) {
-                        throw ValidationException::withMessages([
-                            "items.{$index}.quantity" => "Only {$product->prd_balance} units of {$product->prd_name} are available.",
-                        ]);
+                    if (($product->discontinued_at ?? null) && $isPreorder) {
+                        throw ValidationException::withMessages(['items' => "{$product->prd_name} telah dihentikan. Pilihan ini sudah habis stok dan tidak boleh dibuat pre-order."]);
                     }
 
                     $clickerCharacterCount = null;
@@ -145,6 +162,7 @@ class PlaceAgentOrder
                         'is_preorder' => $isPreorder,
                         'selling_price_cents' => $sellingPriceCents,
                         'is_clicker' => $isClicker,
+                        'casing_id' => $casingStock ? (int) $casing->id : null,
                         'clicker_character_count' => $clickerCharacterCount,
                         'clicker_characters' => $clickerCharacters,
                         'clicker_casing_image_path' => $clickerImagePaths['casing'] ?? null,
@@ -152,7 +170,7 @@ class PlaceAgentOrder
                     ];
                 }
 
-                $discountPercentage = AgentOrderDiscount::resolvePercentage(
+                $discountPercentage = $customer ? 0.0 : AgentOrderDiscount::resolvePercentage(
                     $grossSubtotalCents,
                     (float) $agent->discount_percentage,
                 );
@@ -190,14 +208,33 @@ class PlaceAgentOrder
                         $orderItem['clicker_huruf_image_path'] = $pendingItem['clicker_huruf_image_path'] ?? null;
                     }
 
+                    if ($pendingItem['casing_id'] !== null) {
+                        $orderItem['clicker_casing_image_id'] = $pendingItem['casing_id'];
+                    }
                     $orderItems[] = $orderItem;
 
                     if (! $pendingItem['is_preorder']) {
-                        $product->decrement('prd_balance', $quantity);
+                        if ($pendingItem['casing_id'] !== null) {
+                            app(CasingStock::class)->move($product, $pendingItem['casing_id'], (int) $pendingItem['clicker_character_count'], -$quantity);
+                        } else {
+                            $product->decrement('prd_balance', $quantity);
+                        }
                     }
                 }
 
-                $order = Order::query()->create([
+                if (($customer || isset($data['expected_total'])) && (int) round((float) $data['expected_total'] * 100) !== $subtotalCents + $deliveryFeeCents) {
+                    $exception = ValidationException::withMessages(['total' => 'Harga, diskaun atau caj telah berubah. Muat semula katalog dan semak jumlah sebelum membuat pesanan.']);
+                    $exception->response = response()->json(['message' => $exception->getMessage(), 'errors' => $exception->errors()], 422);
+
+                    throw $exception;
+                }
+
+                $order = $model::query()->create([
+                    ...($customer ? [
+                        'tracking_token' => (string) Str::uuid(),
+                        'commission_rate' => 25,
+                        'commission_amount' => $this->money((int) round($subtotalCents * 0.25)),
+                    ] : []),
                     'idempotency_key' => $data['idempotency_key'],
                     'agent_id' => $agent->getKey(),
                     'fulfilment_method' => $data['fulfilment_method'],
@@ -215,15 +252,15 @@ class PlaceAgentOrder
                 ]);
 
                 $order->update([
-                    'order_number' => 'A3D-'.$order->placed_at->format('ymd').'-'.str_pad((string) $order->getKey(), 5, '0', STR_PAD_LEFT),
+                    'order_number' => ($customer ? 'A3DC-' : 'A3D-').$order->placed_at->format('ymd').'-'.str_pad((string) $order->getKey(), 5, '0', STR_PAD_LEFT),
                 ]);
                 $order->items()->createMany($orderItems);
                 $adminRecipientCount = AdminUser::query()->active()->count();
 
                 AdminActivity::record(
                     request: $request,
-                    event: 'agent.order.created',
-                    description: "Agent {$agent->agt_name} placed order {$order->order_number}.",
+                    event: $customer ? 'customer.order.created' : 'agent.order.created',
+                    description: $customer ? "Customer order {$order->order_number} referred by {$agent->agt_name}." : "Agent {$agent->agt_name} placed order {$order->order_number}.",
                     properties: [
                         'page' => 'Agent Orders',
                         'agent_id' => $agent->getKey(),
@@ -243,7 +280,7 @@ class PlaceAgentOrder
                 return $order->load('items');
             }, 3);
         } catch (Throwable $exception) {
-            $this->deleteStoredPaymentProofs($paymentProofPaths);
+            $this->deleteStoredPaymentProofs($paymentProofPaths, $customer);
 
             throw $exception;
         }
@@ -252,21 +289,36 @@ class PlaceAgentOrder
     }
 
     /** @param array<int, UploadedFile>|UploadedFile|null $files */
-    private function storePaymentProofs(array|UploadedFile|null $files): array
+    private function storePaymentProofs(array|UploadedFile|null $files, bool $customer = false): array
     {
         $uploads = $files instanceof UploadedFile
             ? [$files]
             : array_values(array_filter(is_array($files) ? $files : [], fn ($file) => $file instanceof UploadedFile));
 
-        return collect($uploads)
-            ->take(5)
-            ->map(fn (UploadedFile $file): string => $this->storePaymentProof($file))
-            ->values()
-            ->all();
+        $paths = [];
+        try {
+            foreach (array_slice($uploads, 0, 5) as $upload) {
+                $paths[] = $this->storePaymentProof($upload, $customer);
+            }
+        } catch (Throwable $exception) {
+            $this->deleteStoredPaymentProofs($paths, $customer);
+            throw $exception;
+        }
+
+        return $paths;
     }
 
-    private function storePaymentProof(UploadedFile $file): string
+    private function storePaymentProof(UploadedFile $file, bool $customer = false): string
     {
+        if ($customer) {
+            $path = $file->store('customer-payment-proofs', 'local');
+            if (! $path) {
+                throw ValidationException::withMessages(['payment_proofs' => 'Bukti pembayaran tidak dapat disimpan. Sila cuba lagi.']);
+            }
+
+            return $path;
+        }
+
         $extension = $file->guessExtension() ?: 'jpg';
         $filename = 'proof-'.Str::uuid().'.'.$extension;
         $relativePath = 'orders/payment-proofs/'.$filename;
@@ -277,14 +329,14 @@ class PlaceAgentOrder
     }
 
     /** @param array<int, string> $paths */
-    private function deleteStoredPaymentProofs(array $paths): void
+    private function deleteStoredPaymentProofs(array $paths, bool $customer = false): void
     {
-        $disk = Storage::disk($this->pictureDisk());
+        $disk = Storage::disk($customer ? 'local' : $this->pictureDisk());
 
         foreach (array_filter($paths, fn ($path) => is_string($path) && $path !== '') as $path) {
             $disk->delete($path);
 
-            if (File::exists(public_path($path))) {
+            if (! $customer && File::exists(public_path($path))) {
                 File::delete(public_path($path));
             }
         }
@@ -307,10 +359,43 @@ class PlaceAgentOrder
      */
     private function ensureEveryProductExists(Collection $items, Collection $products): void
     {
-        if ($items->count() !== $products->count()) {
+        $selectedProductCount = $items
+            ->pluck('product_id')
+            ->map(fn (mixed $productId): int => (int) $productId)
+            ->unique()
+            ->count();
+
+        if ($selectedProductCount !== $products->count()) {
             throw ValidationException::withMessages([
                 'items' => 'One or more selected products are no longer available.',
             ]);
+        }
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @param  Collection<int, Product>  $products
+     */
+    private function ensureStockIsAvailable(Collection $items, Collection $products): void
+    {
+        $quantitiesByProduct = $items
+            ->groupBy(fn (array $item): int => (int) $item['product_id'])
+            ->map(fn (Collection $productItems): int => $productItems->sum(
+                fn (array $item): int => (int) $item['quantity'],
+            ));
+
+        foreach ($quantitiesByProduct as $productId => $quantity) {
+            $product = $products->get((int) $productId);
+
+            if (! $product instanceof Product || CasingStock::enabled($product) || $product->prd_balance <= 0) {
+                continue;
+            }
+
+            if ($quantity > $product->prd_balance) {
+                throw ValidationException::withMessages([
+                    'items' => "Only {$product->prd_balance} units of {$product->prd_name} are available across all cart lines.",
+                ]);
+            }
         }
     }
 
@@ -325,9 +410,18 @@ class PlaceAgentOrder
             return $order;
         }
 
-        $adminEmails = AdminUser::query()->active()->orderBy('id')->pluck('email');
+        $adminEmails = $order instanceof CustomerOrder
+            ? AdminUser::query()->active()->with('accessRoles')->get()->filter(fn ($admin) => AdminAccess::allows($admin, 'customer-orders.view'))->pluck('email')
+            : AdminUser::query()->active()->orderBy('id')->pluck('email');
 
         if ($adminEmails->isEmpty()) {
+            return $order;
+        }
+
+        if ($order instanceof CustomerOrder) {
+            Mail::to($adminEmails->all())->send(new CustomerOrderPlacedMail($order->id));
+            $order->forceFill(['admin_notification_sent_at' => now()])->save();
+
             return $order;
         }
 

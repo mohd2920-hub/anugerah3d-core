@@ -1,7 +1,8 @@
 @props(['row', 'weeklyClosing'])
 
 @if ($row->payout_status !== 'no_payout')
-    <button
+    @adminCan('weekly-closings.payment')
+<button
         type="button"
         class="mt-2 inline-flex min-h-8 items-center justify-center rounded-md bg-[#1a73e8] px-3 text-xs font-semibold text-white hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-blue-300"
         data-open-weekly-payment
@@ -20,4 +21,5 @@
     >
         Update payment
     </button>
+@endadminCan
 @endif

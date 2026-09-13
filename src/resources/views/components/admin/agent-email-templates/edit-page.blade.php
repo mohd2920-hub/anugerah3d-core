@@ -46,12 +46,14 @@
                     <h2 class="text-sm font-semibold text-emerald-950">Ready to send</h2>
                     <p class="mt-1 text-sm text-emerald-800">This action will queue email delivery using the current recipient selection in this template.</p>
                 </div>
-                <form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" onsubmit="return confirm(&quot;Send this email template to the selected recipients now?&quot;)">
+                @adminRoute('admin.agent-email-templates.send')
+<form method="POST" action="{{ route("admin.agent-email-templates.send", $template) }}" onsubmit="return confirm(&quot;Send this email template to the selected recipients now?&quot;)">
                     @csrf
                     <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700">
                         Send Email
                     </button>
                 </form>
+@endadminRoute
             </div>
         </div>
     </div>

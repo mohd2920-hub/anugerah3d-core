@@ -1,23 +1,24 @@
 @props(['product' => null])
 
 @php
+    $maxImages = \App\Models\ProductImage::MAX_IMAGES_PER_PRODUCT;
     $images = $product?->images ?? collect();
     $removedImageIds = collect(old('remove_image_ids', []))->map(fn ($id) => (int) $id);
     $selectedMain = old('main_image', $images->first() ? 'existing-'.$images->first()->getKey() : null);
 @endphp
 
-<section data-product-image-manager class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+<section data-product-image-manager data-max-images="{{ $maxImages }}" class="rounded-xl border border-slate-200 bg-slate-50 p-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="text-sm font-semibold text-slate-900">Product pictures</h2>
-            <p class="mt-1 text-xs text-slate-500">Upload up to 5 JPG, PNG, or WebP pictures with a maximum width of 500px. Choose one as the main picture.</p>
+            <p class="mt-1 text-xs text-slate-500">Upload up to {{ $maxImages }} JPG, PNG, or WebP pictures with a maximum width of 500px. Choose one as the main picture.</p>
         </div>
-        <span data-image-count class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">{{ $images->count() }} of 5</span>
+        <span data-image-count class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">{{ $images->count() }} of {{ $maxImages }}</span>
     </div>
 
     <label class="mt-4 flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white px-5 py-6 text-center transition hover:border-[#1a73e8] hover:bg-blue-50">
         <svg class="h-6 w-6 text-[#1a73e8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
-        <span><span class="block text-sm font-semibold text-slate-800">Choose product pictures</span><span class="mt-1 block text-xs text-slate-500">You can select several pictures together · 5 MB each · max width 500px</span></span>
+        <span><span class="block text-sm font-semibold text-slate-800">Choose product pictures</span><span class="mt-1 block text-xs text-slate-500">Add pictures one at a time or select several together. Previous selections are kept · 5 MB each · max width 500px</span></span>
         <input data-product-image-input type="file" name="product_images[]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple class="sr-only">
     </label>
 
@@ -52,6 +53,21 @@
     <div data-new-images-section class="mt-5 hidden">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">New pictures</p>
         <div data-new-image-previews class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+    </div>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Product video (optional)</h3>
+        <p class="mt-1 text-xs text-slate-500">Add 1 MP4 or WebM video, up to 20 MB, in addition to your 10 pictures. Selecting a new video replaces the current video when saved.</p>
+        @if ($product?->video_path)
+            <video controls playsinline preload="metadata" class="mt-3 max-h-80 w-full rounded-lg bg-slate-950" src="{{ asset($product->video_path) }}"></video>
+            <label class="mt-2 flex items-center gap-2 text-sm text-red-600">
+                <input type="checkbox" name="remove_product_video" value="1" @checked(old('remove_product_video'))> Remove current video
+            </label>
+        @endif
+        <input type="file" name="product_video" accept=".mp4,.webm,video/mp4,video/webm" class="mt-3 block w-full text-sm">
+        @error('product_video')
+            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+        @enderror
     </div>
 
     @error('product_images')

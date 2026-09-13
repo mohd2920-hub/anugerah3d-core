@@ -217,7 +217,7 @@
     };
 
     const clampDiscount = (value, maxValue = Number.POSITIVE_INFINITY) => Math.min(maxValue, Math.max(0, Number(value) || 0));
-    const rowPrice = (row) => Number(row.querySelector('[data-pos-product]').selectedOptions[0]?.dataset.price || 0);
+    const rowPrice = (row) => Number(row.querySelector('[data-pos-clicker]')?.dataset.unitPrice ?? row.querySelector('[data-pos-product]').selectedOptions[0]?.dataset.price ?? 0);
     const rowQuantity = (row) => Number(row.querySelector('[data-pos-quantity]').value || 0);
     const rowGross = (row) => rowPrice(row) * rowQuantity(row);
     const renderProductList = (row, keyword = '') => {
@@ -317,6 +317,7 @@
 
         select.value = value;
         searchInput.value = label;
+        form.dispatchEvent(new CustomEvent('pos:product-changed'));
         closeProductList(row);
     };
     const setRowDefaultDiscount = (row, force = false) => {
@@ -331,6 +332,7 @@
         items.querySelectorAll('[data-pos-item]').forEach((row, index) => {
             row.querySelector('[data-pos-product]').name = 'items[' + index + '][product_id]';
             row.querySelector('[data-pos-quantity]').name = 'items[' + index + '][quantity]';
+            row.querySelectorAll('[data-pos-clicker] [name]').forEach((input) => { input.name = input.name.replace(/items\[\d+\]/, `items[${index}]`); });
             row.querySelector('[data-pos-discount]').name = 'items[' + index + '][discount_amount]';
         });
     };
@@ -425,7 +427,7 @@
 
         const productId = button.dataset.value || '';
         const existingRow = [...items.querySelectorAll('[data-pos-item]')]
-            .find((row) => row.querySelector('[data-pos-product]')?.value === productId);
+            .find((row) => row.querySelector('[data-pos-product]')?.value === productId && row.querySelector('[data-pos-product]').selectedOptions[0]?.dataset.type !== 'clicker');
 
         if (existingRow) {
             const quantityInput = existingRow.querySelector('[data-pos-quantity]');
@@ -503,6 +505,7 @@
         if (items.querySelectorAll('[data-pos-item]').length === 1) {
             const row = removeButton.closest('[data-pos-item]');
             row.querySelector('[data-pos-product]').value = '';
+            form.dispatchEvent(new CustomEvent('pos:product-changed'));
             row.querySelector('[data-pos-quantity]').value = 1;
             setRowDefaultDiscount(row, true);
         } else {
@@ -527,6 +530,7 @@
             const select = row.querySelector('[data-pos-product]');
             if (select && !select.selectedOptions[0]?.textContent.toLowerCase().includes(keyword.trim().toLowerCase())) {
                 select.value = '';
+                form.dispatchEvent(new CustomEvent('pos:product-changed'));
             }
             renderProductList(row, keyword);
             openProductList(row);
@@ -583,6 +587,7 @@
         items.querySelectorAll('[data-pos-item]').forEach((row) => closeProductList(row));
     });
 
+    form.addEventListener('pos:configuration-changed', calculate);
     reindex();
     syncSalesAgentChoice();
     items.querySelectorAll('[data-pos-item]').forEach((row) => {

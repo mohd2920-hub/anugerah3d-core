@@ -1,3 +1,22 @@
+## Central POS Stock (Final Owner Instruction, 2026-09-12)
+
+- All new POS sales MUST deduct centralized stock, including active products. Business-site selection does not select a separate stock pool.
+- For casing-managed Clicker products, deduct the selected casing/size through the shared stock service, which also updates the central product balance. Never deduct the product balance a second time.
+- Reject insufficient stock atomically. Corrections apply only the stock difference; void restores only stock actually deducted, once.
+- Preserve historical stock-tracking flags. Do not retrospectively deduct old sales or restore stock for historically untracked items. Additional quantities on those items must be recorded as new tracked sales.
+- Do not change this rule without an explicit subsequent owner instruction. Existing application data must not be reset or rewritten to implement it.
+
+## Official Anugerah3D Branding (Owner Instruction)
+
+- The owner-approved logo is the supplied white “Anugerah” wordmark above a blue/cyan “3” and yellow/orange “D”, with black edging on a white background.
+- Use this exact artwork consistently across Admin, POS, Agent, customer/public pages, receipts, invoices, printable documents, and all official email templates, including new features.
+- Preserve its aspect ratio and complete artwork. Do not crop, stretch, recolor, replace, or overlay it. Scale it appropriately for the medium.
+- Canonical file: `public/images/anugerah3d-official-logo.png`. Shared Blade component: `<x-brand-logo />`. The uploaded artwork has been visually verified.
+- Use a shared logo component and shared email header wherever possible. Do not send emails merely to verify branding.
+- Do not substitute the existing square space-themed logo at public/images/anugerah3d-logo.png for the approved artwork.
+- The original approved image file must be available and visually verified before activating the branding change. Do not recreate it with image generation.
+- Change this branding standard only on an explicit subsequent instruction from the owner.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

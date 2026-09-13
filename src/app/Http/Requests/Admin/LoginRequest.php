@@ -25,7 +25,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
             'remember' => ['sometimes', 'accepted'],
         ];
@@ -37,10 +37,25 @@ class LoginRequest extends FormRequest
     public function credentials(): array
     {
         return [
-            'email' => Str::lower((string) $this->validated('email')),
+            'email' => $this->loginEmail(),
             'password' => (string) $this->validated('password'),
             'status' => AdminUser::StatusActive,
         ];
+    }
+
+    private function loginEmail(): string
+    {
+        $identifier = (string) $this->validated('email');
+        if (str_contains($identifier, '@')) {
+            return $identifier;
+        }
+
+        $emails = AdminUser::query()
+            ->whereRaw('LOWER(SUBSTRING_INDEX(email, ?, 1)) = ?', ['@', $identifier])
+            ->limit(2)
+            ->pluck('email');
+
+        return $emails->count() === 1 ? (string) $emails->first() : '';
     }
 
     public function remember(): bool
@@ -50,8 +65,9 @@ class LoginRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'email' => Str::lower(trim((string) $this->input('email'))),
-        ]);
+        $identifier = $this->input('email');
+        if (is_string($identifier)) {
+            $this->merge(['email' => Str::lower(trim($identifier))]);
+        }
     }
 }

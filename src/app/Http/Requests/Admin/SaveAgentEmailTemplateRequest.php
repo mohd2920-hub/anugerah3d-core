@@ -30,6 +30,8 @@ class SaveAgentEmailTemplateRequest extends FormRequest
             'subject' => ['required', 'string', 'max:200'],
             'body' => ['required', 'string'],
             'image_position' => ['required', 'string', Rule::in(array_keys(AgentEmailTemplate::imagePositions()))],
+            'template_video' => ['nullable', 'file', 'mimetypes:video/mp4,video/webm', 'extensions:mp4,webm', 'max:20480'],
+            'remove_template_video' => ['sometimes', 'boolean'],
             'template_images' => ['nullable', 'array', 'max:'.AgentEmailTemplate::MAX_IMAGES],
             'template_images.*' => [File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max('5mb')],
             'removed_image_paths' => ['nullable', 'array'],

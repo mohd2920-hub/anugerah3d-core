@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CasingStock;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -91,23 +92,7 @@ class Order extends Model
      */
     public function stockShortages(): Collection
     {
-        return $this->items
-            ->map(function (OrderItem $item): ?array {
-                $required = $item->missingReservationQuantity();
-                $available = max(0, (int) $item->product?->prd_balance);
-
-                if ($required <= $available) {
-                    return null;
-                }
-
-                return [
-                    'product_name' => $item->product_name,
-                    'required' => $required,
-                    'available' => $available,
-                ];
-            })
-            ->filter()
-            ->values();
+        return app(CasingStock::class)->orderShortages($this->items);
     }
 
     public function statusLabel(): string

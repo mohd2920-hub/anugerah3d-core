@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\Order;
 use App\Models\Product;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -31,6 +32,7 @@ class DashboardController extends Controller
         }
 
         return view('agent.dashboard', [
+            'customerCatalogueReady' => Schema::hasTable('customer_orders'),
             'agent' => $agent,
             'catalogueProducts' => $catalogueProducts,
             'topProducts' => $topProducts,
@@ -72,6 +74,7 @@ class DashboardController extends Controller
     private function catalogueQuery(): Builder
     {
         return Product::query()
+            ->visibleToAgents()
             ->with([
                 'materialType',
                 'images:id,product_id,image_path,alt_text,position',

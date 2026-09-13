@@ -1,0 +1,7 @@
+@extends('admin.layouts.app')
+@section('title', 'Roles & Permissions')
+@section('page_title', 'Roles & Permissions')
+@section('content')
+<div class="space-y-5"><div class="flex flex-wrap items-center justify-between gap-3"><p class="text-sm text-slate-500">Roles control visible menus and permitted actions. Superadmin access is managed separately.</p><a href="{{ route('admin.system.roles.create') }}" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Create Role</a></div>@include('admin.staff._messages')
+<div class="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="p-4">Role</th><th class="p-4">Staff</th><th class="p-4">Permissions</th><th class="p-4">Action</th></tr></thead><tbody class="divide-y divide-slate-100">@forelse ($roles as $role)<tr><td class="p-4"><p class="font-semibold">{{ $role->name }}</p><p class="text-slate-500">{{ $role->description }}</p></td><td class="p-4">{{ $role->users_count }}</td><td class="p-4">{{ count($role->permissions) }}</td><td class="p-4"><a class="font-semibold text-blue-600" href="{{ route('admin.system.roles.edit', $role) }}">Edit Permissions</a></td></tr>@empty<tr><td colspan="4" class="p-8 text-center text-slate-500">No roles yet. Create a role before adding staff.</td></tr>@endforelse</tbody></table></div>{{ $roles->links() }}</div>
+@endsection

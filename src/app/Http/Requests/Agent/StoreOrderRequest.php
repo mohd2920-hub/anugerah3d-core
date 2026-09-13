@@ -19,6 +19,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'idempotency_key' => ['required', 'uuid'],
+            'expected_total' => ['sometimes', 'required', 'numeric', 'min:0'],
             'fulfilment_method' => ['required', Rule::in(['delivery', 'pickup'])],
             'recipient_name' => ['required', 'string', 'max:150'],
             'phone_number' => ['required', 'string', 'max:50'],
@@ -28,7 +29,12 @@ class StoreOrderRequest extends FormRequest
             'payment_proofs' => ['nullable', 'required_if:payment_method,bank_transfer', 'array', 'max:5'],
             'payment_proofs.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'items' => ['required', 'array', 'min:1', 'max:100'],
-            'items.*.product_id' => ['required', 'integer', 'distinct', Rule::exists('products', 'id')],
+            'items.*.product_id' => [
+                'required',
+                'integer',
+                Rule::exists((new Product)->getTable(), 'id')
+                    ->where('is_visible_to_agents', true),
+            ],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:9999'],
             'items.*.clicker_character_count' => ['nullable', 'integer', 'min:1', 'max:8'],
             'items.*.clicker_characters' => ['nullable', 'array', 'max:8'],
@@ -54,6 +60,7 @@ class StoreOrderRequest extends FormRequest
                 }
 
                 $products = Product::query()
+                    ->visibleToAgents()
                     ->whereKey($productIds)
                     ->get(['id', 'product_type'])
                     ->keyBy('id');

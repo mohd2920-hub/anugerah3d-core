@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\AgentDiscountSetting;
+
 class AgentOrderDiscount
 {
     public const BELOW_RM20_THRESHOLD_CENTS = 2000;
@@ -18,25 +20,29 @@ class AgentOrderDiscount
 
     public static function resolvePercentage(int $subtotalCents, ?float $agentDiscountPercentage = null): float
     {
+        $setting = AgentDiscountSetting::current();
+
         if ($subtotalCents < self::BELOW_RM20_THRESHOLD_CENTS) {
-            return self::BELOW_RM20_PERCENTAGE;
+            return $setting->below_rm20;
         }
 
         if ($subtotalCents < self::BELOW_RM100_THRESHOLD_CENTS) {
-            return self::BELOW_RM100_PERCENTAGE;
+            return $setting->below_rm100;
         }
 
-        return max(self::AT_LEAST_RM100_PERCENTAGE, max(0, (float) $agentDiscountPercentage));
+        return max($setting->at_least_rm100, max(0, (float) $agentDiscountPercentage));
     }
 
     public static function frontendConfig(?float $agentDiscountPercentage = null): array
     {
+        $setting = AgentDiscountSetting::current();
+
         return [
             'belowRm20ThresholdCents' => self::BELOW_RM20_THRESHOLD_CENTS,
             'belowRm100ThresholdCents' => self::BELOW_RM100_THRESHOLD_CENTS,
-            'belowRm20Percentage' => self::BELOW_RM20_PERCENTAGE,
-            'belowRm100Percentage' => self::BELOW_RM100_PERCENTAGE,
-            'aboveRm100Percentage' => max(self::AT_LEAST_RM100_PERCENTAGE, max(0, (float) $agentDiscountPercentage)),
+            'belowRm20Percentage' => $setting->below_rm20,
+            'belowRm100Percentage' => $setting->below_rm100,
+            'aboveRm100Percentage' => max($setting->at_least_rm100, max(0, (float) $agentDiscountPercentage)),
             'deliveryFeeCents' => self::DELIVERY_FEE_CENTS,
         ];
     }

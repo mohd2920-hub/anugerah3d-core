@@ -9,6 +9,10 @@
         <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700">{{ session('success') }}</div>
     @endif
 
+    @if (session('warning'))
+        <div role="alert" class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">{{ session('warning') }}</div>
+    @endif
+
     <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -16,7 +20,9 @@
                 <h2 class="mt-1 text-xl font-bold text-slate-900">{{ $weeklyClosing->week_key }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ $weeklyClosing->period_start->format('d M Y H:i') }} - {{ $weeklyClosing->period_end->format('d M Y H:i') }} (MYT)</p>
             </div>
-            <a href="{{ route('admin.weekly-closings.index') }}" class="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Back to list</a>
+            @adminRoute('admin.weekly-closings.index')
+<a href="{{ route('admin.weekly-closings.index') }}" class="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Back to list</a>
+@endadminRoute
         </div>
     </section>
 
@@ -29,7 +35,8 @@
     </section>
 
     <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-        <form method="GET" action="{{ route('admin.weekly-closings.show', $weeklyClosing) }}" class="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_auto]">
+        @adminRoute('admin.weekly-closings.show')
+<form method="GET" action="{{ route('admin.weekly-closings.show', $weeklyClosing) }}" class="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_auto]">
             <input name="search" type="search" value="{{ $filters['search'] }}" placeholder="Search agent or email" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
             <select name="payout_status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
                 <option value="">All status</option>
@@ -40,10 +47,13 @@
             <div class="flex gap-2">
                 <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-[#1a73e8] px-4 text-sm font-semibold text-white hover:bg-[#1558b0]">Filter</button>
                 @if (collect($filters)->filter()->isNotEmpty())
-                    <a href="{{ route('admin.weekly-closings.show', $weeklyClosing) }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+                    @adminRoute('admin.weekly-closings.show')
+<a href="{{ route('admin.weekly-closings.show', $weeklyClosing) }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Clear</a>
+@endadminRoute
                 @endif
             </div>
         </form>
+@endadminRoute
     </section>
 
     <section class="hidden overflow-visible rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">

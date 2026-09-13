@@ -2,7 +2,7 @@
 
 @section('title', $products->total().' Products | Anugerah3D Admin')
 
-@section('page_title', $products->total().' Products')
+@section('page_title', 'Stok Produk')
 
 @section('content')
     @php
@@ -10,7 +10,8 @@
         $formatOptionalAmount = static fn ($value): string => $value !== null ? number_format((float) $value, 2) : '-';
     @endphp
 
-    <div class="space-y-5">
+    @include('admin.products._balance-dialog')
+    <div class="space-y-5" data-product-index>
         {{-- Alert Messages --}}
         @if (session('success'))
             <div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
@@ -18,31 +19,53 @@
             </div>
         @endif
 
+        @error('product')
+            <div role="alert" class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{{ $message }}</div>
+        @enderror
+
+        @include('admin.products._navigation')
+        <div><h2 class="text-xl font-bold text-slate-900">Stok Produk</h2><p class="mt-1 text-sm text-slate-500">Cari produk, semak baki dan urus stok.</p></div>
+
         {{-- Search Section --}}
         <div class="rounded-lg bg-white p-6 shadow-sm">
             <div class="flex items-center justify-end">
-                <a href="{{ route('admin.products.create') }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#1a73e8] px-3 text-xs font-semibold uppercase tracking-wide text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
+                @adminRoute('admin.products.create')
+<a href="{{ route('admin.products.create') }}" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#1a73e8] px-3 text-xs font-semibold uppercase tracking-wide text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
                         <path d="M12 5v14" />
                         <path d="M5 12h14" />
                     </svg>
                     <span>Add Product</span>
                 </a>
+@endadminRoute
             </div>
 
-            <form method="GET" action="{{ route('admin.products.index') }}" class="mt-3 flex flex-col gap-3 sm:flex-row">
+            @adminRoute('admin.products.index')
+<form method="GET" action="{{ route('admin.products.index') }}" class="mt-3 flex flex-wrap items-center gap-3">
+                <select name="stock" aria-label="Kategori stok" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    @foreach(['all' => 'Semua Produk', 'catalogue' => 'Dalam Katalog Agen', 'empty' => 'Stok Habis', 'critical' => 'Stok Kritikal', 'healthy' => 'Stok Mencukupi', 'low' => 'Stok Bawah 5', 'hidden' => 'Disembunyikan', 'discontinued' => 'Dihentikan — Semua', 'discontinued-stock' => 'Dihentikan — Masih Ada Stok'] as $value => $label)
+                        <option value="{{ $value }}" @selected($stockFilter === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <label class="flex items-center gap-2 text-xs"><input type="checkbox" name="include_hidden" value="1" @checked($includeHidden)>Termasuk produk tersembunyi</label>
                 <input type="text" name="search" value="{{ $search }}" placeholder="Search by product code or name..." class="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
                 <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">
                     Search
                 </button>
                 @if (request('search'))
-                    <a href="{{ route('admin.products.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    @adminRoute('admin.products.index')
+<a href="{{ route('admin.products.index') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                         Clear
                     </a>
+@endadminRoute
                 @endif
             </form>
+@endadminRoute
         </div>
 
+        @if($stockRows !== null)
+            @include('admin.products._stock-rows')
+        @else
         {{-- Products Table - Desktop --}}
         <div class="hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">
             <table class="admin-data-table w-full text-xs">
@@ -89,6 +112,11 @@
                             <td class="px-3 py-3">
                                 <div class="truncate font-mono text-[0.72rem] font-semibold text-slate-900" title="{{ $product->prd_code }}">{{ $product->prd_code }}</div>
                                 <div class="mt-1 truncate text-sm font-medium text-slate-900" title="{{ $product->prd_name }}">{{ $product->prd_name }}</div>
+                                @if(($lowStockCounts[$product->id] ?? 0) > 0)<a href="{{ route('admin.products.index', ['stock' => 'low', 'search' => $product->prd_code, 'include_hidden' => 1]) }}" class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">{{ $lowStockCounts[$product->id] }} item / variasi stok bawah 5</a>@endif
+                                @if(($product->discontinued_at ?? null))<p class="mt-1 text-xs font-bold text-amber-800" title="{{ ($product->discontinuation_reason ?? '') }}">Dihentikan — Jual Baki Stok</p>@endif
+<span class="mt-1 inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold {{ $product->is_visible_to_agents ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ ($product->discontinued_at ?? null) && $product->prd_balance <= 0 ? 'Stok habis — tersembunyi automatik' : ($product->is_visible_to_agents ? 'Visible in Agent Catalog' : 'Hidden from Agent Catalog') }}
+                                </span>
                             </td>
                             <td class="px-3 py-3 text-slate-600">
                                 <div class="font-medium text-slate-900">{{ $formatAmount($product->weight_g) }} g</div>
@@ -108,7 +136,9 @@
                                 </div>
                             </td>
                             <td class="px-3 py-3 text-center">
-                                <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{{ $product->prd_balance }}</span>
+                                <div class="inline-flex items-center gap-1"><span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{{ $product->prd_balance }}</span>
+                                    @include('admin.products._balance-button', ['balanceProductId' => $product->id, 'balanceProductName' => $product->prd_name])
+                                </div>
                             </td>
                             <td class="px-3 py-3">
                                 <div class="font-semibold text-slate-900">RM {{ $formatAmount($product->cost_rm) }}</div>
@@ -120,16 +150,36 @@
                                     <button type="button" data-action-menu-button class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2" aria-haspopup="menu" aria-expanded="false">
                                         Actions
                                     </button>
-                                    <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-40 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
-                                        <a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+                                    <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-56 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                                        @adminRoute('admin.products.show')
+<a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
                                             View
                                         </a>
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+@endadminRoute
+                                        @adminRoute('admin.products.edit')
+<a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                             Edit
                                         </a>
-                                        <button type="button" data-action="{{ route('admin.products.destroy', $product) }}" data-name="{{ $product->prd_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
+@endadminRoute
+                                        @adminRoute('admin.products.agent-visibility.toggle')
+<form method="POST" action="{{ route('admin.products.agent-visibility.toggle', $product) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition {{ $product->is_visible_to_agents ? 'text-amber-700 hover:bg-amber-50' : 'text-green-700 hover:bg-green-50' }}">
+                                                {{ $product->is_visible_to_agents ? 'Hide from Agent Catalog' : 'Show in Agent Catalog' }}
+                                            </button>
+                                        </form>
+@endadminRoute
+                                        @if($discontinuationAvailable)
+    @adminRoute('admin.products.discontinuation.update')
+        @include('admin.products._discontinuation-action')
+    @endadminRoute
+@endif
+@adminRoute('admin.products.destroy')
+<button type="button" data-action="{{ route('admin.products.destroy', $product) }}" data-name="{{ $product->prd_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
                                             Delete
                                         </button>
+@endadminRoute
                                     </div>
                                 </div>
                             </td>
@@ -167,22 +217,47 @@
                         <div class="min-w-0 flex-1">
                             <div class="break-all font-mono text-[0.72rem] font-semibold text-slate-500">{{ $product->prd_code }}</div>
                             <h2 class="mt-0.5 break-words text-base font-semibold text-slate-950">{{ $product->prd_name }}</h2>
+                                @if(($lowStockCounts[$product->id] ?? 0) > 0)<a href="{{ route('admin.products.index', ['stock' => 'low', 'search' => $product->prd_code, 'include_hidden' => 1]) }}" class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">{{ $lowStockCounts[$product->id] }} item / variasi stok bawah 5</a>@endif
+                            @if(($product->discontinued_at ?? null))<p class="mt-1 text-xs font-bold text-amber-800" title="{{ ($product->discontinuation_reason ?? '') }}">Dihentikan — Jual Baki Stok</p>@endif
+<span class="mt-1 inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold {{ $product->is_visible_to_agents ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }}">
+                                {{ ($product->discontinued_at ?? null) && $product->prd_balance <= 0 ? 'Stok habis — tersembunyi automatik' : ($product->is_visible_to_agents ? 'Visible in Agent Catalog' : 'Hidden from Agent Catalog') }}
+                            </span>
                         </div>
 
                         <div class="relative flex-none" data-action-menu>
                             <button type="button" data-action-menu-button class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2" aria-haspopup="menu" aria-expanded="false">
                                 Actions
                             </button>
-                            <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-40 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
-                                <a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+                            <div data-action-menu-panel class="absolute right-0 top-full z-30 mt-2 hidden w-56 rounded-lg border border-slate-200 bg-white p-1 text-left shadow-xl">
+                                @adminRoute('admin.products.show')
+<a href="{{ route('admin.products.show', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
                                     View
                                 </a>
-                                <a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
+@endadminRoute
+                                @adminRoute('admin.products.edit')
+<a href="{{ route('admin.products.edit', $product) }}" class="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">
                                     Edit
                                 </a>
-                                <button type="button" data-action="{{ route('admin.products.destroy', $product) }}" data-name="{{ $product->prd_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
+@endadminRoute
+                                @adminRoute('admin.products.agent-visibility.toggle')
+<form method="POST" action="{{ route('admin.products.agent-visibility.toggle', $product) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition {{ $product->is_visible_to_agents ? 'text-amber-700 hover:bg-amber-50' : 'text-green-700 hover:bg-green-50' }}">
+                                                {{ $product->is_visible_to_agents ? 'Hide from Agent Catalog' : 'Show in Agent Catalog' }}
+                                            </button>
+                                </form>
+@endadminRoute
+                                @if($discontinuationAvailable)
+    @adminRoute('admin.products.discontinuation.update')
+        @include('admin.products._discontinuation-action')
+    @endadminRoute
+@endif
+@adminRoute('admin.products.destroy')
+<button type="button" data-action="{{ route('admin.products.destroy', $product) }}" data-name="{{ $product->prd_name }}" onclick="openDeleteModal(this)" class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50">
                                     Delete
                                 </button>
+@endadminRoute
                             </div>
                         </div>
                     </div>
@@ -215,7 +290,9 @@
                         <div class="rounded-lg bg-slate-50 p-3">
                             <dt class="text-[0.68rem] font-semibold uppercase text-slate-500">Stock</dt>
                             <dd class="mt-1">
-                                <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{{ $product->prd_balance }}</span>
+                                <div class="inline-flex items-center gap-1"><span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{{ $product->prd_balance }}</span>
+                                    @include('admin.products._balance-button', ['balanceProductId' => $product->id, 'balanceProductName' => $product->prd_name])
+                                </div>
                             </dd>
                             <dd class="mt-1 text-xs text-slate-500">{{ $formatAmount($product->agent_discount_default) }}% discount</dd>
                         </div>
@@ -227,6 +304,12 @@
                 </div>
             @endforelse
         </div>
+
+        @if($discontinuationAvailable)
+            @adminRoute('admin.products.discontinuation.update')
+                @include('admin.products._discontinuation-dialog')
+            @endadminRoute
+        @endif
 
         {{-- Delete Password Modal --}}
         <div id="delete-confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 px-4 py-6">
@@ -273,6 +356,7 @@
         <div class="flex justify-center">
             {{ $products->links('pagination::tailwind') }}
         </div>
+        @endif
     </div>
 
     <script>
@@ -308,14 +392,10 @@
             });
 
             function closeActionMenus() {
-                document.querySelectorAll('[data-action-menu-panel]').forEach(function (panel) {
-                    panel.classList.add('hidden');
-                });
-
-                document.querySelectorAll('[data-action-menu-button]').forEach(function (button) {
-                    button.setAttribute('aria-expanded', 'false');
-                });
+                document.dispatchEvent(new Event('admin:close-product-actions'));
             }
+
+            if (!modal) return;
 
             function setDeleteModal(action, name) {
                 const form = modal.querySelector('form');
@@ -343,32 +423,8 @@
                 modal.classList.remove('flex');
             };
 
-            document.querySelectorAll('[data-action-menu-button]').forEach(function (button) {
-                button.addEventListener('click', function (event) {
-                    event.stopPropagation();
-
-                    const menu = button.closest('[data-action-menu]');
-                    const panel = menu.querySelector('[data-action-menu-panel]');
-                    const shouldOpen = panel.classList.contains('hidden');
-
-                    closeActionMenus();
-
-                    if (shouldOpen) {
-                        panel.classList.remove('hidden');
-                        button.setAttribute('aria-expanded', 'true');
-                    }
-                });
-            });
-
-            document.addEventListener('click', function (event) {
-                if (! event.target.closest('[data-action-menu]')) {
-                    closeActionMenus();
-                }
-            });
-
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape') {
-                    closeActionMenus();
                     window.closeDeleteModal();
                 }
             });

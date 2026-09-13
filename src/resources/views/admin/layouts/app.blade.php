@@ -19,7 +19,7 @@
             <div class="flex min-h-screen min-w-0 flex-col">
                 <x-admin.header />
 
-                <main class="flex-1 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8">
+                <main class="flex-1 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8" @if(request()->routeIs('admin.business-sites.*', 'admin.business-site-operations.*')) data-business-site-section @endif>
                     @yield('content')
                 </main>
 

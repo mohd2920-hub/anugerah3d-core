@@ -9,13 +9,7 @@ use App\Http\Requests\Admin\StoreBusinessSiteRequest;
 use App\Http\Requests\Admin\UpdateBusinessSiteRequest;
 use App\Models\Agent;
 use App\Models\BusinessSite;
-use App\Models\BusinessSiteOperation;
-use App\Models\PosSale;
-use App\Models\PosSaleItem;
-use App\Models\PosSession;
-use App\Models\Product;
 use App\Support\AdminActivity;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,7 +22,6 @@ class BusinessSiteController extends Controller
     public function index(): View
     {
         return view('admin.business-sites.index', [
-            'operationSummaries' => $this->operationSummaries(),
             'businessSites' => BusinessSite::query()
                 ->withCount([
                     'currentOperationPosSessions as active_pos_sessions_count' => fn (Builder $query): Builder => $query->active(),
@@ -128,49 +121,6 @@ class BusinessSiteController extends Controller
         );
 
         return redirect()->route('admin.business-sites.index')->with('success', 'Business site deleted successfully.');
-    }
-
-    private function operationSummaries(): LengthAwarePaginator
-    {
-        $operationsTable = (new BusinessSiteOperation)->getTable();
-        $sessionsTable = (new PosSession)->getTable();
-        $salesTable = (new PosSale)->getTable();
-        $itemsTable = (new PosSaleItem)->getTable();
-        $productsTable = (new Product)->getTable();
-        $sessionPeriodSql = "{$sessionsTable}.signed_in_at BETWEEN {$operationsTable}.opened_at AND COALESCE({$operationsTable}.closed_at, CURRENT_TIMESTAMP)";
-
-        $salesWithinOperation = fn (): Builder => PosSale::query()
-            ->whereColumn("{$salesTable}.business_site_operation_id", "{$operationsTable}.id");
-
-        $itemsWithinOperation = fn (): Builder => PosSaleItem::query()
-            ->join($salesTable, "{$salesTable}.id", '=', "{$itemsTable}.pos_sale_id")
-            ->whereColumn("{$salesTable}.business_site_operation_id", "{$operationsTable}.id");
-
-        return BusinessSiteOperation::query()
-            ->with('businessSite:id,site_name,city')
-            ->select("{$operationsTable}.*")
-            ->selectSub(
-                PosSession::query()
-                    ->selectRaw("COUNT(DISTINCT {$sessionsTable}.agent_id)")
-                    ->whereColumn("{$sessionsTable}.business_site_id", "{$operationsTable}.business_site_id")
-                    ->whereRaw($sessionPeriodSql),
-                'agents_count',
-            )
-            ->selectSub($salesWithinOperation()->selectRaw('COUNT(*)'), 'sales_count')
-            ->selectSub($salesWithinOperation()->selectRaw('COALESCE(SUM(total_amount), 0)'), 'sales_total')
-            ->selectSub($itemsWithinOperation()->selectRaw("COALESCE(SUM({$itemsTable}.quantity), 0)"), 'items_sold')
-            ->selectSub(
-                $itemsWithinOperation()->selectRaw("COALESCE(SUM(({$itemsTable}.unit_price * {$itemsTable}.quantity) - {$itemsTable}.agent_discount_amount - {$itemsTable}.customer_discount_amount), 0)"),
-                'commission_total',
-            )
-            ->selectSub(
-                $itemsWithinOperation()
-                    ->join($productsTable, "{$productsTable}.id", '=', "{$itemsTable}.product_id")
-                    ->selectRaw("COALESCE(SUM({$productsTable}.cost_rm * {$itemsTable}.quantity), 0)"),
-                'capital_total',
-            )
-            ->latest('opened_at')
-            ->paginate(20, ['*'], 'operations_page');
     }
 
     private function agents(): Collection

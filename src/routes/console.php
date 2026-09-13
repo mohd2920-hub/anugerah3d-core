@@ -350,3 +350,7 @@ Schedule::command('weekly-closing:send-emails')
     ->timezone('Asia/Kuala_Lumpur')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('queue:work database --queue=staff-salary,default --stop-when-empty --max-time=50 --tries=3')
+    ->everyMinute()
+    ->withoutOverlapping(5);

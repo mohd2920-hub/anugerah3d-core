@@ -41,7 +41,8 @@
         </div>
 
         <div class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
-            <form method="GET" action="{{ route('admin.system.activity-log') }}" class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
+            @adminRoute('admin.system.activity-log')
+<form method="GET" action="{{ route('admin.system.activity-log') }}" class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
                 <input type="text" name="search" value="{{ $search }}" placeholder="Search user, action, page or IP..." class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
 
                 <select name="event" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-[#1a73e8] focus:ring-2 focus:ring-blue-100">
@@ -61,10 +62,13 @@
                 <div class="flex gap-2">
                     <button type="submit" class="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#1a73e8] px-3 text-sm font-semibold text-white shadow-sm shadow-blue-700/20 transition hover:bg-[#1558b0] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:ring-offset-2">Filter</button>
                     @if ($search !== '' || $selectedEvent !== '' || $selectedAdminUserId > 0)
-                        <a href="{{ route('admin.system.activity-log') }}" class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Clear</a>
+                        @adminRoute('admin.system.activity-log')
+<a href="{{ route('admin.system.activity-log') }}" class="inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Clear</a>
+@endadminRoute
                     @endif
                 </div>
             </form>
+@endadminRoute
         </div>
 
         <div class="hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200/70 md:block">

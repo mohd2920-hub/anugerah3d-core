@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LoginRequest;
 use App\Models\AdminUser;
+use App\Support\AdminAccess;
 use App\Support\AdminActivity;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -48,6 +49,11 @@ class LoginController extends Controller
         /** @var AdminUser|null $adminUser */
         $adminUser = Auth::guard('admin')->user();
 
+        if ($adminUser?->invitationPending()) {
+            Auth::guard('admin')->logout();
+            throw ValidationException::withMessages(['email' => 'Accept your staff invitation before signing in.'])->redirectTo(route('admin.login'));
+        }
+
         $adminUser?->forceFill([
             'last_login_at' => now(),
             'last_login_ip' => $request->ip(),
@@ -61,7 +67,9 @@ class LoginController extends Controller
             properties: ['page' => 'Login'],
         );
 
-        return redirect()->intended(route('admin.dashboard'));
+        $request->session()->put('password_hash_admin', $adminUser->getAuthPassword());
+
+        return redirect()->intended(route(AdminAccess::landingRoute($adminUser)));
     }
 
     /**

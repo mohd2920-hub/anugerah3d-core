@@ -36,6 +36,11 @@ class AdminUserFactory extends Factory
         ];
     }
 
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes): array => ['role' => AdminUser::RoleSuperAdmin]);
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [

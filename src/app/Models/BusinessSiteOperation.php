@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['business_site_id', 'opened_at', 'closed_at'])]
 class BusinessSiteOperation extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $record): void {
+            throw new \LogicException('Historical records cannot be deleted.');
+        });
+    }
+
     public function businessSite(): BelongsTo
     {
         return $this->belongsTo(BusinessSite::class);

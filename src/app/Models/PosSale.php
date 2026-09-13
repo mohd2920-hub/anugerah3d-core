@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,9 +29,18 @@ use Illuminate\Support\Facades\Storage;
     'payment_proof_paths',
     'total_amount',
     'sold_at',
+    'correction_version',
+    'voided_at',
 ])]
 class PosSale extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (self $record): void {
+            throw new \LogicException('Historical records cannot be deleted.');
+        });
+    }
+
     public const PaymentCash = 'cash';
 
     public const PaymentQr = 'qr';
@@ -71,6 +81,16 @@ class PosSale extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PosSaleItem::class);
+    }
+
+    public function corrections(): HasMany
+    {
+        return $this->hasMany(PosSaleCorrection::class)->latest('id');
+    }
+
+    public function scopeNotVoided(Builder $query): Builder
+    {
+        return $query->whereNull($this->qualifyColumn('voided_at'));
     }
 
     /** @return array<int, string> */
@@ -140,6 +160,8 @@ class PosSale extends Model
             'sale_picture_paths' => 'array',
             'payment_proof_paths' => 'array',
             'sold_at' => 'datetime',
+            'voided_at' => 'datetime',
+            'correction_version' => 'integer',
         ];
     }
 }

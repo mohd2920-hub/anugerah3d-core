@@ -1,319 +1,66 @@
 @extends('admin.layouts.app')
-
-@section('title', 'Admin Dashboard | Anugerah3D')
-
+@section('title', 'Prestasi Perniagaan | Anugerah3D')
 @section('page_title', 'Dashboard')
-
 @section('content')
-    <div class="mx-auto max-w-7xl">
-        <section class="overflow-hidden rounded-lg bg-[linear-gradient(135deg,#111827_0%,#172554_52%,#312e81_100%)] text-white shadow-xl shadow-blue-950/20">
-            <div class="h-1 bg-[linear-gradient(90deg,#4285f4_0%,#a142f4_34%,#fbbc04_67%,#34a853_100%)]"></div>
-            <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[1fr_360px] lg:p-8">
-                <div class="max-w-3xl">
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <span class="inline-flex min-h-10 cursor-not-allowed select-none items-center justify-center rounded-lg border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white/55">
-                            Create Quote
-                        </span>
-                        <a href="{{ route('admin.login') }}" class="inline-flex min-h-10 items-center justify-center rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 focus:ring-offset-[#172554]">
-                            Back to Login
-                        </a>
-                    </div>
-                </div>
-
-                <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <div class="rounded-lg border border-white/15 bg-white/[0.08] p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100/75">Revenue</p>
-                        <p class="mt-2 text-2xl font-semibold">RM 4.8k</p>
-                    </div>
-                    <div class="rounded-lg border border-white/15 bg-white/[0.08] p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100/75">Queue Health</p>
-                        <p class="mt-2 text-2xl font-semibold">On Track</p>
-                    </div>
-                    <div class="rounded-lg border border-white/15 bg-white/[0.08] p-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100/75">Support</p>
-                        <p class="mt-2 text-2xl font-semibold">4 Open</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="Admin metrics">
-            @foreach ($metrics as $metric)
-                <article @class([
-                    'overflow-hidden rounded-lg border bg-white shadow-sm shadow-blue-950/[0.04]',
-                    'border-blue-200' => $loop->iteration === 1,
-                    'border-purple-200' => $loop->iteration === 2,
-                    'border-amber-200' => $loop->iteration === 3,
-                    'border-emerald-200' => $loop->iteration === 4,
-                ])>
-                    <div @class([
-                        'h-1',
-                        'bg-[#4285f4]' => $loop->iteration === 1,
-                        'bg-[#a142f4]' => $loop->iteration === 2,
-                        'bg-[#fbbc04]' => $loop->iteration === 3,
-                        'bg-[#34a853]' => $loop->iteration === 4,
-                    ])></div>
-                    <div class="p-5">
-                        <p class="text-sm font-medium text-slate-500">{{ $metric['label'] }}</p>
-                        <div class="mt-4 flex items-end justify-between gap-4">
-                            <p class="text-3xl font-semibold text-slate-950">{{ $metric['value'] }}</p>
-                            <p @class([
-                                'rounded-lg px-2.5 py-1 text-xs font-semibold',
-                                'bg-blue-50 text-blue-700' => $loop->iteration === 1,
-                                'bg-purple-50 text-purple-700' => $loop->iteration === 2,
-                                'bg-amber-50 text-amber-800' => $loop->iteration === 3,
-                                'bg-emerald-50 text-emerald-700' => $loop->iteration === 4,
-                            ])>{{ $metric['trend'] }}</p>
-                        </div>
-                    </div>
-                </article>
-            @endforeach
-        </section>
-
-        <section class="mt-6 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-            <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5f2eea]">Revenue Trend</p>
-                        <h3 class="mt-2 text-base font-semibold text-slate-950">Sales Performance</h3>
-                    </div>
-                    <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">+18.4%</span>
-                </div>
-
-                <div class="mt-6 h-64 overflow-hidden rounded-lg bg-[#f8fafd] p-4">
-                    <svg viewBox="0 0 720 240" role="img" aria-label="Sample revenue line chart" class="h-full w-full">
-                        <defs>
-                            <linearGradient id="revenueFill" x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stop-color="#4285f4" stop-opacity="0.22" />
-                                <stop offset="100%" stop-color="#4285f4" stop-opacity="0" />
-                            </linearGradient>
-                        </defs>
-                        <g stroke="#dbe5f5" stroke-width="1">
-                            <line x1="40" x2="700" y1="40" y2="40" />
-                            <line x1="40" x2="700" y1="90" y2="90" />
-                            <line x1="40" x2="700" y1="140" y2="140" />
-                            <line x1="40" x2="700" y1="190" y2="190" />
-                        </g>
-                        <path d="M40 185 L120 156 L200 170 L280 122 L360 135 L440 88 L520 104 L600 62 L700 74 L700 214 L40 214 Z" fill="url(#revenueFill)" />
-                        <polyline points="40,185 120,156 200,170 280,122 360,135 440,88 520,104 600,62 700,74" fill="none" stroke="#4285f4" stroke-linecap="round" stroke-linejoin="round" stroke-width="5" />
-                        <polyline points="40,198 120,180 200,150 280,160 360,118 440,128 520,82 600,96 700,54" fill="none" stroke="#a142f4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" stroke-dasharray="8 10" />
-                        <g fill="#334155" font-size="13" font-weight="600">
-                            <text x="35" y="232">Jan</text>
-                            <text x="115" y="232">Feb</text>
-                            <text x="195" y="232">Mar</text>
-                            <text x="275" y="232">Apr</text>
-                            <text x="355" y="232">May</text>
-                            <text x="435" y="232">Jun</text>
-                            <text x="515" y="232">Jul</text>
-                            <text x="595" y="232">Aug</text>
-                            <text x="685" y="232">Sep</text>
-                        </g>
-                    </svg>
-                </div>
-
-                <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-blue-700">Revenue</p>
-                        <p class="mt-1 text-lg font-semibold text-slate-950">RM 42.6k</p>
-                    </div>
-                    <div class="rounded-lg border border-purple-100 bg-purple-50 px-4 py-3">
-                        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-purple-700">Average Order</p>
-                        <p class="mt-1 text-lg font-semibold text-slate-950">RM 178</p>
-                    </div>
-                    <div class="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
-                        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Close Rate</p>
-                        <p class="mt-1 text-lg font-semibold text-slate-950">64%</p>
-                    </div>
-                </div>
-            </article>
-
-            <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5f2eea]">Production Progress</p>
-                        <h3 class="mt-2 text-base font-semibold text-slate-950">Workflow Health</h3>
-                    </div>
-                    <span class="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Good</span>
-                </div>
-
-                <div class="mt-6 grid gap-5">
-                    @foreach ($productionStages as $stage)
-                        <div>
-                            <div class="flex items-center justify-between gap-4 text-sm">
-                                <p class="font-semibold text-slate-800">{{ $stage['label'] }}</p>
-                                <p class="text-slate-500">{{ $stage['percent'] }}%</p>
-                            </div>
-                            <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                                <div @class([
-                                    'h-full rounded-full',
-                                    'bg-[#4285f4]' => $loop->iteration === 1,
-                                    'bg-[#a142f4]' => $loop->iteration === 2,
-                                    'bg-[#fbbc04]' => $loop->iteration === 3,
-                                    'bg-[#34a853]' => $loop->iteration === 4,
-                                ]) style="width: {{ $stage['percent'] }}%"></div>
-                            </div>
-                            <p class="mt-1 text-xs text-slate-500">{{ $stage['caption'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </article>
-        </section>
-
-        <section class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-            <article class="rounded-lg border border-slate-200 bg-white shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 class="text-base font-semibold text-slate-950">Order Pipeline</h3>
-                    <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">3 active orders</span>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] text-left text-sm">
-                        <thead class="bg-[#f8fafd] text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                            <tr>
-                                <th class="px-5 py-3">Order</th>
-                                <th class="px-5 py-3">Customer</th>
-                                <th class="px-5 py-3">Stage</th>
-                                <th class="px-5 py-3">Priority</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-slate-700">
-                            <tr class="transition hover:bg-blue-50/40">
-                                <td class="px-5 py-4 font-semibold text-slate-950">A3D-1024</td>
-                                <td class="px-5 py-4">Corporate Gift Set</td>
-                                <td class="px-5 py-4">Quotation</td>
-                                <td class="px-5 py-4"><span class="rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">Review</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-blue-50/40">
-                                <td class="px-5 py-4 font-semibold text-slate-950">A3D-1023</td>
-                                <td class="px-5 py-4">Name Keychain Batch</td>
-                                <td class="px-5 py-4">Printing</td>
-                                <td class="px-5 py-4"><span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Normal</span></td>
-                            </tr>
-                            <tr class="transition hover:bg-blue-50/40">
-                                <td class="px-5 py-4 font-semibold text-slate-950">A3D-1022</td>
-                                <td class="px-5 py-4">Miniature Display</td>
-                                <td class="px-5 py-4">Finishing</td>
-                                <td class="px-5 py-4"><span class="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">Urgent</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </article>
-
-            <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex items-center justify-between gap-4">
-                    <h3 class="text-base font-semibold text-slate-950">Recent Activity</h3>
-                    <span class="rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">Live</span>
-                </div>
-
-                <div class="mt-5 divide-y divide-slate-100">
-                    @foreach ($activities as $activity)
-                        <div class="flex items-start gap-3 py-4 first:pt-0 last:pb-0">
-                            <span @class([
-                                'mt-1 h-2.5 w-2.5 rounded-full',
-                                'bg-[#4285f4]' => $loop->iteration === 1,
-                                'bg-[#a142f4]' => $loop->iteration === 2,
-                                'bg-[#fbbc04]' => $loop->iteration === 3,
-                                'bg-[#34a853]' => $loop->iteration === 4,
-                            ])></span>
-                            <p class="text-sm leading-6 text-slate-700">{{ $activity }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </article>
-        </section>
-
-        <section class="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5f2eea]">Customer List</p>
-                        <h3 class="mt-2 text-base font-semibold text-slate-950">Top Customers</h3>
-                    </div>
-                    <span class="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">4 profiles</span>
-                </div>
-
-                <div class="mt-5 divide-y divide-slate-100">
-                    @foreach ($customers as $customer)
-                        <div class="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
-                            <div @class([
-                                'grid h-12 w-12 shrink-0 place-items-center rounded-lg text-sm font-bold text-white shadow-sm',
-                                'bg-[linear-gradient(135deg,#4285f4,#172554)]' => $loop->iteration === 1,
-                                'bg-[linear-gradient(135deg,#a142f4,#312e81)]' => $loop->iteration === 2,
-                                'bg-[linear-gradient(135deg,#fbbc04,#b45309)]' => $loop->iteration === 3,
-                                'bg-[linear-gradient(135deg,#34a853,#065f46)]' => $loop->iteration === 4,
-                            ])>{{ $customer['initials'] }}</div>
-
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                                    <p class="truncate font-semibold text-slate-950">{{ $customer['name'] }}</p>
-                                    <p class="text-sm font-semibold text-slate-950">{{ $customer['value'] }}</p>
-                                </div>
-                                <div class="mt-1 flex flex-col gap-1 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                                    <p>{{ $customer['segment'] }} - {{ $customer['lastOrder'] }}</p>
-                                    <span @class([
-                                        'w-fit rounded-lg px-2.5 py-1 text-xs font-semibold',
-                                        'bg-blue-50 text-blue-700' => $loop->iteration === 1,
-                                        'bg-purple-50 text-purple-700' => $loop->iteration === 2,
-                                        'bg-amber-50 text-amber-800' => $loop->iteration === 3,
-                                        'bg-emerald-50 text-emerald-700' => $loop->iteration === 4,
-                                    ])>{{ $customer['status'] }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </article>
-
-            <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#5f2eea]">Channel Mix</p>
-                        <h3 class="mt-2 text-base font-semibold text-slate-950">Lead Sources</h3>
-                    </div>
-                    <p class="text-sm text-slate-500">This month</p>
-                </div>
-
-                <div class="mt-6 grid gap-5">
-                    @foreach ($channelMix as $channel)
-                        <div>
-                            <div class="flex items-center justify-between gap-4 text-sm">
-                                <p class="font-semibold text-slate-800">{{ $channel['label'] }}</p>
-                                <p class="text-slate-500">{{ $channel['percent'] }}%</p>
-                            </div>
-                            <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
-                                <div @class([
-                                    'h-full rounded-full',
-                                    'bg-[#4285f4]' => $loop->iteration === 1,
-                                    'bg-[#a142f4]' => $loop->iteration === 2,
-                                    'bg-[#34a853]' => $loop->iteration === 3,
-                                ]) style="width: {{ $channel['percent'] }}%"></div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="mt-6 rounded-lg bg-[linear-gradient(135deg,#111827_0%,#172554_55%,#312e81_100%)] p-5 text-white">
-                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100/75">Next action</p>
-                    <p class="mt-2 text-lg font-semibold">Follow up 12 pending quotations</p>
-                    <p class="mt-2 text-sm leading-6 text-blue-50/80">Prioritize corporate and bulk gift requests before production queue closes.</p>
-                </div>
-            </article>
-        </section>
-
-        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-blue-950/[0.04]">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h3 class="text-base font-semibold text-slate-950">Admin Modules</h3>
-                <p class="text-sm text-slate-500">Core workspace areas</p>
-            </div>
-
-            <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Order management</span>
-                <a href="{{ route('admin.products.index') }}" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-800">Product catalog</a>
-                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Customer records</span>
-                <span class="cursor-not-allowed select-none rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-400" aria-disabled="true">Agent monitoring</span>
-                <a href="{{ route('admin.system.manage-data') }}" class="rounded-lg border border-slate-200 bg-[#f8fafd] px-4 py-4 text-sm font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800">Manage data</a>
-            </div>
-        </section>
+<div class="business-dashboard" id="business-dashboard" data-report-url="{{ route('admin.dashboard.data') }}" data-inventory-url="{{ route('admin.dashboard.inventory') }}" data-export-url="{{ route('admin.dashboard.export') }}">
+    <script type="application/json" id="dashboard-initial">{!! \Illuminate\Support\Js::encode(['report' => $report, 'inventory' => $inventory]) !!}</script>
+    <div class="intro">
+        <div><div class="tag">ADMIN DASHBOARD / BUSINESS INTELLIGENCE</div><h1>Prestasi Perniagaan</h1><p>Jualan, kos, keuntungan dan nilai stok dalam satu pandangan.</p></div>
+        <div class="intro-actions">
+            @adminRoute('admin.customer-orders.index')
+                <a class="customer-link" href="{{ route('admin.customer-orders.index') }}"><x-heroicon-o-shopping-bag aria-hidden="true" />Pesanan Pelanggan</a>
+            @endadminRoute
+            <span class="pill" id="period-label">{{ $report['period']['start'] }} — {{ substr($report['period']['end'], 0, 10) }}</span>
+        </div>
     </div>
+    <div class="dashboard-navigation">
+        <nav class="section-nav" aria-label="Bahagian dashboard"><a href="#performance">Prestasi</a><a href="#analysis">Analisis</a>@if($inventory !== null)<a href="#inventory">Stok & aset</a>@endif</nav>
+        <span id="report-range" class="report-range">Tempoh: {{ $report['period']['start'] }} — {{ substr($report['period']['end'], 0, 10) }}</span>
+    </div>
+    <form class="filters" id="performance">
+        <label>Tahun<select id="year-filter" name="year">@for($year = now()->year; $year >= 2000; $year--)<option value="{{ $year }}" @selected($report['filters']['year'] === $year)>{{ $year }}</option>@endfor</select></label>
+        <label>Tarikh mula<input type="date" id="start-date-filter" min="2000-01-01" max="{{ now()->toDateString() }}" value="{{ $report['period']['start'] }}" required></label>
+        <label>Tarikh hingga<input type="date" id="end-date-filter" min="2000-01-01" max="{{ now()->toDateString() }}" value="{{ substr($report['period']['end'], 0, 10) }}" required></label>
+        <button type="submit" class="action" id="apply-dates">Terapkan tarikh</button>
+        <label>Saluran<select id="channel-filter" name="channel"><option value="all">Semua saluran dibenarkan</option>@foreach($channels as $key => $name)<option value="{{ $key }}" @selected($report['filters']['channel'] === $key)>{{ $name }}</option>@endforeach</select></label>
+        @if($businessSites->isNotEmpty())<label>Business site<select id="site-filter" name="site"><option value="">Semua lokasi</option>@foreach($businessSites as $site)<option value="{{ $site->id }}" @selected((int) $report['filters']['site'] === $site->id)>{{ $site->site_name }}</option>@endforeach</select></label>@endif
+        <label>Banding dengan<select id="comparison-filter" name="comparison"><option value="previous" @selected($report['filters']['comparison'] === 'previous')>Tempoh sebelumnya</option><option value="year" @selected($report['filters']['comparison'] === 'year')>Tahun sebelumnya</option></select></label>
+        <button type="button" class="action" id="export-report">↓ Eksport CSV</button>
+    </form>
+    <div id="dashboard-status" role="status" aria-live="polite"></div>
+    @if(count($channels) === 0)<div class="notice">Akses dashboard anda belum merangkumi modul jualan. Data kewangan tidak dipaparkan.</div>@endif
+    <section class="metrics" aria-label="Ringkasan prestasi">
+        <div class="metric" style="--accent:#368fff"><span class="icon">↗</span><div class="metric-content"><div class="metric-main"><label>JUMLAH JUALAN BERSIH</label><strong id="sales">RM {{ number_format($report['summary']['sales'],2) }}</strong></div><div class="metric-detail"><small id="sales-caption">{{ number_format($report['summary']['transactions']) }} transaksi</small><span id="sales-product-count" class="sales-product-count">{{ number_format($report['summary']['units']) }} unit produk</span></div></div></div>
+        <div class="metric" style="--accent:#e9ad57"><span class="icon">≋</span><div class="metric-content"><div class="metric-main"><label>KOS DIREKODKAN / ANGGARAN</label><strong id="cost">RM {{ number_format($report['summary']['cost'],2) }}</strong></div><div class="metric-detail"><button type="button" class="cost-trigger" id="cost-open">Lihat pecahan kos →</button></div></div></div>
+        <div class="metric" style="--accent:#16b68c"><span class="icon">↗</span><div class="metric-content"><div class="metric-main"><label>ANGGARAN UNTUNG</label><strong id="profit">RM {{ number_format($report['summary']['profit'],2) }}</strong></div><div class="metric-detail"><small id="margin">Kos operasi lain belum termasuk</small></div></div></div>
+    </section>
+    <button type="button" class="notice quality-notice" id="data-quality" aria-haspopup="dialog" hidden></button>
+    <section class="panel" aria-label="Graf prestasi interaktif">
+        <div class="panelhead"><div><div class="eyebrow" id="eyebrow">THE BIG PICTURE</div><h2 id="chart-title">Prestasi Bulanan</h2><p id="chart-subtitle">Lihat pertumbuhan. Fahami kos. Kenal pasti peluang.</p></div><div class="toolbar"><button type="button" id="previous-month" hidden aria-label="Bulan sebelumnya">←</button><button type="button" id="next-month" hidden aria-label="Bulan seterusnya">→</button><button type="button" id="back-monthly" hidden>← Bulanan</button><button type="button" id="replay">↻ Main animasi</button></div></div>
+        <div class="charttop"><span class="axislabel">NILAI DALAM RM</span><div class="legend"><span><i class="dot" style="--c:#429aff"></i>Jualan</span><span><i class="dot" style="--c:#e7b46b"></i>Kos</span><span><i class="dot" style="--c:#42e1b5"></i>Untung</span></div></div>
+        <div class="chartwrap"><svg id="chart" viewBox="0 0 1120 365" aria-label="Graf jualan, kos dan untung"></svg><div class="tooltip" id="tooltip" role="status"></div></div>
+        <div class="panelfoot"><span id="chart-hint">Klik bulan untuk melihat prestasi harian.</span><span><i class="pulse"></i><span id="updated-at">Data rekod sebenar</span></span></div>
+    </section>
+    <section class="insights"><div class="insight"><label>Jualan tertinggi</label><strong id="best">—</strong><small id="best-value"></small></div><div class="insight"><label>Purata jualan</label><strong id="average">—</strong><small id="average-caption"></small></div><div class="insight"><label>Margin keuntungan</label><strong id="margin-insight">—</strong><small>Selepas kos yang tersedia</small></div></section>
+    <div id="analysis">
+        <div class="twocol"><section class="card summary-card" id="summary"></section><section class="card"><div class="cardhead"><div><h3>Sasaran jualan</h3><small id="target-period"></small></div><span class="badge" id="target-badge">Simulasi</span></div><div class="target-layout"><div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50"/><circle class="fill" id="target-ring" cx="60" cy="60" r="50"/></svg><strong id="target-percent">—</strong></div><div><label for="target-value" class="subtle">Sasaran bulanan (RM)</label><br><input id="target-value" type="number" min="1" max="1000000000" step="100" placeholder="Masukkan sasaran"><p id="target-remaining">Masukkan sasaran untuk melihat pencapaian.</p><small>Simulasi pada paparan ini sahaja. Tidak disimpan.</small></div></div></section></div>
+        <div class="section-heading"><div><div class="tag">REVENUE MIX</div><h2>Dari mana jualan datang?</h2><p>Klik saluran untuk menapis prestasi.</p></div></div><div class="channel-grid" id="channels"></div>
+        <div class="twocol"><section class="card" id="cost-breakdown"></section><section class="card" id="site-ranking"></section></div>
+        <div class="twocol"><section class="card" id="product-ranking"></section><section class="card" id="transaction-preview"></section></div>
+    </div>
+    @if($inventory !== null)
+    <section class="stock-shell" id="inventory" style="margin-top:38px">
+        <template id="stock-edit-icon"><x-heroicon-o-pencil-square aria-hidden="true" /></template>
+        <div class="section-heading" style="margin-top:0"><div><div class="tag">INVENTORY INTELLIGENCE</div><h2>Stok hari ini. Potensi esok.</h2><p>Stok pusat semasa, termasuk produk tersembunyi. Tidak mengikut tarikh / lokasi jualan.</p></div><span class="pill">Stok pusat · Baca sahaja</span></div>
+        <form class="stockfilters" id="stock-filters"><label>Jenis produk<select name="stock_type"><option value="all">Semua jenis</option><option value="normal">Normal</option><option value="clicker">Clicker</option></select></label><label>Cari produk<input name="stock_search" type="search" maxlength="100" placeholder="Nama, kod atau casing…"></label><label>Status<select name="stock_status"><option value="all">Semua status</option><option value="low">Rendah (1–4)</option><option value="out">Habis</option><option value="healthy">Mencukupi (5+)</option></select></label><label class="stock-toggle"><input type="checkbox" role="switch" name="stock_include_discontinued" value="1" @checked(request()->boolean('stock_include_discontinued'))><span>Sertakan produk dihentikan</span></label><button type="submit" class="action">Cari</button></form>
+        <div class="stock-metrics" id="stock-metrics"></div><button type="button" class="notice quality-notice" id="stock-quality" aria-haspopup="dialog" hidden></button>
+        <div class="tablewrap"><table><thead><tr><th>Produk / Varian</th><th>Tersedia</th><th>Diperuntukkan</th><th>Kos / unit</th><th>Aset tersedia</th><th>Harga jualan</th><th>Potensi untung kasar</th><th>Status</th></tr></thead><tbody id="stock-rows"></tbody></table></div><div class="pagination" id="stock-pagination"></div>
+        <div class="stock-note">Nilai aset tersedia = stok tersedia × kos seunit. Stok diperuntukkan telah ditolak daripada baki; tidak ditolak kali kedua. Potensi untung belum direalisasi dan belum menolak diskaun, komisen atau kos operasi. Clicker tanpa pecahan saiz tidak diberi nilai kos rekaan.</div>
+        <div class="stock-bottom"><div id="stock-alerts"></div><div id="stock-leaders"></div></div>
+    </section>
+    @endif
+    <details class="card calculation-notes"><summary>Asas pengiraan & kelengkapan data</summary><ul>@foreach($report['notes'] as $note)<li>{{ $note }}</li>@endforeach</ul></details>
+    <dialog id="dashboard-modal" aria-labelledby="modal-title"><div class="dialog-head"><div><div class="tag" style="font-size:9px;margin-bottom:6px">BUTIRAN REKOD</div><h2 id="modal-title"></h2></div><button type="button" id="close-modal" aria-label="Tutup butiran">×</button></div><div class="dialog-body" id="modal-body"></div></dialog>
+    <noscript><p class="notice">Aktifkan JavaScript untuk graf, penapis dan pecahan interaktif. Ringkasan angka di atas masih berdasarkan rekod sebenar.</p></noscript>
+</div>
 @endsection

@@ -18,6 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 
 class WeeklyClosingController extends Controller
 {
@@ -123,9 +124,19 @@ class WeeklyClosingController extends Controller
                 'payment_notes' => $request->validated('payment_notes'),
             ])->save();
 
+            $emailSent = false;
+
             if ($notifyAgent) {
-                Mail::to($recipientEmail)
-                    ->send(new WeeklyClosingPaymentMadeMail($agentSummary->id));
+                try {
+                    Mail::to($recipientEmail)
+                        ->sendNow(new WeeklyClosingPaymentMadeMail($agentSummary->id));
+                    $emailSent = true;
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            }
+
+            if ($emailSent) {
 
                 $agentSummary->forceFill([
                     'notified_agent_at' => now(),
@@ -167,7 +178,11 @@ class WeeklyClosingController extends Controller
                 ],
             );
 
-            $message = $notifyAgent
+            if ($notifyAgent && ! $emailSent) {
+                return back()->with('warning', 'Payment saved, but the email could not be sent. Please update the payment with Notify agent enabled to retry.');
+            }
+
+            $message = $emailSent
                 ? 'Payment successful and email has been sent to '.$recipientEmail.'.'
                 : 'Payment successful.';
 

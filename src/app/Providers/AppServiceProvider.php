@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Support\AdminAccess;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Blade::if('adminCan', fn (string $permission): bool => AdminAccess::allows(auth('admin')->user(), $permission));
+        Blade::if('adminRoute', fn (string $route): bool => AdminAccess::canRoute(auth('admin')->user(), $route));
         Model::shouldBeStrict(! $this->app->isProduction());
         if ($this->app->runningInConsole() && $this->app->environment('testing')) {
             set_error_handler(function ($severity, $message, $file, $line) {
@@ -28,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
 
             set_exception_handler(function (\Throwable $e) {
                 $log = storage_path('logs/test_error.log');
-                file_put_contents($log, (string) $e->__toString() . PHP_EOL . print_r($e->getTrace(), true));
+                file_put_contents($log, (string) $e->__toString().PHP_EOL.print_r($e->getTrace(), true));
                 // Re-throw so PHPUnit can still handle it
                 throw $e;
             });

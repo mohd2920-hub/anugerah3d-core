@@ -1,0 +1,1 @@
+<div class="site-period-note"><span class="site-period-label">{{ $period[0] ? $period[0]->format('d M Y').' — '.$period[1]->subDay()->format('d M Y') : 'Semua sesi operasi' }}</span><p>Mengikut tarikh sesi dibuka · Waktu Malaysia. Jualan selepas tengah malam kekal dalam sesi asal sehingga operasi ditamatkan.</p></div>

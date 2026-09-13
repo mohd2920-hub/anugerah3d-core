@@ -130,6 +130,7 @@
 				<tr>
 					<td style="padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#111827;font-weight:700;">
 						<div>{{ $item->product_name }} ({{ $item->product_code }}){{ $item->is_preorder ? ' - Pre-order' : '' }}</div>
+                        @if ($item->is_preorder && in_array($order->status, ['pending', 'processing'], true))<p style="font-size:12px;color:#92400e;">Anggaran siap dalam 4 hari selepas tempahan disahkan. Tempoh ini tidak termasuk penghantaran.</p>@endif
 						@if ($item->isClicker())
 							<div style="margin-top:8px;white-space:nowrap;">
 								@foreach (['Casing' => $item->clickerCasingImageUrl(), 'Huruf' => $item->clickerHurufImageUrl()] as $label => $imageUrl)
