@@ -1,3 +1,8 @@
+    @adminRoute('admin.sales.add')
+    <div class="flex justify-end">
+        <a href="{{ route('admin.sales.add', array_filter(['single_date' => $filters['start_date'] ?? ($filters['period'] === 'yesterday' ? now()->subDay()->toDateString() : now()->toDateString()), 'business_site_id' => $filters['business_site_id']])) }}" class="inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Tambah Jualan</a>
+    </div>
+    @endadminRoute
     <section class="overflow-x-auto rounded-lg bg-white p-2 shadow-sm ring-1 ring-slate-200/70" aria-label="Sales period">
         <div class="flex min-w-max gap-2">
             @foreach ($periodOptions as $value => $label)
@@ -22,7 +27,7 @@
                 @foreach (['search', 'business_site_id', 'payment_method'] as $key)
                     @if ($filters[$key])<input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">@endif
                 @endforeach
-                <label for="sales-single-date" class="text-sm font-semibold text-slate-700">Tarikh Tertentu</label>
+                <label for="sales-single-date" class="text-sm font-semibold text-slate-700">Tarikh Tertentu (Sesi)</label>
                 <input id="sales-single-date" name="single_date" type="date" required value="{{ $filters['start_date'] === $filters['end_date'] ? $filters['start_date'] : '' }}" class="min-h-10 rounded-md border-0 bg-transparent px-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-200">
                 <button type="submit" class="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Cari</button>
             </form>

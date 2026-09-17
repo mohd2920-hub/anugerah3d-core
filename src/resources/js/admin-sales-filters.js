@@ -113,3 +113,47 @@ document.querySelectorAll('[data-sales-page] [aria-label="Sales period"], [data-
     document.fonts?.ready.then(updateArrows);
     updateArrows();
 });
+
+
+const salesBackLink = document.querySelector('[data-sales-back]');
+const salesNavigationKey = 'sales-return:';
+const readSalesReturn = (key) => {
+    try { return JSON.parse(sessionStorage.getItem(key) || 'null'); }
+    catch { return null; }
+};
+if (salesPage) {
+    salesPage.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href]');
+        if (!link) return;
+        const destination = new URL(link.href, location.href);
+        if (destination.origin !== location.origin || !/\/sales\/\d+$/.test(destination.pathname)) return;
+        try {
+            sessionStorage.setItem(salesNavigationKey + destination.pathname, JSON.stringify({url: location.href, scroll: window.scrollY}));
+        } catch {}
+    });
+    const restoreKey = 'sales-restore:' + location.pathname + location.search;
+    const saved = readSalesReturn(restoreKey);
+    if (saved && Number.isFinite(saved.scroll)) {
+        try { sessionStorage.removeItem(restoreKey); } catch {}
+        const restore = () => window.scrollTo({top: saved.scroll, behavior: 'instant'});
+        if (document.readyState === 'complete') requestAnimationFrame(restore);
+        else window.addEventListener('load', restore, {once: true});
+    }
+}
+if (salesBackLink) {
+    const key = salesNavigationKey + location.pathname;
+    const saved = readSalesReturn(key);
+    try {
+        const source = document.referrer ? new URL(document.referrer) : null;
+        const destination = saved ? new URL(saved.url) : null;
+        const base = new URL(salesBackLink.href);
+        if (source?.origin === location.origin && destination?.origin === location.origin && [base.pathname, base.pathname + '/transactions'].includes(destination.pathname)) {
+            salesBackLink.href = destination.href;
+            salesBackLink.addEventListener('click', () => {
+                try { sessionStorage.setItem('sales-restore:' + destination.pathname + destination.search, JSON.stringify({scroll: saved.scroll})); } catch {}
+            });
+        } else {
+            sessionStorage.removeItem(key);
+        }
+    } catch {}
+}

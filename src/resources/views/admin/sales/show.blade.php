@@ -17,7 +17,7 @@
 
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>@adminRoute('admin.sales.index')
-<a href="{{ route('admin.sales.index') }}" class="text-sm font-semibold text-[#1a73e8]">← Back to sales</a>
+<a href="{{ route('admin.sales.index') }}" data-sales-back class="text-sm font-semibold text-[#1a73e8]">← Back to sales</a>
 @endadminRoute<h2 class="mt-2 font-mono text-xl font-semibold text-slate-950">{{ $sale->sale_number }}</h2><p class="mt-1 text-sm text-slate-500">{{ $sale->sold_at->format('d M Y, h:i A') }}</p></div>
         <div class="text-right"><p class="text-xs font-semibold uppercase text-slate-500">Net sales</p><p class="mt-1 text-2xl font-semibold text-[#1a73e8]">RM {{ number_format($itemSummary['net_sales_total'], 2) }}</p></div>
     </div>

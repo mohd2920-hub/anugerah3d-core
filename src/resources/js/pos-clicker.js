@@ -79,6 +79,18 @@ document.querySelectorAll('[data-pos-clicker-catalog]').forEach((source) => {
                 input.name = `${productSelect(block).name.replace('[product_id]', '')}[clicker_characters][${index}]`; input.value = values[index] || ''; input.setAttribute('aria-label', `Huruf ${index + 1}`); characters.append(input);
             }
         };
+        const advanceCharacter = (input) => {
+            if (!input.value || input.parentElement !== characters) return;
+            const next = input.nextElementSibling;
+            if (next instanceof HTMLInputElement) {
+                next.focus();
+                next.select();
+            }
+        };
+        characters.addEventListener('input', (event) => {
+            if (!event.isComposing) advanceCharacter(event.target);
+        });
+        characters.addEventListener('compositionend', (event) => advanceCharacter(event.target));
         drawCharacters(initial.clicker_characters || []);
         count.addEventListener('change', () => { const values = [...characters.querySelectorAll('input')].map((input) => input.value); drawCharacters(values); update(block); });
         const preview = document.createElement('img'); preview.dataset.resultImage = ''; preview.className = 'mt-2 max-h-56 w-full rounded-xl bg-slate-50 object-contain'; preview.hidden = true;

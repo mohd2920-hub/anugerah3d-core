@@ -12,6 +12,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BusinessSiteOperationController extends Controller
 {
@@ -42,6 +44,8 @@ class BusinessSiteOperationController extends Controller
 
         return view('admin.business-site-operations.show', [
             'operation' => $businessSiteOperation,
+            'closureCorrections' => Schema::hasTable('operation_closure_corrections')
+                ? DB::table('operation_closure_corrections as c')->join('usr_admin as a', 'a.id', '=', 'c.admin_id')->where('c.business_site_operation_id', $businessSiteOperation->id)->select('c.*', 'a.name as admin_name')->latest('c.id')->get() : collect(),
             'summary' => [
                 'sales_count' => (int) $salesTotal->sales_count,
                 'sales_total' => (float) $salesTotal->sales_total,
@@ -52,7 +56,8 @@ class BusinessSiteOperationController extends Controller
             ],
             'attendances' => PosSession::query()
                 ->where('business_site_id', $businessSiteOperation->business_site_id)
-                ->whereBetween('signed_in_at', [$businessSiteOperation->opened_at, $periodEnd])
+                ->where('signed_in_at', '<=', $periodEnd)
+                ->where(fn (Builder $query): Builder => $query->whereNull('signed_out_at')->orWhere('signed_out_at', '>=', $businessSiteOperation->opened_at))
                 ->with('agent:id,agt_name,login_id')
                 ->oldest('signed_in_at')
                 ->paginate(20, ['*'], 'attendance_page')

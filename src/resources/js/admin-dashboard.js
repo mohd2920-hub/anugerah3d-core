@@ -18,6 +18,11 @@ function initializeDashboard(root) {
     const animations = new Map();
     const months = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
     const full = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+    const weekdays = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
+    const weekday = row => {
+        const date = row.start ? new Date(`${row.start}T00:00:00Z`) : new Date(Date.UTC(Number(report.filters.year), Number(report.filters.month) - 1, Number(row.period)));
+        return weekdays[date.getUTCDay()];
+    };
     const colors = ['#3b92f7', '#a192de', '#28b997', '#ddb36b', '#79a8bd'];
     const money = value => value === null ? 'Belum diketahui' : `RM ${Number(value).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -142,16 +147,25 @@ function initializeDashboard(root) {
         if (points.length) html += `<path d="${path} L${points.at(-1)[0]},${zero} L${points[0][0]},${zero} Z" fill="url(#dashboard-area)"/>`;
         data.forEach((row, i) => {
             const x = left + step * (i + .5), label = row.label || (report.filters.month ? row.period : months[i]);
-            const tick = i % Math.max(1, Math.ceil(data.length / 24)) === 0 ? label : '';
+            const tick = daily() || i % Math.max(1, Math.ceil(data.length / 24)) === 0 ? label : '';
+            const dayLabel = daily() ? `<tspan x="${x}" dy="14" font-size="8">${weekday(row)}</tspan>` : '';
+            const accessibleLabel = daily() ? `${weekday(row)}, ${label}` : label;
             if (row.future) {
-                html += `<text x="${x}" y="340" text-anchor="middle" fill="#405872" font-size="11">${escape(tick)}</text>`;
+                html += `<text x="${x}" y="340" text-anchor="middle" fill="#405872" font-size="11">${escape(tick)}${dayLabel}</text>`;
                 return;
             }
-            html += `<g class="period" role="button" tabindex="0" data-period="${row.period}" aria-label="${escape(`${label}, jualan ${money(row.sales)}, kos ${money(row.cost)}. Klik untuk butiran.`)}"><rect class="highlight" x="${left + step * i + 2}" y="15" width="${step - 4}" height="331" rx="8" fill="#459fff" fill-opacity=".09"/>`;
-            [['sales', x - bar - 2, 'blue'], ['cost', x + 2, 'gold']].forEach(([key, bx, color]) => {
+            html += `<g class="period" role="button" tabindex="0" data-period="${row.period}" aria-label="${escape(`${accessibleLabel}, jualan ${money(row.sales)}, POS ${money(row.pos_sales || 0)}, Order Ejen ${money(row.order_sales || 0)}, Pelanggan ${money(row.customer_sales || 0)}, kos ${money(row.cost)}. Klik untuk butiran.`)}"><rect class="highlight" x="${left + step * i + 2}" y="15" width="${step - 4}" height="331" rx="8" fill="#459fff" fill-opacity=".09"/>`;
+            let stackedSales = 0;
+            [['pos_sales', '#429aff'], ['order_sales', '#a192de'], ['customer_sales', '#79a8bd']].forEach(([key, color]) => {
+                const value = Number(row[key] || 0);
+                const base = stackedSales;
+                stackedSales += value;
+                html += `<rect class="bar" style="--delay:${i * 22}ms" x="${x - bar - 2}" y="${y(stackedSales)}" width="${bar}" height="${Math.max(0, y(base) - y(stackedSales))}" fill="${color}"/>`;
+            });
+            [['cost', x + 2, 'gold']].forEach(([key, bx, color]) => {
                 html += `<rect class="bar" style="--delay:${i * 22}ms" x="${bx}" y="${Math.min(y(row[key]), zero)}" width="${bar}" height="${Math.abs(zero - y(row[key]))}" rx="3" fill="url(#dashboard-${color})"/>`;
             });
-            html += `<rect x="${left + step * i}" y="15" width="${step}" height="331" fill="transparent"/><text class="tick" x="${x}" y="340" text-anchor="middle" fill="#9bb0c7" font-size="11">${escape(tick)}</text></g>`;
+            html += `<rect x="${left + step * i}" y="15" width="${step}" height="331" fill="transparent"/><text class="tick" x="${x}" y="340" text-anchor="middle" fill="#9bb0c7" font-size="11">${escape(tick)}${dayLabel}</text></g>`;
         });
         html += `<g pointer-events="none"><path id="dashboard-profit-line" class="profitpath" d="${path}" fill="none" stroke="#53e2bb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${points.map((p, i) => `<circle class="profitpoint" style="--delay:${400 + i * 35}ms" cx="${p[0]}" cy="${p[1]}" r="${report.filters.month ? 2.5 : 4}" fill="${known[i].sales - known[i].cost < 0 ? '#ee8690' : '#14382e'}" stroke="${known[i].sales - known[i].cost < 0 ? '#ee8690' : '#6ee5c4'}" stroke-width="2"/>`).join('')}</g>`;
         byId('chart').innerHTML = html;
@@ -160,10 +174,11 @@ function initializeDashboard(root) {
         byId('tooltip').classList.remove('visible');
         byId('chart').querySelectorAll('[data-period]').forEach(node => {
             const row = data[Number(node.dataset.period) - 1];
-            const title = row.start ? `${row.start} – ${row.end}` : report.filters.month ? `${row.period} ${period()}` : `${full[row.period - 1]} ${report.filters.year}`;
+            const dateTitle = row.start ? `${row.start} – ${row.end}` : report.filters.month ? `${row.period} ${period()}` : `${full[row.period - 1]} ${report.filters.year}`;
+            const title = daily() ? `${weekday(row)}, ${dateTitle}` : dateTitle;
             const show = () => {
                 const tip = byId('tooltip');
-                tip.innerHTML = `<strong>${escape(title)}</strong>${[['Jualan', row.sales], ['Kos', row.cost], ['Anggaran untung', row.sales - row.cost]].map(([label, value]) => `<div class="tiprow"><span>${label}</span><b>${money(value)}</b></div>`).join('')}<small>Klik untuk ${daily() ? 'transaksi' : 'harian'} →</small>`;
+                tip.innerHTML = `<strong>${escape(title)}</strong>${[['Jumlah jualan', row.sales], ['POS', row.pos_sales || 0], ['Order Ejen', row.order_sales || 0], ['Pelanggan', row.customer_sales || 0], ['Kos', row.cost], ['Anggaran untung', row.sales - row.cost]].map(([label, value]) => `<div class="tiprow"><span>${label}</span><b>${money(value)}</b></div>`).join('')}<small>Klik untuk ${daily() ? 'transaksi' : 'harian'} →</small>`;
                 const rect = node.getBoundingClientRect(), wrap = tip.parentElement.getBoundingClientRect();
                 const mobile = innerWidth <= 760;
                 tip.style.left = `${mobile ? Math.max(8, Math.min(innerWidth - 220, rect.left)) : Math.max(0, Math.min(wrap.width - 215, rect.left - wrap.left - 55))}px`;
@@ -305,6 +320,8 @@ function initializeDashboard(root) {
         updateTarget();
         const mixTotal = report.channels.reduce((sum, row) => sum + row.sales, 0);
         byId('channels').innerHTML = report.channels.length ? report.channels.map((row, i) => `<button type="button" class="channel-card" data-channel="${escape(row.key)}"><span class="name"><i class="dot" style="--c:${colors[i]}"></i>${escape(row.name)}</span><strong>${money(row.sales)}</strong>${meter(percent(row.sales, mixTotal), colors[i])}<small>${percent(row.sales, mixTotal).toFixed(1)}% jualan dalam lokasi dipilih</small></button>`).join('') : empty('Tiada saluran dengan rekod dalam pilihan ini.');
+        const businessTotal = report.channels.filter(row => ['pos', 'orders'].includes(row.key)).reduce((sum, row) => sum + row.sales, 0);
+        byId('channels').insertAdjacentHTML('beforeend', `<div class="channel-card"><span class="name"><i class="dot" style="--c:#28b997"></i>Jumlah Perniagaan</span><strong>${money(businessTotal)}</strong>${meter(100, '#28b997')}<small>POS + Pesanan Ejen · ${escape(period())}</small></div>`);
         byId('channels').querySelectorAll('button').forEach(button => button.onclick = () => load({channel: button.dataset.channel}));
         const costRows = [['Modal produk', 'capital'], ['Komisen pelanggan', 'commission'], ['Gaji direkodkan', 'salary'], ['Bonus weekly closing', 'bonus']].map(([name, key], i) => ({name, value: summary[key], color: donutColors[i]}));
         byId('cost-breakdown').innerHTML = `<div class="breakdown-heading"><h3>Di sebalik setiap ringgit.</h3><small>Pecahan kos · ${escape(period())}</small></div>${donutMarkup(costRows, 'Jumlah kos')}${breakdownRows(costRows)}<button type="button" class="textbtn" id="cost-details">Lihat asas pengiraan →</button>`;

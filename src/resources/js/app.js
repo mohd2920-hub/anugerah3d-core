@@ -53,3 +53,5 @@ if (document.getElementById('business-dashboard')) {
 }
 
 import './admin-order-discounts';
+
+import './staff-salary-amounts';

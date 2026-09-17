@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Pos\CorrectPosSale;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\IndexSalesRequest;
 use App\Http\Requests\Admin\UpdatePosSaleCorrectionRequest;
 use App\Models\Agent;
+use App\Models\BusinessSite;
 use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\Product;
 use App\Support\PosClicker;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
@@ -24,9 +28,38 @@ class SaleCorrectionController extends Controller
         return $this->form($sale->businessSiteOperation, $sale->load('items'));
     }
 
-    public function create(BusinessSiteOperation $businessSiteOperation): View
+    public function selectOperation(IndexSalesRequest $request): View
     {
-        return $this->form($businessSiteOperation);
+        $date = Carbon::parse($request->validated('single_date') ?? now()->toDateString())->startOfDay();
+        $operations = BusinessSiteOperation::query()
+            ->with('businessSite:id,site_name,city')
+            ->where('opened_at', '<=', $date->copy()->endOfDay()->min(now()))
+            ->where(fn ($query) => $query->whereNull('closed_at')->orWhere('closed_at', '>=', $date))
+            ->when($date->isFuture(), fn ($query) => $query->whereRaw('1 = 0'))
+            ->when($request->validated('business_site_id'), fn ($query, $siteId) => $query->where('business_site_id', $siteId))
+            ->latest('opened_at')->paginate(20)->withQueryString();
+
+        return view('admin.sales.select-operation', [
+            'date' => $date,
+            'operations' => $operations,
+            'businessSites' => BusinessSite::query()->orderBy('site_name')->get(['id', 'site_name']),
+            'businessSiteId' => $request->validated('business_site_id'),
+        ]);
+    }
+
+    public function create(IndexSalesRequest $request, BusinessSiteOperation $businessSiteOperation): View
+    {
+        $soldAt = null;
+        if ($date = $request->validated('single_date')) {
+            $start = Carbon::parse($date)->startOfDay();
+            $end = $start->copy()->endOfDay()->min($businessSiteOperation->closed_at ?? now())->min(now());
+            $soldAt = $start->max($businessSiteOperation->opened_at);
+            if ($soldAt->gt($end)) {
+                throw ValidationException::withMessages(['single_date' => 'Tiada sesi operasi pada tarikh yang dipilih.']);
+            }
+        }
+
+        return $this->form($businessSiteOperation, defaultSoldAt: $soldAt);
     }
 
     public function preview(UpdatePosSaleCorrectionRequest $request, CorrectPosSale $correct, PosSale $sale): View
@@ -59,13 +92,21 @@ class SaleCorrectionController extends Controller
         return redirect()->route('admin.sales.show', $sale)->with('success', 'Sale correction saved with its audit history.');
     }
 
-    private function form(BusinessSiteOperation $operation, ?PosSale $sale = null): View
+    private function form(BusinessSiteOperation $operation, ?PosSale $sale = null, ?CarbonInterface $defaultSoldAt = null): View
     {
-        $products = Product::query()->orderBy('prd_name')->get();
+        $products = Product::query()
+            ->where(function ($query) use ($sale): void {
+                $query->whereNull('discontinued_at');
+                if ($sale) {
+                    $query->orWhereIn('id', $sale->items->pluck('product_id'));
+                }
+            })
+            ->orderBy('prd_name')->get();
 
         return view('admin.sales.correct', [
             'operation' => $operation->load('businessSite'),
             'sale' => $sale,
+            'defaultSoldAt' => $defaultSoldAt,
             'products' => $products,
             'posClickerCatalog' => app(PosClicker::class)->catalog($products),
             'agents' => Agent::query()->where(function ($query) use ($operation, $sale): void {

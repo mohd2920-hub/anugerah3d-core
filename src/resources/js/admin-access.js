@@ -8,6 +8,18 @@ document.querySelectorAll('[data-permission-row]').forEach((row) => {
     sync();
 });
 document.querySelectorAll('[data-staff-access]').forEach((form) => {
+    const nameInput = form.elements.namedItem('name');
+    const agentOptions = Array.from(form.querySelectorAll('#staff-agent-names option'));
+    const fillAgentContact = () => {
+        const agent = agentOptions.find((option) => option.value === nameInput.value);
+        if (!agent) return;
+        nameInput.value = agent.dataset.agentName;
+        form.elements.namedItem('email').value = agent.dataset.agentEmail || '';
+        form.elements.namedItem('phone').value = agent.dataset.agentPhone || '';
+    };
+    nameInput.addEventListener('input', fillAgentContact);
+    nameInput.addEventListener('change', fillAgentContact);
+
     const sync = () => {
         const permissions = new Set();
         form.querySelectorAll('[data-role-permissions]:checked').forEach((role) => JSON.parse(role.dataset.rolePermissions).forEach((permission) => permissions.add(permission)));

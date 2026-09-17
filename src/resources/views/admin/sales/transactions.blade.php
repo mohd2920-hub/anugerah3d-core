@@ -35,7 +35,7 @@
                                 <p class="mt-1 text-slate-500">{{ $sale->sold_at->format('d M Y, h:i A') }}</p>
                             </td>
                             <td class="px-4 py-4"><p class="font-semibold text-slate-900">{{ $sale->businessSite->site_name }}</p><p class="mt-1 text-slate-500">{{ $sale->businessSite->city }}</p></td>
-                            <td class="px-4 py-4"><p class="font-semibold text-slate-900">{{ $sale->salesAgent->agt_name }}</p><p class="mt-1 text-slate-500">Logged by {{ $sale->recordedBy->agt_name }}</p></td>
+                            <td class="px-4 py-4"><p class="font-semibold text-slate-900">{{ $sale->salesAgent->agt_name }}</p><p class="mt-1 text-slate-500">Logged by {{ $sale->recordedBy?->agt_name ?? 'Admin' }}</p></td>
                             <td class="px-4 py-4"><p class="font-medium text-slate-800">{{ $sale->customer_name ?: 'Walk-in customer' }}</p><p class="mt-1 text-slate-500">{{ $sale->customer_phone ?: 'No phone' }}</p></td>
                             <td class="px-4 py-4"><span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-semibold uppercase text-slate-700">{{ $sale->payment_method }}</span></td>
                             <td class="px-4 py-4 text-right"><p class="font-semibold text-slate-900">{{ number_format((int) $sale->total_units) }} units</p><p class="mt-1 text-slate-500">{{ $sale->items_count }} products</p></td>

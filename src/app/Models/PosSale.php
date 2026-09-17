@@ -160,6 +160,7 @@ class PosSale extends Model
             'sale_picture_paths' => 'array',
             'payment_proof_paths' => 'array',
             'sold_at' => 'datetime',
+            'report_date' => 'date',
             'voided_at' => 'datetime',
             'correction_version' => 'integer',
         ];

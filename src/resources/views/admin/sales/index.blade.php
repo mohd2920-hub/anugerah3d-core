@@ -31,7 +31,7 @@
             <div class="rounded-lg border border-cyan-200 bg-cyan-50 p-4 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">Hari Jualan</p>
                 <p class="mt-2 text-2xl font-semibold text-cyan-950">{{ number_format($summary['sales_days']) }} hari</p>
-                <p class="mt-1 text-xs text-cyan-700">Tarikh berbeza dengan jualan tidak void</p>
+                <p class="mt-1 text-xs text-cyan-700">Hari sesi dengan jualan tidak void</p>
             </div>
             <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Net sales</p>

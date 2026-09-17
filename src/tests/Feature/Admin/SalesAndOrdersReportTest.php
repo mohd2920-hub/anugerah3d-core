@@ -11,6 +11,7 @@ use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\PosSession;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -282,7 +283,7 @@ class SalesAndOrdersReportTest extends TestCase
         $this->assertCount(0, $empty->viewData('summary')['top_agents']);
     }
 
-    public function test_sales_days_count_unique_transaction_dates_and_exclude_voided_sales(): void
+    public function test_sales_days_count_unique_session_dates_and_exclude_voided_sales(): void
     {
         [$agent, $site, $operation, $session] = $this->posContext();
         $otherSite = BusinessSite::query()->create(['site_name' => 'Other Day Site', 'city' => 'Klang']);
@@ -306,6 +307,88 @@ class SalesAndOrdersReportTest extends TestCase
         $empty = $this->get(route('admin.sales.index', ['single_date' => '2026-08-12']));
         $empty->assertOk();
         $this->assertSame(0, $empty->viewData('summary')['sales_days']);
+    }
+
+    public function test_overnight_sales_follow_session_date_across_months_in_all_report_sections(): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 1)->setTime(12, 0));
+        [$agent, $site, $operation, $session] = $this->posContext();
+        $operation->update(['opened_at' => '2026-08-31 19:00:00', 'closed_at' => '2026-09-01 05:00:00']);
+        $product = Product::factory()->create(['cost_rm' => 10]);
+        $sales = collect();
+        foreach (['2026-08-31 23:00:00', '2026-09-01 04:00:00'] as $index => $time) {
+            $sale = $this->createSale($agent, $site, $operation, $session, $product, 'OVERNIGHT-'.$index, $time, 40, 1);
+            $sale->update(['business_site_operation_id' => $operation->id]);
+            $sales->push($sale);
+        }
+        $this->actingAs(AdminUser::factory()->superAdmin()->create(), 'admin');
+        foreach ([['single_date' => '2026-08-31'], ['period' => 'yesterday'], ['start_date' => '2026-08-01', 'end_date' => '2026-08-31'], ['period' => 'all', 'business_site_id' => $site->id, 'payment_method' => 'cash']] as $filter) {
+            $response = $this->get(route('admin.sales.index', $filter + ['show_discounts' => 1]))->assertOk();
+            $summary = $response->viewData('summary');
+            $this->assertSame(2, $summary['transaction_count']);
+            $this->assertSame(1, $summary['sales_days']);
+            $this->assertSame(80.0, $summary['total_amount']);
+            $this->assertSame(20.0, $summary['discount_amount']);
+            $this->assertSame(20.0, $summary['total_cost']);
+            $this->assertEquals(80, $summary['by_site']->sole()->total_amount);
+            $this->assertEquals(2, $summary['top_products']->sole()->total_quantity);
+            $this->assertEquals(80, $summary['top_agents']->sole()->total_amount);
+            $this->assertSame(2, $response->viewData('discountDetails')->total());
+            $this->get(route('admin.sales.transactions', $filter))->assertOk()->assertSeeText('OVERNIGHT-0')->assertSeeText('OVERNIGHT-1');
+        }
+        foreach ([['single_date' => '2026-09-01'], ['period' => 'today'], ['period' => 'month']] as $filter) {
+            $this->get(route('admin.sales.index', $filter))->assertOk()
+                ->assertViewHas('summary', fn (array $summary): bool => $summary['transaction_count'] === 0 && $summary['sales_days'] === 0);
+        }
+        $this->assertSame('2026-09-01 04:00:00', $sales->last()->fresh()->sold_at->format('Y-m-d H:i:s'));
+        $sales->last()->update(['voided_at' => now()]);
+        $this->get(route('admin.sales.index', ['single_date' => '2026-08-31']))->assertOk()
+            ->assertViewHas('summary', fn (array $summary): bool => $summary['total_amount'] === 40.0 && $summary['sales_days'] === 1);
+    }
+
+    public function test_sale_report_date_does_not_affect_new_sales_in_the_same_session(): void
+    {
+        [$agent, $site, $operation, $session] = $this->posContext();
+        $operation->update(['opened_at' => '2026-09-13 04:41:31', 'closed_at' => '2026-09-16 01:01:17']);
+        $product = Product::factory()->create(['prd_balance' => 100]);
+        $sales = collect();
+        foreach (['2026-09-13 19:53:04', '2026-09-15 23:23:27'] as $index => $time) {
+            $sale = $this->createSale($agent, $site, $operation, $session, $product, 'REPORT-DATE-'.$index, $time, 40, 1);
+            $sale->update(['business_site_operation_id' => $operation->id]);
+            $sales->push($sale);
+        }
+        $before = $sales->map(fn (PosSale $sale): array => collect($sale->fresh()->getAttributes())->except(['report_date', 'updated_at'])->all())->all();
+        foreach ($sales as $sale) {
+            $sale->forceFill(['report_date' => '2026-09-12'])->save();
+        }
+        $this->actingAs(AdminUser::factory()->superAdmin()->create(), 'admin');
+        foreach ([['single_date' => '2026-09-12'], ['start_date' => '2026-09-12', 'end_date' => '2026-09-12'], ['period' => 'all']] as $filters) {
+            $response = $this->get(route('admin.sales.index', $filters + ['show_discounts' => 1]))->assertOk();
+            $summary = $response->viewData('summary');
+            $this->assertSame(2, $summary['transaction_count']);
+            $this->assertSame(1, $summary['sales_days']);
+            $this->assertSame(80.0, $summary['total_amount']);
+            $this->assertEquals(80, $summary['by_site']->sole()->total_amount);
+            $this->assertEquals(2, $summary['top_products']->sole()->total_quantity);
+            $this->assertSame(2, $response->viewData('discountDetails')->total());
+            $this->get(route('admin.sales.transactions', $filters))->assertOk()->assertSeeText('REPORT-DATE-0')->assertSeeText('REPORT-DATE-1');
+        }
+        foreach (['2026-09-13', '2026-09-15'] as $date) {
+            $this->get(route('admin.sales.index', ['single_date' => $date]))->assertOk()
+                ->assertViewHas('summary', fn (array $summary): bool => $summary['transaction_count'] === 0);
+        }
+        $new = $this->createSale($agent, $site, $operation, $session, $product, 'LATER-SALE', '2026-09-13 04:41:31', 5, 1);
+        $this->assertNull($new->fresh()->report_date);
+        $this->get(route('admin.sales.transactions', ['single_date' => '2026-09-13']))->assertOk()->assertSeeText('LATER-SALE')->assertDontSeeText('REPORT-DATE-0');
+        $this->get(route('admin.sales.index', ['single_date' => '2026-09-12']))->assertOk()
+            ->assertViewHas('summary', fn (array $summary): bool => $summary['transaction_count'] === 2 && $summary['total_amount'] === 80.0);
+        $this->get(route('admin.sales.index', ['single_date' => '2026-09-13']))->assertOk()
+            ->assertViewHas('summary', fn (array $summary): bool => $summary['transaction_count'] === 1 && $summary['total_amount'] === 5.0);
+        $this->get(route('admin.sales.index', ['period' => 'all']))->assertOk()
+            ->assertViewHas('summary', fn (array $summary): bool => $summary['sales_days'] === 2 && $summary['total_amount'] === 85.0);
+        $this->assertSame($before, $sales->map(fn (PosSale $sale): array => collect($sale->fresh()->getAttributes())->except(['report_date', 'updated_at'])->all())->all());
+        $this->assertSame(100, $product->fresh()->prd_balance);
+        $this->assertSame('2026-09-13 04:41:31', $operation->fresh()->opened_at->format('Y-m-d H:i:s'));
     }
 
     private function posContext(): array
@@ -338,6 +421,12 @@ class SalesAndOrdersReportTest extends TestCase
         float $amount,
         int $quantity,
     ): PosSale {
+        if ($operation->business_site_id !== $site->id || $operation->opened_at->toDateString() !== Carbon::parse($soldAt)->toDateString()) {
+            $operation = BusinessSiteOperation::query()->firstOrCreate([
+                'business_site_id' => $site->id,
+                'opened_at' => Carbon::parse($soldAt)->startOfDay(),
+            ], ['closed_at' => Carbon::parse($soldAt)->endOfDay()]);
+        }
         $sale = PosSale::query()->create([
             'sale_number' => $number,
             'pos_session_id' => $session->getKey(),

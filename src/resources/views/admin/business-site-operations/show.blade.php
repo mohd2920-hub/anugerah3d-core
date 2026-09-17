@@ -33,6 +33,38 @@
         </div>
     </div>
 
+
+    @if(auth('admin')->user()?->isSuperAdmin() && \Illuminate\Support\Facades\Schema::hasTable('operation_closure_corrections'))
+        <section class="rounded-xl bg-white p-5 ring-1 ring-slate-200">
+            <h2 class="font-semibold">Betulkan Penutupan Sesi</h2>
+            <p class="mt-2 text-sm text-slate-500">Superadmin sahaja. Tetapkan masa tamat operasi sebenar. Rekod selepas masa ini memerlukan sesi pengganti. Kehadiran asal dikekalkan.</p>
+            @if($errors->any())
+                <div class="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+                    <ul class="list-disc space-y-1 pl-5">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul>
+                </div>
+            @endif
+            <form method="POST" action="{{ route('admin.business-site-operations.closure-preview', $operation) }}" class="mt-4 space-y-3">
+                @csrf
+                <label class="block text-sm">Masa tutup sebenar<input type="datetime-local" step="1" name="closed_at" required value="{{ old('closed_at', $operation->closed_at?->format('Y-m-d\TH:i:s')) }}" class="mt-1 block w-full rounded border-slate-300"></label>
+                <label class="block text-sm">Masa buka sesi pengganti (jika ada rekod selepasnya)<input type="datetime-local" step="1" name="next_opened_at" value="{{ old('next_opened_at') }}" class="mt-1 block w-full rounded border-slate-300"></label>
+                <label class="block text-sm">Tarikh laporan sesi pengganti<input type="date" name="next_report_date" value="{{ old('next_report_date') }}" class="mt-1 block w-full rounded border-slate-300"></label>
+                <label class="block text-sm">Sebab pembetulan<textarea name="reason" required maxlength="2000" class="mt-1 block w-full rounded border-slate-300">{{ old('reason') }}</textarea></label>
+                <button class="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Semak Pembetulan</button>
+            </form>
+            @if($closureCorrections->isNotEmpty())
+                <h3 class="mt-5 font-semibold">Sejarah pembetulan</h3>
+                @foreach($closureCorrections as $correction)
+                    @php
+                        $beforeClosure = json_decode($correction->before_snapshot, true);
+                        $afterClosure = json_decode($correction->after_snapshot, true);
+                    @endphp
+                    <p class="mt-2 text-sm">{{ $correction->created_at }} · {{ $correction->admin_name }} · {{ $correction->reason }}</p>
+                    <p class="text-xs text-slate-500">Tutup: {{ $beforeClosure['operation']['closed_at'] ?? 'Terbuka' }} → {{ $afterClosure['operation']['closed_at'] }} · Sesi pengganti: {{ $correction->replacement_operation_id ?? 'Tiada' }} · {{ count($afterClosure['moved_sale_ids']) }} jualan dipindahkan</p>
+                @endforeach
+            @endif
+        </section>
+    @endif
+
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Net sales</p>
@@ -72,16 +104,17 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($attendances as $attendance)
                         @php
+                            $attendanceStart = $attendance->signed_in_at->max($operation->opened_at);
                             $attendanceEnd = $attendance->signed_out_at;
                             if ($operation->closed_at && (! $attendanceEnd || $attendanceEnd->greaterThan($operation->closed_at))) {
                                 $attendanceEnd = $operation->closed_at;
                             }
                         @endphp
                         <tr>
-                            <td class="px-5 py-4"><p class="font-semibold text-slate-900">{{ $attendance->agent->agt_name }}</p><p class="mt-0.5 font-mono text-xs text-slate-500">{{ $attendance->agent->login_id }}</p></td>
-                            <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $attendance->signed_in_at->format('d M Y, h:i A') }}</td>
+                            <td class="px-5 py-4"><p class="font-semibold text-slate-900">{{ $attendance->agent?->agt_name ?? 'Ejen tidak tersedia' }}</p><p class="mt-0.5 font-mono text-xs text-slate-500">{{ $attendance->agent?->login_id ?? '—' }}</p></td>
+                            <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $attendanceStart->format('d M Y, h:i A') }}</td>
                             <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $attendanceEnd?->format('d M Y, h:i A') ?? 'Still checked in' }}</td>
-                            <td class="px-5 py-4 text-right"><span class="font-mono font-semibold text-slate-800" data-attendance-timer data-signed-in-at="{{ $attendance->signed_in_at->toIso8601String() }}" data-signed-out-at="{{ $attendanceEnd?->toIso8601String() }}">00:00:00</span></td>
+                            <td class="px-5 py-4 text-right"><span class="font-mono font-semibold text-slate-800" data-attendance-timer data-signed-in-at="{{ $attendanceStart->toIso8601String() }}" data-signed-out-at="{{ $attendanceEnd?->toIso8601String() }}">00:00:00</span></td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="px-5 py-10 text-center text-slate-500">No agents checked in during this session.</td></tr>
@@ -105,7 +138,7 @@
                         <tr>
                             <td class="px-5 py-4 font-mono font-semibold text-slate-900">{{ $sale->sale_number }} @if ($sale->voided_at)<span class="rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">Void</span>@endif @if ($sale->correction_version > 0)<span class="rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Corrected</span>@endif</td>
                             <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ $sale->sold_at->format('d M Y, h:i A') }}</td>
-                            <td class="px-5 py-4"><p class="font-semibold text-slate-800">{{ $sale->salesAgent->agt_name }}</p><p class="mt-0.5 text-xs text-slate-500">Recorded by {{ $sale->recordedBy->agt_name }}</p></td>
+                            <td class="px-5 py-4"><p class="font-semibold text-slate-800">{{ $sale->salesAgent?->agt_name ?? 'Ejen tidak tersedia' }}</p><p class="mt-0.5 text-xs text-slate-500">Recorded by {{ $sale->recordedBy?->agt_name ?? 'Admin / rekod asal tidak tersedia' }}</p></td>
                             <td class="px-5 py-4 text-right text-slate-700">{{ number_format((int) $sale->items_sold) }}</td>
                             <td class="px-5 py-4 text-right font-semibold text-slate-900">RM {{ number_format((float) $sale->total_amount, 2) }}</td>
                             <td class="px-5 py-4 text-right">@adminRoute('admin.sales.show')

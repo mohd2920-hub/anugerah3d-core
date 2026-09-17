@@ -12,6 +12,7 @@ use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\SalaryPayment;
+use App\Support\StaffSalaryCalculator;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -39,7 +40,7 @@ class StaffSalaryConfirmationTest extends TestCase
         $this->operation = BusinessSiteOperation::query()->create(['business_site_id' => $site->id, 'opened_at' => '2026-01-05 09:00:00', 'closed_at' => '2026-01-05 18:00:00']);
         $session = PosSession::query()->create(['agent_id' => $agent->id, 'business_site_id' => $site->id, 'signed_in_at' => '2026-01-05 09:00:00']);
         $this->sale = PosSale::query()->create(['sale_number' => 'POS-SALARY', 'pos_session_id' => $session->id, 'business_site_id' => $site->id, 'business_site_operation_id' => $this->operation->id, 'recorded_by_agent_id' => $agent->id, 'sales_agent_id' => $agent->id, 'payment_method' => 'cash', 'total_amount' => 1000, 'sold_at' => '2026-01-05 12:00:00']);
-        $this->data = ['operation_id' => $this->operation->id, 'staff_ids' => $staff->modelKeys(), 'weights' => [$staff[0]->id => 1, $staff[1]->id => 1, $staff[2]->id => 2], 'rate' => 40, 'reason' => 'Kehadiran disemak admin', 'expected_version' => 0];
+        $this->data = ['operation_id' => $this->operation->id, 'staff_ids' => $staff->modelKeys(), 'amounts' => [$staff[0]->id => 100, $staff[1]->id => 100, $staff[2]->id => 200], 'reason' => 'Kehadiran disemak admin', 'expected_version' => 0];
     }
 
     private function saveDraft(): void
@@ -73,6 +74,22 @@ class StaffSalaryConfirmationTest extends TestCase
         $this->get(route('admin.salary-management.summary', ['recipient_key' => $payment->recipient_key, 'start' => '2026-01-01', 'end' => '2026-01-31']))->assertOk()->assertSeeText($payment->slipNumber());
         $this->get(route('admin.salary-management.index', ['month' => '2026-01']))->assertOk()->assertViewHas('total', 40000)->assertViewHas('pendingDraftCents', 0);
         $this->assertSame('1000.00', $this->sale->fresh()->total_amount);
+    }
+
+    public function test_legacy_weighted_draft_can_still_be_confirmed_without_changing_amounts(): void
+    {
+        Queue::fake();
+        $legacy = app(StaffSalaryCalculator::class)->calculate([
+            'operation_id' => $this->operation->id, 'staff_ids' => $this->data['staff_ids'],
+            'weights' => array_combine($this->data['staff_ids'], [1, 1, 2]), 'rate' => 40,
+        ]);
+        DB::table('staff_salary_drafts')->insert([
+            'business_site_operation_id' => $this->operation->id, 'snapshot' => json_encode($legacy, JSON_THROW_ON_ERROR),
+            'reason' => 'Draf lama', 'version' => 1, 'updated_by' => auth('admin')->id(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->post(route('admin.salary-management.confirm', $this->operation->id), $this->confirmation())->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame([10000, 10000, 20000], SalaryPayment::orderBy('id')->pluck('amount_cents')->all());
+        $this->assertSame($legacy, json_decode(DB::table('staff_salary_drafts')->value('snapshot'), true));
     }
 
     public function test_confirmation_rejects_stale_sales_version_dates_and_missing_acknowledgement(): void

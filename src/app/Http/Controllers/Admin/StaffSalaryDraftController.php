@@ -23,7 +23,7 @@ class StaffSalaryDraftController extends Controller
         $draft = Schema::hasTable('staff_salary_drafts') && $request->filled('operation_id')
             ? DB::table('staff_salary_drafts')->where('business_site_operation_id', $request->integer('operation_id'))->first() : null;
         $snapshot = $draft ? json_decode($draft->snapshot, true, flags: JSON_THROW_ON_ERROR) : null;
-        $input = $snapshot ? ['operation_id' => $snapshot['operation_id'], 'rate' => $snapshot['rate'] / 100, 'staff_ids' => array_column($snapshot['staff'], 'staff_id'), 'weights' => collect($snapshot['staff'])->mapWithKeys(fn ($row) => [$row['staff_id'] => $row['weight'] / 100])->all(), 'reason' => $draft->reason, 'expected_version' => $draft->version] : [];
+        $input = $snapshot ? ['operation_id' => $snapshot['operation_id'], 'staff_ids' => array_column($snapshot['staff'], 'staff_id'), 'amounts' => collect($snapshot['staff'])->mapWithKeys(fn ($row) => [$row['staff_id'] => number_format($row['amount_cents'] / 100, 2, '.', '')])->all(), 'reason' => $draft->reason, 'expected_version' => $draft->version] : [];
 
         return $this->view($input, null, $snapshot, $draft);
     }
@@ -73,7 +73,7 @@ class StaffSalaryDraftController extends Controller
             'draftPayments' => $draft && Schema::hasColumn('salary_payments', 'staff_salary_draft_id') ? SalaryPayment::where('staff_salary_draft_id', $draft->id)->get() : collect(),
             'input' => $input, 'preview' => $preview, 'saved' => $saved,
             'staff' => AdminUser::orderBy('name')->get(['id', 'name', 'status']),
-            'operations' => BusinessSiteOperation::with('businessSite')->whereNotNull('closed_at')->where('opened_at', '>=', '2026-01-01')->latest('opened_at')->get(),
+            'operations' => BusinessSiteOperation::with('businessSite')->withSum(['sales as salary_net_amount' => fn ($query) => $query->whereNull('voided_at')], 'total_amount')->whereNotNull('closed_at')->where('opened_at', '>=', '2026-01-01')->latest('opened_at')->get(),
             'drafts' => Schema::hasTable('staff_salary_drafts') ? DB::table('staff_salary_drafts')->orderByDesc('updated_at')->paginate(15) : null,
             'ready' => Schema::hasTable('staff_salary_drafts'),
         ]);

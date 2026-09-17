@@ -9,6 +9,7 @@ use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\SalaryPayment;
+use App\Support\StaffSalaryCalculator;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -36,7 +37,7 @@ class StaffSalaryDraftTest extends TestCase
         $this->operation = BusinessSiteOperation::query()->create(['business_site_id' => $site->id, 'opened_at' => '2026-01-05 09:00:00', 'closed_at' => '2026-01-05 18:00:00']);
         $session = PosSession::query()->create(['agent_id' => $agent->id, 'business_site_id' => $site->id, 'signed_in_at' => '2026-01-05 09:00:00']);
         $this->sale = PosSale::query()->create(['sale_number' => 'POS-SALARY', 'pos_session_id' => $session->id, 'business_site_id' => $site->id, 'business_site_operation_id' => $this->operation->id, 'recorded_by_agent_id' => $agent->id, 'sales_agent_id' => $agent->id, 'payment_method' => 'cash', 'total_amount' => 1000, 'sold_at' => '2026-01-05 12:00:00']);
-        $this->data = ['operation_id' => $this->operation->id, 'staff_ids' => $staff->modelKeys(), 'weights' => [$staff[0]->id => 1, $staff[1]->id => 1, $staff[2]->id => 2], 'rate' => 40, 'reason' => 'Kehadiran disemak admin', 'expected_version' => 0];
+        $this->data = ['operation_id' => $this->operation->id, 'staff_ids' => $staff->modelKeys(), 'amounts' => [$staff[0]->id => 100, $staff[1]->id => 100, $staff[2]->id => 200], 'reason' => 'Kehadiran disemak admin', 'expected_version' => 0];
     }
 
     public function test_preview_and_versioned_save_only_create_a_draft(): void
@@ -65,10 +66,10 @@ class StaffSalaryDraftTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    public function test_rounding_allocates_every_cent_and_changed_sales_require_new_preview(): void
+    public function test_exact_amounts_preserve_every_cent_and_changed_sales_require_new_preview(): void
     {
         $this->sale->update(['total_amount' => '0.05']);
-        $this->data['weights'] = array_fill_keys($this->data['staff_ids'], 1);
+        $this->data['amounts'] = array_combine($this->data['staff_ids'], ['0.01', '0.01', '0.00']);
         $snapshot = $this->post(route('admin.salary-management.sessions.preview'), $this->data)->assertOk()->viewData('preview');
         $this->assertSame([1, 1, 0], array_column($snapshot['staff'], 'amount_cents'));
         $this->sale->update(['total_amount' => '10.00']);
@@ -76,20 +77,62 @@ class StaffSalaryDraftTest extends TestCase
         $this->assertDatabaseCount('staff_salary_drafts', 0);
     }
 
-    public function test_requires_selected_staff_valid_weights_closed_session_and_permission(): void
+    public function test_requires_selected_staff_valid_amounts_closed_session_and_permission(): void
     {
         $data = $this->data;
         $data['staff_ids'] = [];
         $this->post(route('admin.salary-management.sessions.preview'), $data)->assertSessionHasErrors('staff_ids');
         $data = $this->data;
-        unset($data['weights'][$data['staff_ids'][0]]);
-        $this->post(route('admin.salary-management.sessions.preview'), $data)->assertSessionHasErrors('weights');
+        unset($data['amounts'][$data['staff_ids'][0]]);
+        $this->post(route('admin.salary-management.sessions.preview'), $data)->assertSessionHasErrors('amounts');
         $this->operation->update(['closed_at' => null]);
         $this->post(route('admin.salary-management.sessions.preview'), $this->data)->assertSessionHasErrors('operation_id');
         $this->actingAs(AdminUser::factory()->create(), 'admin');
         $this->get(route('admin.salary-management.sessions'))->assertForbidden();
         $this->post(route('admin.salary-management.sessions.preview'), $this->data)->assertForbidden();
         $this->post(route('admin.salary-management.sessions.store'), $this->data)->assertForbidden();
+    }
+
+    public function test_only_present_staff_amounts_count_and_invalid_selected_amounts_are_rejected(): void
+    {
+        $data = $this->data;
+        $absent = array_pop($data['staff_ids']);
+        $data['amounts'][$absent] = 'invalid';
+        $snapshot = $this->post(route('admin.salary-management.sessions.preview'), $data)->assertOk()->viewData('preview');
+        $this->assertSame(20000, $snapshot['pool_cents']);
+        $this->assertSame(2000, $snapshot['rate']);
+        $this->assertCount(2, $snapshot['staff']);
+        foreach (['-1', '1.001', 'invalid', '1000000'] as $amount) {
+            $data['amounts'][$data['staff_ids'][0]] = $amount;
+            $this->post(route('admin.salary-management.sessions.preview'), $data)->assertSessionHasErrors('amounts.'.$data['staff_ids'][0]);
+        }
+    }
+
+    public function test_zero_sales_have_no_percentage_and_amounts_can_exceed_sales(): void
+    {
+        $this->sale->update(['total_amount' => 0]);
+        $response = $this->post(route('admin.salary-management.sessions.preview'), $this->data)->assertOk();
+        $this->assertNull($response->viewData('preview')['rate']);
+        $this->assertSame(40000, $response->viewData('preview')['pool_cents']);
+        $this->sale->update(['total_amount' => 100]);
+        $snapshot = $this->post(route('admin.salary-management.sessions.preview'), $this->data)->assertOk()->viewData('preview');
+        $this->assertSame(40000, $snapshot['rate']);
+        $this->assertSame(40000, $snapshot['pool_cents']);
+    }
+
+    public function test_legacy_draft_displays_original_amounts_and_prefills_rm_without_rewriting_it(): void
+    {
+        $legacy = app(StaffSalaryCalculator::class)->calculate([
+            'operation_id' => $this->operation->id, 'staff_ids' => $this->data['staff_ids'],
+            'weights' => array_combine($this->data['staff_ids'], [1, 1, 2]), 'rate' => 40,
+        ]);
+        DB::table('staff_salary_drafts')->insert([
+            'business_site_operation_id' => $this->operation->id, 'snapshot' => json_encode($legacy, JSON_THROW_ON_ERROR),
+            'reason' => 'Draf lama', 'version' => 1, 'updated_by' => auth('admin')->id(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $response = $this->get(route('admin.salary-management.sessions', ['operation_id' => $this->operation->id]))->assertOk()->assertSeeText('Draf lama menggunakan kadar dan weightage');
+        $this->assertSame('100.00', $response->viewData('input')['amounts'][$this->data['staff_ids'][0]]);
+        $this->assertSame($legacy, json_decode(DB::table('staff_salary_drafts')->value('snapshot'), true));
     }
 
     public function test_existing_staff_payment_blocks_duplicate_salary_draft(): void

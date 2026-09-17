@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\BusinessSiteReportController;
 use App\Http\Controllers\Admin\CustomerOrderController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\OperationClosureCorrectionController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PasswordResetController;
 use App\Http\Controllers\Admin\ProductBalanceController;
@@ -91,6 +92,7 @@ Route::middleware(['auth:admin', EnsureAdminAccess::class, AuthenticateSession::
     Route::get('/orders/{order}/print-full', [OrderController::class, 'printFull'])->name('orders.print.full');
     Route::get('/orders/{order}/print-order', [OrderController::class, 'printOrder'])->name('orders.print.order');
     Route::get('/sales/transactions', [SaleController::class, 'index'])->name('sales.transactions');
+    Route::get('/sales/add', [SaleCorrectionController::class, 'selectOperation'])->name('sales.add');
     Route::resource('sales', SaleController::class)->only(['index', 'show']);
     Route::get('sales/{sale}/edit', [SaleCorrectionController::class, 'edit'])->name('sales.edit');
     Route::post('sales/{sale}/preview', [SaleCorrectionController::class, 'preview'])->name('sales.preview');
@@ -112,6 +114,8 @@ Route::middleware(['auth:admin', EnsureAdminAccess::class, AuthenticateSession::
     Route::get('/products/{product}/balance', [ProductBalanceController::class, 'show'])->name('products.balance.show');
     Route::patch('/products/{product}/balance', [ProductBalanceController::class, 'update'])->name('products.balance.update');
     Route::resource('products', ProductController::class);
+    Route::post('/business-site-operations/{businessSiteOperation}/closure/preview', [OperationClosureCorrectionController::class, 'preview'])->name('business-site-operations.closure-preview');
+    Route::post('/business-site-operations/{businessSiteOperation}/closure', [OperationClosureCorrectionController::class, 'store'])->name('business-site-operations.closure-store');
     Route::get('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'show'])->name('business-site-operations.show');
     Route::delete('/business-site-operations/{businessSiteOperation}', [BusinessSiteOperationController::class, 'destroy'])->name('business-site-operations.destroy');
     Route::patch('/business-sites/{businessSite}/start', [BusinessSiteController::class, 'start'])->name('business-sites.start');

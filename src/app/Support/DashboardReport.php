@@ -63,21 +63,22 @@ class DashboardReport
             ->selectRaw('COALESCE(SUM(GREATEST(0, agent_items.unit_selling_price * agent_items.quantity - agent_items.line_total)),0) as amount')
             ->value('amount'), 2);
         $previous = $this->totals($this->entries($user, $filters, $previousStart, $previousEnd));
+        $channelTotals = "SUM(CASE WHEN channel = 'pos' THEN sales ELSE 0 END) as pos_sales, SUM(CASE WHEN channel = 'orders' THEN sales ELSE 0 END) as order_sales, SUM(CASE WHEN channel = 'customer' THEN sales ELSE 0 END) as customer_sales";
         $group = isset($filters['month']) ? 'DAY(date)' : 'MONTH(date)';
-        $grouped = (clone $query)->selectRaw("{$group} as period, SUM(sales) as sales, SUM(cost) as cost")
+        $grouped = (clone $query)->selectRaw("{$group} as period, SUM(sales) as sales, SUM(cost) as cost, {$channelTotals}")
             ->groupByRaw($group)->get()->keyBy('period');
         $count = isset($filters['month']) ? $start->daysInMonth : 12;
         $series = collect(range(1, $count))->map(function (int $index) use ($filters, $start, $end, $grouped): array {
             $date = isset($filters['month']) ? $start->day($index) : $start->month($index);
             $row = $grouped->get($index);
 
-            return ['period' => $index, 'future' => $date->gt($end), 'sales' => round((float) ($row->sales ?? 0), 2), 'cost' => round((float) ($row->cost ?? 0), 2)];
+            return ['period' => $index, 'future' => $date->gt($end), 'pos_sales' => round((float) ($row->pos_sales ?? 0), 2), 'order_sales' => round((float) ($row->order_sales ?? 0), 2), 'customer_sales' => round((float) ($row->customer_sales ?? 0), 2), 'sales' => round((float) ($row->sales ?? 0), 2), 'cost' => round((float) ($row->cost ?? 0), 2)];
         })->all();
         $granularity = isset($filters['month']) ? 'day' : 'month';
         if (isset($filters['start_date'])) {
             $granularity = $start->format('Y-m') === $end->format('Y-m') ? 'day' : 'month';
             $format = $granularity === 'day' ? '%Y-%m-%d' : '%Y-%m';
-            $grouped = (clone $query)->selectRaw("DATE_FORMAT(date, '{$format}') as bucket, SUM(sales) as sales, SUM(cost) as cost")
+            $grouped = (clone $query)->selectRaw("DATE_FORMAT(date, '{$format}') as bucket, SUM(sales) as sales, SUM(cost) as cost, {$channelTotals}")
                 ->groupBy('bucket')->get()->keyBy('bucket');
             $series = [];
             $cursor = $granularity === 'day' ? $start : $start->startOfMonth();
@@ -89,7 +90,7 @@ class DashboardReport
                     'period' => count($series) + 1, 'future' => false,
                     'label' => $granularity === 'day' ? $cursor->format('d/m') : $cursor->format('m/Y'),
                     'start' => $cursor->max($start)->toDateString(), 'end' => $bucketEnd->min($end)->toDateString(),
-                    'sales' => round((float) ($row->sales ?? 0), 2), 'cost' => round((float) ($row->cost ?? 0), 2),
+                    'pos_sales' => round((float) ($row->pos_sales ?? 0), 2), 'order_sales' => round((float) ($row->order_sales ?? 0), 2), 'customer_sales' => round((float) ($row->customer_sales ?? 0), 2), 'sales' => round((float) ($row->sales ?? 0), 2), 'cost' => round((float) ($row->cost ?? 0), 2),
                 ];
                 $cursor = $granularity === 'day' ? $cursor->addDay() : $cursor->addMonth();
             }
@@ -121,7 +122,7 @@ class DashboardReport
             ],
             'transaction_channels' => $transactionChannels->map(fn ($row): array => ['key' => $row->channel, 'name' => self::Channels[$row->channel], 'sales' => round((float) $row->sales, 2)])->all(),
             'notes' => [
-                'Jualan POS selepas diskaun mengikut tarikh jualan; jualan pesanan yang telah dibayar dan tidak dibatalkan mengikut tarikh pesanan. Caj penghantaran tidak termasuk.',
+                'Jualan POS selepas diskaun mengikut tarikh laporan, kemudian tarikh sesi operasi dibuka; jika tiada sesi, tarikh jualan digunakan. Aturan ini sama seperti Sales; jualan pesanan yang telah dibayar dan tidak dibatalkan mengikut tarikh pesanan. Caj penghantaran tidak termasuk.',
                 'Pulangan pelanggan ditolak daripada jualan produk. Modal item dikekalkan kerana rekod pulangan stok terperinci belum tersedia.',
                 'Kos pesanan menggunakan kos produk / saiz clicker semasa. Kos POS mengutamakan snapshot asal; anggaran digunakan jika snapshot tiada. Kos yang belum diketahui tidak dinilai sebagai sifar sebenar.',
                 'Komisen pelanggan dikira selepas pulangan. Diskaun pesanan ejen sudah termasuk dalam jualan bersih; bonus weekly closing lengkap dikira sekali pada tarikh akhir tempohnya.',
@@ -163,9 +164,11 @@ class DashboardReport
             $this->joinPosCharacterPrice($items);
             $items->whereNull('i.deleted_at')
                 ->selectRaw("i.pos_sale_id, SUM(COALESCE({$unitCost},0)*i.quantity) as capital, SUM(i.quantity) as units, SUM(CASE WHEN i.unit_cost IS NULL THEN i.quantity ELSE 0 END) as estimated, SUM(CASE WHEN ({$unitCost}) IS NULL THEN i.quantity ELSE 0 END) as missing")->groupBy('i.pos_sale_id');
+            $reportDate = 'COALESCE(CAST(s.report_date AS DATETIME), CASE WHEN operation.id IS NOT NULL THEN operation.opened_at ELSE s.sold_at END)';
             $branches[] = DB::table('pos_sales as s')->leftJoinSub($items, 'i', 'i.pos_sale_id', '=', 's.id')->leftJoin('business_sites as b', 'b.id', '=', 's.business_site_id')
-                ->whereNull('s.voided_at')->whereBetween('s.sold_at', [$start, $end])->when($site, fn (Builder $q) => $q->where('s.business_site_id', $site))
-                ->selectRaw("s.id, s.sale_number as reference, s.sold_at as date, 'pos' as channel, 'sale' as kind, s.business_site_id as site_id, b.site_name, s.total_amount as sales, COALESCE(i.capital,0) as capital, 0 as commission, 0 as salary, 0 as bonus, COALESCE(i.units,0) as units, COALESCE(i.estimated,0) as estimated, COALESCE(i.missing,1) as missing");
+                ->leftJoin('business_site_operations as operation', 'operation.id', '=', 's.business_site_operation_id')
+                ->whereNull('s.voided_at')->whereBetween(DB::raw($reportDate), [$start, $end])->when($site, fn (Builder $q) => $q->where('s.business_site_id', $site))
+                ->selectRaw("s.id, s.sale_number as reference, {$reportDate} as date, 'pos' as channel, 'sale' as kind, s.business_site_id as site_id, b.site_name, s.total_amount as sales, COALESCE(i.capital,0) as capital, 0 as commission, 0 as salary, 0 as bonus, COALESCE(i.units,0) as units, COALESCE(i.estimated,0) as estimated, COALESCE(i.missing,1) as missing");
             if (AdminAccess::allows($user, 'salary-management.view')) {
                 $uniqueSites = DB::table('business_sites')->selectRaw('site_name, MIN(id) as id')->groupBy('site_name')->havingRaw('COUNT(*) = 1');
                 $branches[] = DB::table('salary_payments as s')->leftJoin('staff_salary_drafts as d', 'd.id', '=', 's.staff_salary_draft_id')->leftJoin('business_site_operations as o', 'o.id', '=', 'd.business_site_operation_id')->leftJoinSub($uniqueSites, 'b', 'b.site_name', '=', 's.site_name')

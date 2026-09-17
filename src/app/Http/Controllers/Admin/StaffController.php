@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveStaffRequest;
 use App\Models\AdminRole;
 use App\Models\AdminUser;
+use App\Models\Agent;
 use App\Support\AdminAccess;
 use App\Support\AdminActivity;
 use Illuminate\Contracts\View\View;
@@ -103,7 +104,12 @@ class StaffController extends Controller
 
     private function form(AdminUser $staff): View
     {
-        return view('admin.staff.form', ['staff' => $staff, 'roles' => AdminRole::query()->orderBy('name')->get(), 'modules' => AdminAccess::modules()]);
+        return view('admin.staff.form', [
+            'staff' => $staff,
+            'agents' => Agent::query()->whereNotNull('agt_name')->where('agt_name', '!=', '')->orderBy('agt_name')->get(['id', 'login_id', 'agt_name', 'email', 'phone_number']),
+            'roles' => AdminRole::query()->orderBy('name')->get(),
+            'modules' => AdminAccess::modules(),
+        ]);
     }
 
     private function snapshot(AdminUser $staff): array

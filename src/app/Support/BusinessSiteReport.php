@@ -22,7 +22,7 @@ class BusinessSiteReport
         $salesTable = (new PosSale)->getTable();
         $itemsTable = (new PosSaleItem)->getTable();
         $productsTable = (new Product)->getTable();
-        $sessionPeriodSql = "{$sessionsTable}.signed_in_at BETWEEN {$operationsTable}.opened_at AND COALESCE({$operationsTable}.closed_at, CURRENT_TIMESTAMP)";
+        $sessionPeriodSql = "{$sessionsTable}.signed_in_at <= COALESCE({$operationsTable}.closed_at, CURRENT_TIMESTAMP) AND COALESCE({$sessionsTable}.signed_out_at, CURRENT_TIMESTAMP) >= {$operationsTable}.opened_at";
 
         $salesWithinOperation = fn (): Builder => PosSale::query()->notVoided()
             ->whereColumn("{$salesTable}.business_site_operation_id", "{$operationsTable}.id");

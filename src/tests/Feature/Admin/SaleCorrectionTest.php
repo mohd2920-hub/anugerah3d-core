@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AdminRole;
 use App\Models\AdminUser;
 use App\Models\Agent;
 use App\Models\BusinessSite;
@@ -9,6 +10,7 @@ use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSession;
 use App\Models\Product;
+use Dom\HTMLDocument;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -78,6 +80,23 @@ class SaleCorrectionTest extends TestCase
         $this->assertEquals(90, $audit->before['net_sales']);
         $this->assertEquals(185, $audit->after['net_sales']);
         $this->get(route('admin.sales.show', $sale))->assertOk()->assertSeeText('Corrected')->assertSeeText('Correction history');
+    }
+
+    public function test_product_options_exclude_discontinued_products_but_preserve_existing_sale_items(): void
+    {
+        $this->product->forceFill(['discontinued_at' => now(), 'prd_balance' => 100])->save();
+        $other = Product::factory()->create(['discontinued_at' => now(), 'prd_balance' => 0]);
+        $active = Product::factory()->create(['discontinued_at' => null]);
+        $this->actingAs($this->admin, 'admin');
+        $this->get(route('admin.sales.create', $this->operation))->assertOk()
+            ->assertViewHas('products', fn ($products): bool => $products->contains('id', $active->id) && ! $products->contains('id', $this->product->id) && ! $products->contains('id', $other->id))
+            ->assertDontSeeText($this->product->prd_name)->assertDontSeeText($other->prd_name);
+        $edit = $this->get(route('admin.sales.edit', $this->sale))->assertOk()
+            ->assertSeeText($this->product->prd_name)->assertDontSeeText($other->prd_name);
+        $document = HTMLDocument::createFromString($edit->getContent(), LIBXML_NOERROR);
+        $options = $document->querySelectorAll('select[name$="[product_id]"] option[value="'.$this->product->id.'"]');
+        $this->assertSame(1, $options->length);
+        $this->assertSame(2, $this->sale->items()->sole()->quantity);
     }
 
     public function test_admin_can_remove_products_and_reduce_quantity(): void
@@ -182,6 +201,59 @@ class SaleCorrectionTest extends TestCase
             $this->assertSame('Correction history cannot be deleted.', $exception->getMessage());
         }
         $this->assertModelExists($audit);
+    }
+
+    public function test_add_sale_carries_report_date_into_the_form_and_saved_sale(): void
+    {
+        $date = $this->operation->opened_at->toDateString();
+        $this->actingAs($this->admin, 'admin');
+        foreach (['admin.sales.index', 'admin.sales.transactions'] as $route) {
+            $this->get(route($route, ['single_date' => $date]))->assertOk()
+                ->assertSee(route('admin.sales.add', ['single_date' => $date]), false);
+        }
+        $this->get(route('admin.sales.add', ['single_date' => $date]))->assertOk()
+            ->assertViewHas('operations', fn ($operations): bool => $operations->pluck('id')->all() === [$this->operation->id]);
+        $form = $this->get(route('admin.sales.create', ['businessSiteOperation' => $this->operation, 'single_date' => $date]))->assertOk();
+        $soldAt = $form->viewData('defaultSoldAt');
+        $this->assertSame($date, $soldAt->toDateString());
+        $this->assertTrue($soldAt->equalTo($this->operation->opened_at));
+        $data = array_replace($this->data(), ['action' => 'missing', 'sold_at' => $soldAt->format('Y-m-d H:i:s')]);
+        $preview = $this->post(route('admin.sales.preview-missing', $this->operation), $data)->assertOk();
+        $this->post(route('admin.sale-corrections.store'), ['token' => $preview->viewData('token')])->assertRedirect();
+        $sale = PosSale::query()->latest('id')->first();
+        $this->assertSame($date, $sale->sold_at->toDateString());
+        $this->assertSame(97, $this->product->fresh()->prd_balance);
+        $this->assertTrue($sale->items()->sole()->uses_product_stock);
+        $this->get(route('admin.sales.transactions', ['single_date' => $date]))->assertOk()->assertSeeText($sale->sale_number);
+    }
+
+    public function test_add_sale_filters_sessions_and_rejects_dates_outside_the_session(): void
+    {
+        $this->actingAs($this->admin, 'admin');
+        $date = $this->operation->closed_at->toDateString();
+        $this->get(route('admin.sales.create', ['businessSiteOperation' => $this->operation, 'single_date' => $date]))
+            ->assertOk()->assertViewHas('defaultSoldAt', fn ($value): bool => $value->toDateString() === $date);
+        foreach ([now()->subDays(5)->toDateString(), now()->addDay()->toDateString()] as $outside) {
+            $this->get(route('admin.sales.add', ['single_date' => $outside]))->assertOk()
+                ->assertSeeText('Tiada sesi operasi')->assertViewHas('operations', fn ($operations): bool => $operations->isEmpty());
+            $this->get(route('admin.sales.create', ['businessSiteOperation' => $this->operation, 'single_date' => $outside]))
+                ->assertSessionHasErrors('single_date');
+        }
+        $this->get(route('admin.sales.add', ['single_date' => '2026-02-30']))->assertSessionHasErrors('single_date');
+        $otherSite = BusinessSite::query()->create(['site_name' => 'Other site', 'city' => 'Klang', 'opened_at' => now()]);
+        $this->get(route('admin.sales.add', ['single_date' => $date, 'business_site_id' => $otherSite->id]))
+            ->assertOk()->assertViewHas('operations', fn ($operations): bool => $operations->isEmpty());
+    }
+
+    public function test_add_sale_requires_create_permission(): void
+    {
+        $staff = AdminUser::factory()->create(['role' => 'staff']);
+        $role = AdminRole::query()->create(['name' => 'Sales reader', 'permissions' => ['sales.view']]);
+        $staff->accessRoles()->attach($role);
+        $this->actingAs($staff, 'admin')->get(route('admin.sales.add'))->assertForbidden();
+        $this->get(route('admin.sales.index'))->assertOk()->assertDontSeeText('Tambah Jualan');
+        $role->update(['permissions' => ['sales.view', 'sales.create']]);
+        $this->actingAs($staff->fresh(), 'admin')->get(route('admin.sales.add'))->assertOk();
     }
 
     public function test_missing_sale_is_added_to_selected_closed_session_without_fake_agent_attendance(): void

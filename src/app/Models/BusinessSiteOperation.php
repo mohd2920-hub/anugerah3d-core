@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['business_site_id', 'opened_at', 'closed_at'])]
+#[Fillable(['business_site_id', 'opened_at', 'closed_at', 'report_date'])]
 class BusinessSiteOperation extends Model
 {
     protected static function booted(): void
@@ -31,6 +31,7 @@ class BusinessSiteOperation extends Model
     {
         return [
             'opened_at' => 'datetime',
+            'report_date' => 'date',
             'closed_at' => 'datetime',
         ];
     }

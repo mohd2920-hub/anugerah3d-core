@@ -44,6 +44,10 @@ class DashboardReportTest extends TestCase
         });
         $response = $this->actingAs($admin, 'admin')->getJson(route('admin.dashboard.data', ['year' => 2026, 'month' => 9]));
         $response->assertOk()->assertJsonPath('summary.sales', 260)->assertJsonPath('summary.capital', 54)->assertJsonPath('summary.commission', 20)->assertJsonPath('summary.salary', 15)->assertJsonPath('summary.cost', 89)->assertJsonPath('summary.profit', 171)->assertJsonPath('summary.transactions', 3);
+        $response->assertJsonPath('series.1.pos_sales', 80)->assertJsonPath('series.1.order_sales', 100)->assertJsonPath('series.1.customer_sales', 80);
+        $this->assertEquals(80, array_sum(array_column($response->json('series'), 'pos_sales')));
+        $this->assertEquals(100, array_sum(array_column($response->json('series'), 'order_sales')));
+        $this->assertEquals(80, array_sum(array_column($response->json('series'), 'customer_sales')));
         $this->assertEquals(260, array_sum(array_column($response->json('series'), 'sales')));
         $this->assertEquals(89, array_sum(array_column($response->json('series'), 'cost')));
         $this->assertEquals($before, DB::table('products')->where('id', $product->id)->first());
@@ -391,7 +395,7 @@ class DashboardReportTest extends TestCase
         $response = $this->actingAs($admin, 'admin')->getJson(route('admin.dashboard.data', $filters));
         $response->assertOk()->assertJsonPath('summary.sales', 50)->assertJsonPath('transactions.total', 2)
             ->assertJsonPath('granularity', 'month')->assertJsonCount(2, 'series')
-            ->assertJsonPath('series.0.start', '2025-12-31')->assertJsonPath('series.0.sales', 20)
+            ->assertJsonPath('series.0.start', '2025-12-31')->assertJsonPath('series.0.sales', 20)->assertJsonPath('series.0.pos_sales', 20)->assertJsonPath('series.0.order_sales', 0)->assertJsonPath('series.0.customer_sales', 0)
             ->assertJsonPath('series.1.start', '2026-01-01')->assertJsonPath('series.1.sales', 30)
             ->assertJsonPath('period.previous_start', '2025-12-29')
             ->assertJsonPath('period.previous_end', '2025-12-30 23:59:59');
@@ -478,6 +482,38 @@ class DashboardReportTest extends TestCase
         $viewer->accessRoles()->attach(AdminRole::factory()->create(['permissions' => ['dashboard.view']]));
         $this->actingAs($viewer, 'admin')->getJson(route('admin.dashboard.data'))->assertOk()
             ->assertJsonCount(0, 'transaction_channels')->assertJsonPath('product_distribution.positive_total', 0);
+    }
+
+    public function test_pos_chart_uses_same_report_and_session_dates_as_sales(): void
+    {
+        $admin = AdminUser::factory()->superAdmin()->create();
+        $site = BusinessSite::create(['site_name' => 'Session Date Site', 'city' => 'Klang']);
+        $product = Product::factory()->create(['cost_rm' => 5]);
+        $sessionSale = $this->sale($product, $site, '2026-09-03 23:00:00', 20, 5);
+        $operationId = DB::table('pos_sales')->where('id', $sessionSale)->value('business_site_operation_id');
+        DB::table('business_site_operations')->where('id', $operationId)->update(['opened_at' => '2026-08-09 18:00:00']);
+        $reportSale = $this->sale($product, $site, '2026-09-03 23:00:00', 30, 5);
+        DB::table('pos_sales')->where('id', $reportSale)->update(['report_date' => '2026-09-02']);
+        $this->sale($product, $site, '2026-09-03 23:59:59', 40, 5);
+        $voidSale = $this->sale($product, $site, '2026-09-03 23:00:00', 900, 5, true);
+        DB::table('pos_sales')->where('id', $voidSale)->update(['report_date' => '2026-09-02']);
+
+        $this->actingAs($admin, 'admin')->getJson(route('admin.dashboard.data', ['year' => 2026, 'month' => 9, 'channel' => 'pos']))
+            ->assertOk()->assertJsonPath('summary.sales', 70)->assertJsonPath('previous.sales', 20)
+            ->assertJsonPath('series.1.sales', 30)->assertJsonPath('series.2.sales', 40);
+        foreach (['2026-08-09' => 20, '2026-09-02' => 30, '2026-09-03' => 40] as $date => $amount) {
+            $filters = ['start_date' => $date, 'end_date' => $date, 'channel' => 'pos'];
+            $this->getJson(route('admin.dashboard.data', $filters))->assertOk()
+                ->assertJsonPath('summary.sales', $amount)->assertJsonPath('series.0.sales', $amount)
+                ->assertJsonPath('transactions.total', 1);
+            $this->get(route('admin.sales.index', ['single_date' => $date]))->assertOk()
+                ->assertViewHas('summary', fn (array $summary): bool => $summary['total_amount'] === (float) $amount);
+            $csv = $this->get(route('admin.dashboard.export', $filters))->assertOk()->streamedContent();
+            $this->assertStringContainsString($date, $csv);
+        }
+        $this->getJson(route('admin.dashboard.data', ['year' => 2026, 'month' => 9, 'channel' => 'pos', 'day' => 2]))
+            ->assertOk()->assertJsonPath('transactions.total', 1)
+            ->assertJsonPath('transactions.rows.0.sales', 30);
     }
 
     private function sale(Product $product, BusinessSite $site, string $date, int $amount, int $cost, bool $void = false): int

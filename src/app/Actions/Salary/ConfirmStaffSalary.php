@@ -31,7 +31,10 @@ class ConfirmStaffSalary
             $snapshot = json_decode($draft->snapshot, true, flags: JSON_THROW_ON_ERROR);
             $ids = array_column($snapshot['staff'], 'staff_id');
             AdminUser::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
-            $fresh = $this->calculator->calculate(['operation_id' => $operationId, 'staff_ids' => $ids, 'weights' => collect($snapshot['staff'])->mapWithKeys(fn ($row) => [$row['staff_id'] => $row['weight'] / 100])->all(), 'rate' => $snapshot['rate'] / 100]);
+            $calculation = ($snapshot['mode'] ?? null) === 'amount'
+                ? ['amounts' => collect($snapshot['staff'])->mapWithKeys(fn ($row) => [$row['staff_id'] => number_format($row['amount_cents'] / 100, 2, '.', '')])->all()]
+                : ['weights' => collect($snapshot['staff'])->mapWithKeys(fn ($row) => [$row['staff_id'] => $row['weight'] / 100])->all(), 'rate' => $snapshot['rate'] / 100];
+            $fresh = $this->calculator->calculate(['operation_id' => $operationId, 'staff_ids' => $ids] + $calculation);
             if ($fresh['overlaps'] || ! hash_equals($snapshot['hash'], $fresh['hash'])) {
                 throw ValidationException::withMessages(['expected_version' => 'Jualan, staf atau bayaran berubah. Semak dan simpan semula draf dahulu.']);
             }

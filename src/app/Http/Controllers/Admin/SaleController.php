@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\IndexSalesRequest;
 use App\Models\BusinessSite;
+use App\Models\BusinessSiteOperation;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\Product;
@@ -40,9 +41,12 @@ class SaleController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $totals = $this->filteredSalesQuery($filters)
-            ->toBase()
-            ->selectRaw('COUNT(*) as transaction_count, COUNT(DISTINCT DATE(sold_at)) as sales_days, COALESCE(SUM(total_amount), 0) as total_amount')
+        $reportSales = $this->filteredSalesQuery($filters)
+            ->select(['sold_at', 'total_amount', 'report_date'])
+            ->selectSub(BusinessSiteOperation::query()->select('opened_at')
+                ->whereColumn('business_site_operations.id', 'pos_sales.business_site_operation_id'), 'session_opened_at');
+        $totals = DB::query()->fromSub($reportSales, 'report_sales')
+            ->selectRaw('COUNT(*) as transaction_count, COUNT(DISTINCT DATE(COALESCE(report_date, session_opened_at, sold_at))) as sales_days, COALESCE(SUM(total_amount), 0) as total_amount')
             ->first();
         $itemTotals = $this->salesItemTotals($filters);
         $totalCost = (float) $itemTotals->total_cost;
@@ -191,7 +195,13 @@ class SaleController extends Controller
         [$periodStart, $periodEnd] = $this->dateRange($filters);
 
         return $query
-            ->when($periodStart !== null, fn (Builder $query): Builder => $query->whereBetween('sold_at', [$periodStart, $periodEnd]))
+            ->when($periodStart !== null, fn (Builder $query): Builder => $query->where(function (Builder $dates) use ($periodStart, $periodEnd): void {
+                $dates->whereBetween('pos_sales.report_date', [$periodStart->toDateString(), $periodEnd->toDateString()])
+                    ->orWhere(fn (Builder $original): Builder => $original->whereNull('pos_sales.report_date')->where(function (Builder $sessionDates) use ($periodStart, $periodEnd): void {
+                        $sessionDates->whereHas('businessSiteOperation', fn (Builder $operation): Builder => $operation->whereBetween('opened_at', [$periodStart, $periodEnd]))
+                            ->orWhere(fn (Builder $legacy): Builder => $legacy->whereDoesntHave('businessSiteOperation')->whereBetween('sold_at', [$periodStart, $periodEnd]));
+                    }));
+            }))
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $query->where(function (Builder $query) use ($filters): void {
                     $search = $filters['search'];
